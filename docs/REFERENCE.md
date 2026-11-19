@@ -18,7 +18,7 @@ Sessions from before the plugin was active have no `last_seen` yet. They count a
 
 ## Policies
 
-Set per role under **Settings > User Sessions** (**Network Admin > Settings > User Sessions** on multisite) or with `wp user-session-manager set-policy`. A user with several roles gets the most generous value of each: no limit beats any limit, and a longer limit beats a shorter one. Users with no role on the site have no limits.
+Set per role on the **Policies** tab of Users > Sessions (**Network Admin > Users > Sessions** on multisite; the old Settings > User Sessions address redirects there) or with `wp user-session-manager set-policy`. A user with several roles gets the most generous value of each: no limit beats any limit, and a longer limit beats a shorter one. Users with no role on the site have no limits.
 
 | Setting | 0 means | Effect |
 | --- | --- | --- |
@@ -58,7 +58,7 @@ One person with a laptop on Wi-Fi and a phone on mobile data is two networks and
 
 When a sign shows up, the sessions behind it get a **Possibly shared** badge on the profile and on Users > Sessions, and both screens list the reasons: which sessions, from where, and when they were last used. Users > Sessions gets a **Possibly shared** view once any account is flagged. The flag lives in the `user_session_manager_shared` user meta with a copy of those sessions, and is dropped 7 days after the last sign (`keep_days`).
 
-What else happens is set per role in the "Account looks shared" column under **Settings > User Sessions**, or with `wp user-session-manager set-policy <role> --shared=<mode>`:
+What else happens is set per role in the "Account looks shared" column on the Policies tab, or with `wp user-session-manager set-policy <role> --shared=<mode>`:
 
 | Choice | `--shared` | Effect |
 | --- | --- | --- |
@@ -83,10 +83,11 @@ On profiles that show the sessions table, core's own "Log Out Everywhere Else" r
 On by default, and only used when the new device email is on. The email gets a link to `wp-login.php?action=user_session_manager_not_me&usm_key=<user ID>.<token>`. It works for 7 days (`user_session_manager_not_me_lifetime`) and once.
 
 - The link opens a page with no login needed. It says which device signed in and what pressing the button does. Opening it (a mail scanner does) changes nothing.
-- Pressing **This wasn't me, secure the account** signs the account out everywhere (setting: or only the reported session), replaces the password with one nobody knows, emails a reset link to the address on the account, records the report and emails the administrators (`user_session_manager_not_me_recipients`).
+- Pressing **This wasn't me, secure the account** signs the account out everywhere (setting: or only the reported session), replaces the password with one nobody knows, **revokes every application password of the account**, emails a reset link to the address on the account, records the report and emails the administrators (`user_session_manager_not_me_recipients`).
 - The token is random. Only a keyed hash is stored in the `user_session_manager_not_me` user meta, with the user, the session handle and the expiry. Hashes are compared in constant time, the link is deleted before anything happens, and at most 5 links per user are kept.
 - A wrong, expired or used link gets the same page. More than 10 wrong keys from one address in 15 minutes get a 429 (`user_session_manager_not_me_attempts`).
-- Reports (user, device, IP address as stored, time, sessions signed out) show on the profile, on Users > Sessions for 30 days, in Site Health for 7 days, in `wp user-session-manager reports` and in the `list-not-me-reports` ability. Up to 50 are kept.
+- The confirm page lists the application passwords that will be revoked. Opening it changes nothing.
+- Reports (user, device, IP address as stored, time, sessions signed out, names of the application passwords revoked) show on the profile, on Users > Sessions for 30 days, in Site Health for 7 days, in `wp user-session-manager reports` and in the `list-not-me-reports` ability. Up to 50 are kept.
 
 ## Sign-in history
 
@@ -99,6 +100,55 @@ When WordPress refuses an old login cookie, the history is searched for that coo
 ## Sign everyone out
 
 On Users > Sessions, under the list. It shows how many sessions will end, then asks for the words `SIGN OUT` (`user_session_manager_incident_confirm_word`). Choices: keep yourself signed in, leave out roles (single sites), and **Also require new passwords**, which makes every password stop working, including for people not signed in. Nobody is emailed. Your own password is never changed. It runs in slices of a few seconds, with a progress page that carries on by itself, so a large site never hits a time limit. Each person it signs out needs `edit_user` for them. It is logged (last 20 runs), and `user_session_manager_incident_started` and `_finished` fire.
+
+**Application passwords.** Signing a session out, or changing a password, does nothing to an application password, so someone who made one in a hijacked session keeps REST and XML-RPC access. "Sign everyone out" therefore also revokes every application password of the people it visits (untick **Also revoke application passwords**, pass `--keep-app-passwords` or `revoke_app_passwords: false` to keep them). The form shows how many will go first. The person running the job keeps their own, since they may be how the job is run. "This wasn't me" revokes all of the reported account's application passwords. Each one is deleted through core's `WP_Application_Passwords::delete_application_password()`, so core's `wp_delete_application_password` action fires for each too.
+
+## Ending another device to sign in
+
+When **Over the limit** is "Refuse the new login", a person refused at the sign-in form is not left stuck. After WordPress accepted the password, and Two Factor when the account uses it, the browser goes to `wp-login.php?action=user_session_manager_devices`, which lists the account's other devices. Choosing one ends it and signs the person in here, without asking for the password again, and then sends them on to the page they asked for.
+
+How it stays safe:
+
+- Nothing is signed in while the list shows. The login's new session is removed and the login cookies are cleared first.
+- The decision is made on `wp_login` at priority 99 and on `two_factor_user_authenticated`. A login that a second-step plugin takes over never reaches it, so the list only appears after the second step. A wrong password never reaches it.
+- What brings the person back to the page is a random token in an HttpOnly cookie, never in the address. Only a keyed hash is stored in the `user_session_manager_swap` user meta, with a hash of the browser's user agent, "Remember Me", the page to return to, and an expiry (10 minutes, `user_session_manager_device_swap_lifetime`, 1 to 30). One token per account.
+- Choosing a device needs the cookie and a form token derived from it. The token is deleted before anything else happens, so a replayed request does nothing. If the account is still over its limit after one device (the limit was lowered), a fresh token is issued for one more.
+- Only a session of the same account can be ended. A wrong, expired, used or other-browser token gets the same page (403), and more than 10 misses from one address in 15 minutes get a 429 (`user_session_manager_device_swap_attempts`).
+- It only applies to the sign-in form on wp-login.php. A login that skips the form is still refused as before.
+- Turn it off with **Let a refused person sign out one of their other devices to get in**, `wp user-session-manager settings --device-swap=off` or the `user_session_manager_device_swap_enabled` filter. The trade-off: with it on, a stolen password alone (no second step) lets someone end a device of the account to get in. The owner still gets the new device email and the ended device shows "signed out from another device".
+
+## Actions other plugins can listen to
+
+Elevate and Agent Governance close their own doors from these:
+
+| Action | Arguments | When |
+| --- | --- | --- |
+| `user_session_manager_not_me_reported` | `( WP_User $user, array $report )` | Someone pressed "This wasn't me". `$report` has `user`, `time`, `device`, `ip`, `scope`, `ended`, `reset` and `app_passwords` (name, created, last_used of each revoked key) |
+| `user_session_manager_app_passwords_revoked` | `( int $user_id, array $revoked, string $context )` | Application passwords were revoked. Each of `$revoked` has `uuid`, `name`, `created`, `last_used`, never the secret. `$context` is `not_me` or `incident` |
+| `user_session_manager_user_signed_out_everywhere` | `( int $user_id, int $count, string $context )` | Every session of one user ended. `$context` includes `not_me` and `incident` |
+| `user_session_manager_incident_started` | `( array $job )` | "Sign everyone out" started. `$job` has `by`, `via`, `keep`, `exclude_roles`, `passwords`, `app_passwords` |
+| `user_session_manager_incident_finished` | `( array $entry, array $job )` | It visited every user. `$entry` has `time`, `by`, `via`, `users`, `sessions`, `passwords`, `app_passwords`, `excluded`, `skipped`, `exclude_roles`, `kept_own` |
+| `user_session_manager_device_swap_offered` | `( WP_User $user, int $max, int $active )` | A refused login was offered the device list |
+| `user_session_manager_device_swapped` | `( WP_User $user, array $ended )` | A person ended a device and signed in. The ended session also fires `user_session_manager_session_revoked` with context `swap` |
+
+## Filters added for these features
+
+| Filter | Arguments | Use |
+| --- | --- | --- |
+| `user_session_manager_not_me_revoke_app_passwords` | `( bool $revoke, int $user_id )` | Whether "This wasn't me" revokes application passwords. Default true |
+| `user_session_manager_app_password_preview_limit` | `( int $limit )` | Accounts the incident preview counts keys for. Default 500, 50 to 5000 |
+| `user_session_manager_device_swap_enabled` | `( bool $enabled, WP_User $user )` | Whether a refused login offers the device list. From the setting, default on |
+| `user_session_manager_device_swap_lifetime` | `( int $seconds )` | How long the device list stays open. Default 600, 60 to 1800 |
+| `user_session_manager_device_swap_attempts` | `( int $attempts )` | Wrong tokens one address may try in 15 minutes. Default 10, at least 3 |
+| `user_session_manager_uses_two_factor` | `( bool $uses, WP_User $user )` | True for an account with a second step from a plugin other than Two Factor, so `wp_login` is not fired again after the device list |
+
+## WP-CLI and abilities for these features
+
+- `wp user-session-manager sign-out-everyone [--keep-user=<user>] [--exclude-roles=<roles>] [--require-new-passwords] [--keep-app-passwords] [--yes]`: revokes application passwords unless `--keep-app-passwords`.
+- `wp user-session-manager settings --device-swap=<on|off>`.
+- `wp user-session-manager reports` has an `app_passwords` column.
+- Ability `user-session-manager/sign-out-everyone` (destructive, not idempotent): input `confirm` (must be true), `keep_current` (default true), `exclude_roles`, `require_new_passwords` (default false), `revoke_app_passwords` (default true). Output `users_signed_out`, `sessions_ended`, `passwords_retired`, `app_passwords_revoked`, `excluded`, `skipped`.
+- Ability `user-session-manager/list-not-me-reports` (read-only): each report has `app_passwords_revoked` (a count).
 
 ## Hooks
 

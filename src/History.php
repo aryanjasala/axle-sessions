@@ -344,7 +344,7 @@ final class History implements Service {
 	 * device". Anyone else doing it, or WP-CLI, is an administrator.
 	 *
 	 * @param int    $user_id User the session belonged to.
-	 * @param string $context profile, admin, bulk, cli, ability, shared, not_me, incident or privacy.
+	 * @param string $context profile, admin, bulk, cli, ability, shared, not_me, swap, incident or privacy.
 	 * @return array{reason: string, by: int}
 	 */
 	public static function reason_for( int $user_id, string $context ): array {
@@ -358,6 +358,13 @@ final class History implements Service {
 		if ( 'not_me' === $context ) {
 			return array(
 				'reason' => 'not_me',
+				'by'     => 0,
+			);
+		}
+		if ( 'swap' === $context ) {
+			// The person ended it themselves, signing in from another device.
+			return array(
+				'reason' => 'other_device',
 				'by'     => 0,
 			);
 		}

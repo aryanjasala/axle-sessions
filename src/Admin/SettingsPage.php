@@ -1,6 +1,6 @@
 <?php
 /**
- * Settings > User Sessions (Network Admin > Settings on multisite).
+ * The Policies tab on Users > Sessions (Network Admin > Users on multisite).
  *
  * @package AryanX\Axle\UserSessionManager
  */
@@ -44,7 +44,8 @@ final class SettingsPage implements Service {
 	 * Adds the menu entry, form handler and plugin link.
 	 */
 	public function register(): void {
-		add_action( is_multisite() ? 'network_admin_menu' : 'admin_menu', array( $this, 'add_page' ) );
+		// The menu is built before the "not allowed" check for an unknown page, so redirect from there.
+		add_action( is_multisite() ? 'network_admin_menu' : 'admin_menu', array( $this, 'redirect_old_url' ), 999 );
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'handle_form' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( PLUGIN_FILE ), array( $this, 'add_settings_link' ) );
 		add_filter( 'network_admin_plugin_action_links_' . plugin_basename( PLUGIN_FILE ), array( $this, 'add_settings_link' ) );
@@ -57,67 +58,54 @@ final class SettingsPage implements Service {
 	 * @return string
 	 */
 	public static function url( array $args = array() ): string {
-		$base = is_multisite() ? network_admin_url( 'settings.php' ) : admin_url( 'options-general.php' );
-
-		return add_query_arg( array_merge( array( 'page' => self::SLUG ), $args ), $base );
+		return SessionsPage::url( array_merge( array( 'tab' => 'policies' ), $args ) );
 	}
 
 	/**
-	 * Registers the screen.
+	 * Sends the old Settings > User Sessions address to the Policies tab.
 	 */
-	public function add_page(): void {
-		$hook = add_submenu_page(
-			is_multisite() ? 'settings.php' : 'options-general.php',
-			__( 'User Sessions', 'user-session-manager' ),
-			__( 'User Sessions', 'user-session-manager' ),
-			Access::settings_capability(),
-			self::SLUG,
-			array( $this, 'render' )
-		);
+	public function redirect_old_url(): void {
+		global $pagenow;
 
-		if ( $hook ) {
-			add_action( "admin_print_styles-{$hook}", array( $this, 'enqueue_styles' ) );
-			add_action( "load-{$hook}", array( $this, 'help' ) );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only reads the page name to redirect a link.
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( self::SLUG !== $page || ! in_array( $pagenow, array( 'options-general.php', 'settings.php' ), true ) || ! current_user_can( Access::settings_capability() ) ) {
+			return;
 		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only flag carried over.
+		wp_safe_redirect( self::url( isset( $_GET['usm_saved'] ) ? array( 'usm_saved' => 1 ) : array() ) );
+		exit;
 	}
 
 	/**
-	 * The Help tab.
+	 * The Help tabs for the Policies tab.
+	 *
+	 * @return array<int, array{id: string, title: string, content: string}>
 	 */
-	public function help(): void {
-		AxleUi::help_tabs(
+	public static function help_tabs_data(): array {
+		return array(
 			array(
-				array(
-					'id'      => 'overview',
-					'title'   => __( 'Overview', 'user-session-manager' ),
-					'content' => '<p>' . esc_html__( 'Choose how long sessions last and how many a person may have, what happens when an account looks shared, and what the plugin remembers. Changes apply the next time someone signs in, except the idle timeout, which applies at once.', 'user-session-manager' ) . '</p>',
-				),
-				array(
-					'id'      => 'policies',
-					'title'   => __( 'Policies per role', 'user-session-manager' ),
-					'content' => '<p>' . esc_html__( 'Each role has its own limits. Leave a field at 0 for no limit. A person with several roles gets the most generous value of each.', 'user-session-manager' ) . '</p>',
-				),
-				array(
-					'id'      => 'emails',
-					'title'   => __( 'New sign-in email', 'user-session-manager' ),
-					'content' => '<p>' . esc_html__( 'When on, a person gets an email when they sign in from a browser and network they have not used lately. The email has a "This wasn\'t me" link. Opening the link shows a page, and nothing changes until the person presses the button on it. Then the device is signed out, the password stops working, a reset link is emailed to them and the site administrator is told.', 'user-session-manager' ) . '</p>',
-				),
-				array(
-					'id'      => 'history',
-					'title'   => __( 'Sign-in history', 'user-session-manager' ),
-					'content' => '<p>' . esc_html__( 'The history shows when and where an account signed in and how each session ended. It is kept for the number of days you set, and it is removed with the account\'s personal data. Set it to 0 to keep no history.', 'user-session-manager' ) . '</p>',
-				),
-			)
+				'id'      => 'policies-overview',
+				'title'   => __( 'Policies', 'user-session-manager' ),
+				'content' => '<p>' . esc_html__( 'Choose how long sessions last and how many a person may have, what happens when an account looks shared, and what the plugin remembers. Changes apply the next time someone signs in, except the idle timeout, which applies at once.', 'user-session-manager' ) . '</p><p>' . esc_html__( 'Each role has its own limits. Leave a field at 0 for no limit. A person with several roles gets the most generous value of each.', 'user-session-manager' ) . '</p>',
+			),
+			array(
+				'id'      => 'over-the-limit',
+				'title'   => __( 'Over the limit', 'user-session-manager' ),
+				'content' => '<p>' . esc_html__( 'Signing out the oldest session lets everyone in. Refusing the new login is stricter. When a login is refused, the person can sign out one of their other devices to get in, after their password (and Two Factor, when they use it) was checked. Turn that off if you want a refusal to be final.', 'user-session-manager' ) . '</p>',
+			),
+			array(
+				'id'      => 'emails',
+				'title'   => __( 'New sign-in email', 'user-session-manager' ),
+				'content' => '<p>' . esc_html__( 'When on, a person gets an email when they sign in from a browser and network they have not used lately. The email has a "This wasn\'t me" link. Opening the link shows a page, and nothing changes until the person presses the button on it. Then the device is signed out, the password stops working, application passwords are revoked, a reset link is emailed to them and the site administrator is told.', 'user-session-manager' ) . '</p>',
+			),
+			array(
+				'id'      => 'history',
+				'title'   => __( 'Sign-in history', 'user-session-manager' ),
+				'content' => '<p>' . esc_html__( 'The history shows when and where an account signed in and how each session ended. It is kept for the number of days you set, and it is removed with the account\'s personal data. Set it to 0 to keep no history.', 'user-session-manager' ) . '</p>',
+			),
 		);
-	}
-
-	/**
-	 * Screen styles.
-	 */
-	public function enqueue_styles(): void {
-		AxleUi::enqueue();
-		wp_enqueue_style( 'user-session-manager', plugins_url( 'assets/admin.css', PLUGIN_FILE ), array( AxleUi::HANDLE ), VERSION );
-		Display::enqueue_script();
 	}
 
 	/**
@@ -136,20 +124,14 @@ final class SettingsPage implements Service {
 	}
 
 	/**
-	 * Prints the screen.
+	 * Prints the Policies tab, inside the Sessions screen's wrap.
 	 */
-	public function render(): void {
+	public function render_panel(): void {
 		$settings = $this->settings->all();
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only value set by our own redirect.
 		$saved = isset( $_GET['usm_saved'] );
 		?>
-		<div class="wrap axle-ui usm-page usm-settings">
-			<h1 class="wp-heading-inline"><?php esc_html_e( 'User Sessions', 'user-session-manager' ); ?></h1>
-			<?php if ( Access::can_view_all() ) : ?>
-				<a href="<?php echo esc_url( SessionsPage::url() ); ?>" class="page-title-action"><?php esc_html_e( 'See all sessions', 'user-session-manager' ); ?></a>
-			<?php endif; ?>
-			<hr class="wp-header-end">
-
+		<div class="usm-settings">
 			<p class="axle-intro"><?php esc_html_e( 'Set how many sessions each role may have and how long they last, and choose what happens when an account looks shared.', 'user-session-manager' ); ?></p>
 
 			<?php if ( $saved ) : ?>
@@ -218,7 +200,11 @@ final class SettingsPage implements Service {
 								<legend class="screen-reader-text"><?php esc_html_e( 'Over the limit', 'user-session-manager' ); ?></legend>
 								<label><input type="radio" name="limit_mode" value="evict_oldest" <?php checked( 'evict_oldest', $settings['limit_mode'] ); ?>> <?php esc_html_e( 'Sign out the oldest session (recommended)', 'user-session-manager' ); ?></label><br>
 								<label><input type="radio" name="limit_mode" value="block" <?php checked( 'block', $settings['limit_mode'] ); ?>> <?php esc_html_e( 'Refuse the new login', 'user-session-manager' ); ?></label>
-								<p class="description"><?php esc_html_e( 'What happens when someone signs in and already has as many sessions as their role allows. Refusing is stricter, but a user who lost a device has to ask an administrator to end that session.', 'user-session-manager' ); ?></p>
+								<p class="description"><?php esc_html_e( 'What happens when someone signs in and already has as many sessions as their role allows. Refusing is stricter.', 'user-session-manager' ); ?></p>
+								<p>
+									<label><input type="checkbox" name="device_swap" value="1" <?php checked( $settings['device_swap'] ); ?>> <?php esc_html_e( 'Let a refused person sign out one of their other devices to get in', 'user-session-manager' ); ?></label>
+								</p>
+								<p class="description"><?php esc_html_e( 'Only used when refusing. The list of devices appears after the password (and Two Factor, when the person uses it) was accepted, and works once for 10 minutes in the same browser. The person is not asked for the password again. Turn this off if a refusal must be final, for example when a stolen password alone should never end someone else\'s session.', 'user-session-manager' ); ?></p>
 							</fieldset>
 						</td>
 					</tr>
@@ -268,7 +254,6 @@ final class SettingsPage implements Service {
 				</section>
 				<?php submit_button( __( 'Save settings', 'user-session-manager' ) ); ?>
 			</form>
-			<?php AxleUi::footer(); ?>
 		</div>
 		<?php
 	}
@@ -343,6 +328,7 @@ final class SettingsPage implements Service {
 				'policies'         => $policies,
 				'shared'           => $shared,
 				'limit_mode'       => in_array( $mode, Settings::LIMIT_MODES, true ) ? $mode : 'evict_oldest',
+				'device_swap'      => ! empty( $_POST['device_swap'] ),
 				'new_device_email' => ! empty( $_POST['new_device_email'] ),
 				'device_days'      => isset( $_POST['device_days'] ) ? max( 1, min( 365, absint( $_POST['device_days'] ) ) ) : 30,
 				'mask_ip'          => ! empty( $_POST['mask_ip'] ),

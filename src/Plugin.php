@@ -85,6 +85,13 @@ final class Plugin {
 	private Incident $incident;
 
 	/**
+	 * The way out of a refused login.
+	 *
+	 * @var DeviceSwap
+	 */
+	private DeviceSwap $swap;
+
+	/**
 	 * Starts the plugin. Runs on `plugins_loaded`.
 	 */
 	public static function boot(): void {
@@ -115,6 +122,7 @@ final class Plugin {
 		$this->devices  = new NewDevice( $this->settings, $this->sessions, $this->not_me );
 		$this->shared   = new SharedLogins( $this->settings, $this->sessions );
 		$this->incident = new Incident( $this->sessions );
+		$this->swap     = new DeviceSwap( $this->settings, $this->sessions );
 	}
 
 	/**
@@ -175,21 +183,23 @@ final class Plugin {
 	 * Registers the services.
 	 */
 	private function register(): void {
+		$policies = new SettingsPage( $this->settings );
 		$services = array(
 			$this->sessions,
 			$this->history,
 			new LoginNotice( $this->history, $this->sessions ),
 			$this->not_me,
 			new Activity( $this->settings, $this->sessions ),
-			new Limits( $this->settings, $this->sessions ),
+			$this->swap,
+			new Limits( $this->settings, $this->sessions, $this->swap ),
 			$this->devices,
 			$this->shared,
 			$this->pruner,
 			new Privacy( $this->settings, $this->sessions, $this->devices, $this->shared, $this->history, $this->not_me ),
 			new ProfileSessions( $this->sessions, $this->shared, $this->history, $this->not_me ),
-			new SessionsPage( $this->settings, $this->sessions, $this->shared, $this->not_me, $this->incident ),
+			$policies,
+			new SessionsPage( $this->settings, $this->sessions, $this->shared, $this->not_me, $this->incident, $policies ),
 			new UsersColumn( $this->sessions ),
-			new SettingsPage( $this->settings ),
 			new SiteHealth( $this->settings, $this->sessions, $this->not_me ),
 			new Abilities( $this->sessions, $this->shared, $this->history, $this->not_me, $this->incident ),
 		);

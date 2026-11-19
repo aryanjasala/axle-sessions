@@ -1,4 +1,4 @@
-const { test, expect, wp, wpEval, logIn, logInAs } = require( './utils' );
+const { test, expect, wp, wpEval, logIn, logInAs, appPasswordClient } = require( './utils' );
 const { PASSWORD: ADMIN_PASSWORD } = require( './utils/config' );
 
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
@@ -14,6 +14,7 @@ const PASSWORD = 'e2e-password-123';
 // and lets a browser context say which IP address it signs in from (the X-USM-E2E-IP header),
 // since every context reaches the Docker site from the same address.
 const MU_PLUGIN = `<?php
+add_filter( 'wp_is_application_passwords_available', '__return_true' );
 if ( ! empty( $_SERVER['HTTP_X_USM_E2E_IP'] ) && filter_var( $_SERVER['HTTP_X_USM_E2E_IP'], FILTER_VALIDATE_IP ) ) {
 	$_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_USM_E2E_IP'];
 }
@@ -102,11 +103,13 @@ test.describe( 'User Session Manager', () => {
 				delete_user_meta( $user->ID, 'user_session_manager_shared' );
 				delete_user_meta( $user->ID, 'user_session_manager_history' );
 				delete_user_meta( $user->ID, 'user_session_manager_not_me' );
+				delete_user_meta( $user->ID, 'user_session_manager_swap' );
+				delete_user_meta( $user->ID, '_application_passwords' );
 			}
 			delete_option( 'user_session_manager_not_me_events' ); delete_option( 'user_session_manager_incidents' );
 			delete_user_meta( 1, 'user_session_manager_hide_steps' );
 			foreach ( array( 'alice', 'bob', 'sam', 'carol' ) as $login ) { wp_set_password( 'e2e-password-123', get_user_by( 'login', $login )->ID ); }
-			global $wpdb; $wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%usm_nm_%'" );` );
+			global $wpdb; $wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%usm_nm_%' OR option_name LIKE '%usm_sw_%'" );` );
 	} );
 
 	test.afterEach( async () => {
@@ -352,7 +355,7 @@ test.describe( 'User Session Manager', () => {
 
 	test( 'block mode refuses the new login with a clear message', async ( { browser } ) => {
 		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
-		wp( 'user-session-manager', 'settings', '--limit-mode=block' );
+		wp( 'user-session-manager', 'settings', '--limit-mode=block', '--device-swap=off' );
 
 		const first = await open( browser, 'alice', IPHONE );
 		const second = await open( browser, 'alice', FIREFOX );
@@ -395,6 +398,7 @@ test.describe( 'User Session Manager', () => {
 
 	test( 'the new device email goes out for a new browser only, and IPs can be shortened', async ( { page, browser } ) => {
 		await page.goto( SETTINGS );
+		await expect( page ).toHaveURL( /tab=policies/ );
 		await page.getByLabel( 'Email users when they sign in from a new browser or network' ).check();
 		await page.getByLabel( 'Store shortened IP addresses (the last part set to zero)' ).check();
 		await page.getByRole( 'button', { name: 'Save settings' } ).click();
@@ -968,5 +972,334 @@ test.describe( 'User Session Manager', () => {
 		await expect( page.locator( '.usm-confirm-box' ) ).toHaveCount( 0 );
 		await expect( page.locator( '.usm-sessions' ).getByRole( 'link', { name: 'Sign out' } ) ).toBeFocused();
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
+	} );
+	test( 'This wasn\'t me also revokes application passwords: a real key works before and is refused after', async ( { browser } ) => {
+		wp( 'user-session-manager', 'settings', '--new-device-email=on' );
+		const key = await appPasswordClient( 'alice', 'Deploy script' );
+		const other = await appPasswordClient( 'alice', 'Backup job' );
+		try {
+			// Before: the key reads the account over REST.
+			const before = await key.call( 'GET', '/wp/v2/users/me' );
+			expect( before.status ).toBe( 200 );
+			expect( before.body.slug ).toBe( 'alice' );
+
+			await open( browser, 'alice', CHROME );
+			await open( browser, 'alice', IPHONE, '198.51.100.20' );
+			const link = mail()[ 0 ].message.match( /http\S*user_session_manager_not_me\S*/ )[ 0 ];
+			const visitor = await browser.newContext( { storageState: { cookies: [], origins: [] } } );
+			contexts.push( visitor );
+			const tab = await visitor.newPage();
+			await tab.goto( link );
+
+			// The confirm page says which keys will go, and opening it changes nothing.
+			await expect( tab.locator( '#login' ) ).toContainText( '2 application passwords are revoked' );
+			await expect( tab.locator( '#login' ) ).toContainText( 'Deploy script' );
+			expect( ( await key.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
+
+			await tab.getByRole( 'button', { name: 'This wasn\'t me, secure the account' } ).click();
+			await expect( tab.locator( '#login' ) ).toContainText( '2 application passwords were revoked' );
+
+			// After: both keys are refused, and none is left.
+			expect( ( await key.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
+			expect( ( await other.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
+			expect( wp( 'user', 'application-password', 'list', 'alice', '--format=count' ) ).toBe( '0' );
+
+			// The report lists them, in the email to the administrators too.
+			const reports = JSON.parse( wp( 'user-session-manager', 'reports', '--format=json' ) );
+			expect( reports[ 0 ].app_passwords ).toContain( 'Deploy script' );
+			expect( reports[ 0 ].app_passwords ).toContain( 'Backup job' );
+			expect( mail().pop().message ).toContain( 'Application passwords revoked: Deploy script, Backup job' );
+		} finally {
+			await key.dispose();
+			await other.dispose();
+		}
+	} );
+
+	test( 'the This wasn\'t me report fires user_session_manager_app_passwords_revoked and not_me_reported with the revoked keys', async ( { browser } ) => {
+		wp( 'user-session-manager', 'settings', '--new-device-email=on' );
+		wpEval( `add_action( 'user_session_manager_not_me_reported', function ( $user, $report ) { update_option( 'usm_e2e_seen', array( 'reported', $user->ID, wp_list_pluck( $report['app_passwords'], 'name' ) ), false ); }, 10, 2 );` );
+		// The hook above lives only for that eval, so register through a must-use file for the real request.
+		wpEval( `file_put_contents( WPMU_PLUGIN_DIR . '/usm-e2e-listen.php', '<?php add_action( "user_session_manager_not_me_reported", function ( $u, $r ) { update_option( "usm_e2e_seen", array( "reported" => wp_list_pluck( $r["app_passwords"], "name" ) ), false ); }, 10, 2 ); add_action( "user_session_manager_app_passwords_revoked", function ( $id, $rows, $ctx ) { update_option( "usm_e2e_seen_apps", array( "ctx" => $ctx, "names" => wp_list_pluck( $rows, "name" ), "has_uuid" => isset( $rows[0]["uuid"] ), "has_secret" => isset( $rows[0]["password"] ) ), false ); }, 10, 3 );' );` );
+		const key = await appPasswordClient( 'alice', 'Agent key' );
+		try {
+			await open( browser, 'alice', CHROME );
+			await open( browser, 'alice', IPHONE, '198.51.100.20' );
+			const link = mail()[ 0 ].message.match( /http\S*user_session_manager_not_me\S*/ )[ 0 ];
+			const visitor = await browser.newContext( { storageState: { cookies: [], origins: [] } } );
+			contexts.push( visitor );
+			const tab = await visitor.newPage();
+			await tab.goto( link );
+			await tab.getByRole( 'button', { name: 'This wasn\'t me, secure the account' } ).click();
+			await expect( tab.locator( '#login' ) ).toContainText( 'application password was revoked' );
+			expect( JSON.parse( wpEval( 'echo wp_json_encode( get_option( "usm_e2e_seen" ) );' ) ) ).toEqual( { reported: [ 'Agent key' ] } );
+			expect( JSON.parse( wpEval( 'echo wp_json_encode( get_option( "usm_e2e_seen_apps" ) );' ) ) ).toEqual( { ctx: 'not_me', names: [ 'Agent key' ], has_uuid: true, has_secret: false } );
+		} finally {
+			await key.dispose();
+			wpEval( `@unlink( WPMU_PLUGIN_DIR . '/usm-e2e-listen.php' ); delete_option( 'usm_e2e_seen' ); delete_option( 'usm_e2e_seen_apps' );` );
+		}
+	} );
+
+	test( 'Sign everyone out revokes application passwords too, previews the count, keeps yours, and can be told not to', async ( { page, browser } ) => {
+		const alice = await appPasswordClient( 'alice', 'Alice key' );
+		const sam = await appPasswordClient( 'sam', 'Sam key' );
+		const mine = await appPasswordClient( 'admin', 'My own key' );
+		try {
+			await open( browser, 'alice', IPHONE );
+			expect( ( await alice.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
+			expect( ( await sam.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
+
+			await page.goto( SESSIONS + '&usm_incident=1' );
+			await expect( page.locator( '.usm-app-preview' ) ).toContainText( 'This revokes 2 application passwords of 2 users.' );
+			await expect( page.locator( '.usm-app-preview' ) ).toContainText( 'Your own are kept' );
+			await expect( page.getByLabel( 'Also revoke application passwords' ) ).toBeChecked();
+
+			// Unticked: the keys stay.
+			await page.getByLabel( 'Also revoke application passwords' ).uncheck();
+			await page.getByLabel( /Type SIGN OUT to confirm/ ).fill( 'SIGN OUT' );
+			await page.getByRole( 'button', { name: 'Sign everyone out' } ).click();
+			await expect( page.locator( '.usm-notice' ) ).toContainText( 'Everyone was signed out' );
+			await expect( page.locator( '.usm-notice' ) ).not.toContainText( 'application password' );
+			expect( ( await alice.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
+
+			// Ticked (the default): they go, yours stays so the job can finish.
+			await page.goto( SESSIONS + '&usm_incident=1' );
+			await page.getByLabel( /Type SIGN OUT to confirm/ ).fill( 'SIGN OUT' );
+			await page.getByRole( 'button', { name: 'Sign everyone out' } ).click();
+			await expect( page.locator( '.usm-notice' ) ).toContainText( '2 application passwords were revoked.' );
+			expect( ( await alice.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
+			expect( ( await sam.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
+			expect( ( await mine.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
+			await page.goto( SESSIONS );
+			await expect( page.locator( '.usm-incident-log' ) ).toContainText( '2 application passwords revoked' );
+			const log = JSON.parse( wpEval( `echo wp_json_encode( get_option( 'user_session_manager_incidents' ) );` ) );
+			expect( log[ 0 ] ).toMatchObject( { app_passwords: 2 } );
+			expect( log[ 1 ] ).toMatchObject( { app_passwords: 0 } );
+		} finally {
+			await alice.dispose();
+			await sam.dispose();
+			await mine.dispose();
+		}
+	} );
+
+	test( 'Sign everyone out from WP-CLI and the ability revokes application passwords unless told not to', async ( { rest } ) => {
+		test.skip( 'yes' !== wpEval( "echo function_exists( 'wp_register_ability' ) ? 'yes' : 'no';" ), 'The Abilities API needs WordPress 6.9.' );
+		const bob = await appPasswordClient( 'bob', 'Bob key' );
+		const carol = await appPasswordClient( 'carol', 'Carol key' );
+		try {
+			expect( wp( 'user-session-manager', 'sign-out-everyone', '--keep-user=admin', '--keep-app-passwords', '--yes' ) ).toContain( '0 application passwords revoked' );
+			expect( ( await bob.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
+
+			const path = '/wp-abilities/v1/abilities/user-session-manager/sign-out-everyone/run';
+			const kept = await rest( 'POST', path, { input: { confirm: true, revoke_app_passwords: false } } );
+			expect( kept.body ).toMatchObject( { app_passwords_revoked: 0 } );
+			expect( ( await bob.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
+
+			const done = await rest( 'POST', path, { input: { confirm: true, exclude_roles: [ 'administrator' ] } } );
+			expect( done.status ).toBe( 200 );
+			expect( done.body ).toMatchObject( { app_passwords_revoked: 1 } );
+			expect( ( await bob.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
+			expect( ( await carol.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
+
+			expect( wp( 'user-session-manager', 'sign-out-everyone', '--keep-user=admin', '--yes' ) ).toContain( '1 application passwords revoked' );
+			expect( ( await carol.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
+		} finally {
+			await bob.dispose();
+			await carol.dispose();
+		}
+	} );
+
+	test( 'a refused login shows the other devices after the password, and ending one signs the person in', async ( { browser } ) => {
+		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
+		wp( 'user-session-manager', 'settings', '--limit-mode=block' );
+		const first = await open( browser, 'alice', IPHONE );
+		expect( sessions( 'alice' ) ).toHaveLength( 1 );
+
+		// A wrong password never reaches the list.
+		const wrong = await logInAs( browser, 'alice', 'not-the-password', { userAgent: FIREFOX } );
+		contexts.push( wrong.context );
+		await expect( wrong.page.locator( '#login_error' ) ).toBeVisible();
+		expect( wrong.page.url() ).not.toContain( 'user_session_manager_devices' );
+		expect( ( await wrong.context.cookies() ).some( ( c ) => c.name.startsWith( 'usm_swap_' ) ) ).toBe( false );
+
+		// The right password lands on the list. Nothing is signed in yet, and the old device stays.
+		const second = await open( browser, 'alice', FIREFOX );
+		await expect( second.page ).toHaveURL( /action=user_session_manager_devices/ );
+		await expect( second.page.locator( '#login' ) ).toContainText( 'Safari on iOS' );
+		await expect( second.page.locator( '#login' ) ).toContainText( 'without typing your password again' );
+		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ IPHONE ] );
+		const cookies = await second.context.cookies();
+		expect( cookies.some( ( c ) => c.name.startsWith( 'wordpress_logged_in_' ) && c.value ) ).toBe( false );
+		expect( cookies.find( ( c ) => c.name.startsWith( 'usm_swap_' ) ).httpOnly ).toBe( true );
+		expect( await signedIn( second.page ) ).toBe( false );
+		await second.page.goBack();
+		await second.page.goBack().catch( () => null );
+		await second.page.goto( '/wp-login.php?action=user_session_manager_devices' );
+		await expect( second.page.locator( '#login' ) ).toContainText( 'Safari on iOS' );
+
+		await second.page.getByRole( 'button', { name: 'Sign out this device and sign in here' } ).click();
+		await expect( second.page ).toHaveURL( /wp-admin/ );
+		expect( await signedIn( second.page ) ).toBe( true );
+		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ FIREFOX ] );
+		expect( await signedIn( first.page ) ).toBe( false );
+
+		// The ended device is told why, the history says so, and no token is left.
+		const history = JSON.parse( wp( 'user-session-manager', 'history', 'alice', '--format=json' ) );
+		expect( history.map( ( row ) => row.reason ) ).toContain( 'other_device' );
+		expect( wpEval( `echo (int) is_array( get_user_meta( ${ id( 'alice' ) }, 'user_session_manager_swap', true ) );` ) ).toBe( '0' );
+	} );
+
+	test( 'the device list works once, only in the browser that signed in, and only for a few minutes', async ( { browser } ) => {
+		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
+		wp( 'user-session-manager', 'settings', '--limit-mode=block' );
+		await open( browser, 'alice', IPHONE );
+		const second = await open( browser, 'alice', FIREFOX );
+		await expect( second.page ).toHaveURL( /action=user_session_manager_devices/ );
+		const cookie = ( await second.context.cookies() ).find( ( c ) => c.name.startsWith( 'usm_swap_' ) );
+		const html = await second.page.content();
+		const handle = html.match( /name="usm_handle" value="([^"]+)"/ )[ 1 ];
+		const formToken = html.match( /name="usm_form" value="([^"]+)"/ )[ 1 ];
+		const post = ( context, data ) => context.request.post( '/wp-login.php?action=user_session_manager_devices', { form: data, maxRedirects: 0 } );
+
+		// Another browser with the same cookie value but another user agent gets nothing.
+		const thief = await browser.newContext( { storageState: { cookies: [], origins: [] }, userAgent: CHROME } );
+		contexts.push( thief );
+		await thief.addCookies( [ { name: cookie.name, value: cookie.value, url: 'http://localhost:8901' } ] );
+		const stolen = await thief.request.get( '/wp-login.php?action=user_session_manager_devices' );
+		expect( stolen.status() ).toBe( 403 );
+		expect( await stolen.text() ).not.toContain( 'Safari on iOS' );
+		const stolenPost = await post( thief, { usm_form: formToken, usm_handle: handle } );
+		expect( stolenPost.status() ).toBe( 403 );
+		expect( sessions( 'alice' ) ).toHaveLength( 1 );
+
+		// No cookie at all: the same page for a wrong, missing or expired token.
+		const bare = await browser.newContext( { storageState: { cookies: [], origins: [] }, userAgent: FIREFOX } );
+		contexts.push( bare );
+		expect( ( await bare.request.get( '/wp-login.php?action=user_session_manager_devices' ) ).status() ).toBe( 403 );
+
+		// A wrong form token ends nothing and uses nothing up.
+		const bad = await post( second.context, { usm_form: 'a'.repeat( 64 ), usm_handle: handle } );
+		expect( bad.status() ).toBe( 403 );
+		expect( sessions( 'alice' ) ).toHaveLength( 1 );
+
+		// Expired: the same page, nothing signed out.
+		wpEval( `$m = get_user_meta( ${ id( 'alice' ) }, 'user_session_manager_swap', true ); $m['expires'] = time() - 5; update_user_meta( ${ id( 'alice' ) }, 'user_session_manager_swap', $m );` );
+		const late = await second.page.goto( '/wp-login.php?action=user_session_manager_devices' );
+		expect( late.status() ).toBe( 403 );
+		await expect( second.page.locator( '#login' ) ).toContainText( 'expired or was already used' );
+		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ IPHONE ] );
+
+		// A fresh sign in, then used once: replaying the same request does nothing.
+		const third = await open( browser, 'alice', FIREFOX );
+		const cookie3 = ( await third.context.cookies() ).find( ( c ) => c.name.startsWith( 'usm_swap_' ) );
+		const html3 = await third.page.content();
+		const handle3 = html3.match( /name="usm_handle" value="([^"]+)"/ )[ 1 ];
+		const form3 = html3.match( /name="usm_form" value="([^"]+)"/ )[ 1 ];
+		await third.page.getByRole( 'button', { name: 'Sign out this device and sign in here' } ).click();
+		await expect( third.page ).toHaveURL( /wp-admin/ );
+		const replayContext = await browser.newContext( { storageState: { cookies: [], origins: [] }, userAgent: FIREFOX } );
+		contexts.push( replayContext );
+		await replayContext.addCookies( [ { name: cookie3.name, value: cookie3.value, url: 'http://localhost:8901' } ] );
+		const replay = await post( replayContext, { usm_form: form3, usm_handle: handle3 } );
+		expect( replay.status() ).toBe( 403 );
+		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ FIREFOX ] );
+	} );
+
+	test( 'you cannot use the device list to end someone else\'s device, cancel keeps everything, and an old handle starts again', async ( { browser } ) => {
+		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
+		wp( 'user-session-manager', 'set-policy', 'editor', '--max-sessions=1' );
+		wp( 'user-session-manager', 'settings', '--limit-mode=block' );
+		await open( browser, 'alice', IPHONE );
+		await open( browser, 'bob', CHROME );
+		const bobHandle = sessions( 'bob' )[ 0 ].handle;
+		const aliceHandle = sessions( 'alice' )[ 0 ].handle;
+
+		const second = await open( browser, 'alice', FIREFOX );
+		const html = await second.page.content();
+		const formToken = html.match( /name="usm_form" value="([^"]+)"/ )[ 1 ];
+		const post = ( data ) => second.context.request.post( '/wp-login.php?action=user_session_manager_devices', { form: data, maxRedirects: 0 } );
+
+		// Bob's handle in Alice's step: nothing of Bob's ends, and Alice gets a new step.
+		const sneaky = await post( { usm_form: formToken, usm_handle: bobHandle } );
+		expect( sneaky.status() ).toBe( 302 );
+		expect( sneaky.headers().location ).toContain( 'usm_gone=1' );
+		expect( sessions( 'bob' ) ).toHaveLength( 1 );
+		expect( sessions( 'alice' ) ).toHaveLength( 1 );
+		expect( await signedIn( second.page ) ).toBe( false );
+
+		await second.page.goto( '/wp-login.php?action=user_session_manager_devices&usm_gone=1' );
+		await expect( second.page.locator( '#login_error' ) ).toContainText( 'had already signed out' );
+		await second.page.getByRole( 'button', { name: 'Cancel, I will sign in later' } ).click();
+		await expect( second.page.locator( '#login' ) ).toContainText( 'Nothing was signed out' );
+		expect( sessions( 'alice' ).map( ( s ) => s.handle ) ).toEqual( [ aliceHandle ] );
+		expect( await signedIn( second.page ) ).toBe( false );
+	} );
+
+	test( 'a lowered limit asks for one more device, and the signed-in person returns to the page they asked for', async ( { browser } ) => {
+		wp( 'user-session-manager', 'settings', '--limit-mode=block' );
+		await open( browser, 'alice', IPHONE );
+		await open( browser, 'alice', CHROME );
+		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
+
+		const context = await browser.newContext( { baseURL: 'http://localhost:8901', storageState: { cookies: [], origins: [] }, userAgent: FIREFOX } );
+		contexts.push( context );
+		const page = await context.newPage();
+		await page.goto( '/wp-login.php?redirect_to=' + encodeURIComponent( 'http://localhost:8901/wp-admin/profile.php?from=swap' ) );
+		await page.waitForTimeout( 400 );
+		await page.locator( '#user_login' ).fill( 'alice' );
+		await page.locator( '#user_pass' ).fill( PASSWORD );
+		await page.locator( '#wp-submit' ).click();
+		await expect( page ).toHaveURL( /user_session_manager_devices/ );
+		await expect( page.locator( '#login' ) ).toContainText( 'it is signed in on 2 now' );
+
+		await page.getByRole( 'button', { name: 'Sign out this device and sign in here' } ).first().click();
+		await expect( page ).toHaveURL( /user_session_manager_devices/ );
+		await expect( page.locator( '#login_error' ) ).toContainText( 'still over its limit' );
+		expect( sessions( 'alice' ) ).toHaveLength( 1 );
+
+		await page.getByRole( 'button', { name: 'Sign out this device and sign in here' } ).click();
+		await expect( page ).toHaveURL( /profile\.php\?from=swap/ );
+		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ FIREFOX ] );
+	} );
+
+	test( 'the device list can be turned off, and the old Settings address goes to the Policies tab', async ( { page, browser } ) => {
+		await page.goto( SETTINGS );
+		await expect( page ).toHaveURL( /users\.php\?page=user-sessions&tab=policies/ );
+		await expect( page.getByRole( 'link', { name: 'Policies' } ) ).toHaveAttribute( 'aria-current', 'page' );
+		await expect( page.locator( '.usm-policies' ) ).toBeVisible();
+		await expect( page.locator( '#adminmenu' ).getByRole( 'link', { name: 'User Sessions' } ) ).toHaveCount( 0 );
+		await page.getByLabel( 'Refuse the new login' ).check();
+		await expect( page.getByLabel( 'Let a refused person sign out one of their other devices to get in' ) ).toBeChecked();
+		await page.getByLabel( 'Let a refused person sign out one of their other devices to get in' ).uncheck();
+		await page.getByRole( 'button', { name: 'Save settings' } ).click();
+		await expect( page.locator( '.usm-notice' ) ).toContainText( 'Settings saved.' );
+		expect( JSON.parse( wp( 'user-session-manager', 'settings', '--format=json' ) ) ).toMatchObject( { limit_mode: 'block', device_swap: false } );
+		await expect( page ).toHaveURL( /tab=policies/ );
+
+		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
+		await open( browser, 'alice', IPHONE );
+		const refused = await open( browser, 'alice', FIREFOX );
+		await expect( refused.page.locator( '#login_error' ) ).toContainText( 'This account can be signed in on 1 device at a time.' );
+		expect( refused.page.url() ).not.toContain( 'user_session_manager_devices' );
+		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ IPHONE ] );
+		await refused.page.goto( '/wp-login.php?action=user_session_manager_devices' );
+		await expect( refused.page.locator( '#login' ) ).toContainText( 'expired or was already used' );
+
+		await page.goto( SESSIONS );
+		await expect( page.getByRole( 'link', { name: 'Sessions' } ).first() ).toHaveAttribute( 'aria-current', 'page' );
+	} );
+
+	test( 'the This wasn\'t me pages use the login screen\'s own look', async ( { browser } ) => {
+		wp( 'user-session-manager', 'settings', '--new-device-email=on' );
+		await open( browser, 'alice', CHROME );
+		await open( browser, 'alice', IPHONE, '198.51.100.20' );
+		const link = mail()[ 0 ].message.match( /http\S*user_session_manager_not_me\S*/ )[ 0 ];
+		const visitor = await browser.newContext( { storageState: { cookies: [], origins: [] } } );
+		contexts.push( visitor );
+		const tab = await visitor.newPage();
+		await tab.goto( link );
+		await expect( tab.locator( 'body.login #login .message' ) ).toContainText( 'Was that you?' );
+		// The explanation and the button sit inside the white box, not loose on the grey page.
+		await expect( tab.locator( '.axle-guest-box' ).getByRole( 'button', { name: 'This wasn\'t me, secure the account' } ) ).toBeVisible();
+		await expect( tab.locator( '.axle-guest-box' ) ).toContainText( 'If it was you, close this page' );
 	} );
 } );

@@ -52,6 +52,7 @@ final class Settings {
 		'policies'         => array(),
 		'shared'           => array(),
 		'limit_mode'       => 'evict_oldest',
+		'device_swap'      => true,
 		'new_device_email' => false,
 		'device_days'      => 30,
 		'mask_ip'          => false,
@@ -70,7 +71,7 @@ final class Settings {
 	/**
 	 * All settings, with defaults filled in.
 	 *
-	 * @return array{policies: array<string, array<string, int>>, shared: array<string, string>, limit_mode: string, new_device_email: bool, device_days: int, mask_ip: bool, not_me: bool, not_me_scope: string, history_days: int}
+	 * @return array{policies: array<string, array<string, int>>, shared: array<string, string>, limit_mode: string, device_swap: bool, new_device_email: bool, device_days: int, mask_ip: bool, not_me: bool, not_me_scope: string, history_days: int}
 	 */
 	public function all(): array {
 		$saved = get_site_option( self::OPTION, array() );
@@ -92,6 +93,7 @@ final class Settings {
 			'policies'         => $policies,
 			'shared'           => $shared,
 			'limit_mode'       => in_array( $all['limit_mode'], self::LIMIT_MODES, true ) ? (string) $all['limit_mode'] : 'evict_oldest',
+			'device_swap'      => (bool) $all['device_swap'],
 			'new_device_email' => (bool) $all['new_device_email'],
 			'device_days'      => max( 1, min( 365, (int) $all['device_days'] ) ),
 			'mask_ip'          => (bool) $all['mask_ip'],
@@ -227,6 +229,38 @@ final class Settings {
 		$mode = apply_filters( 'user_session_manager_limit_mode', $this->get( 'limit_mode' ), $user );
 
 		return in_array( $mode, self::LIMIT_MODES, true ) ? (string) $mode : 'evict_oldest';
+	}
+
+	/**
+	 * Whether a person refused over the session limit may end one of their other devices to sign in.
+	 *
+	 * @param \WP_User $user The user who was refused.
+	 * @return bool
+	 */
+	public function device_swap_enabled( \WP_User $user ): bool {
+		/**
+		 * Filters whether a login refused over the session limit offers the person's other devices.
+		 *
+		 * The offer only appears after the password (and Two Factor, when the user has it) was checked.
+		 *
+		 * @param bool     $enabled From the setting. Default true.
+		 * @param \WP_User $user    The user who was refused.
+		 */
+		return (bool) apply_filters( 'user_session_manager_device_swap_enabled', $this->get( 'device_swap' ), $user );
+	}
+
+	/**
+	 * Seconds the device list stays open after the password was checked.
+	 *
+	 * @return int
+	 */
+	public function device_swap_lifetime(): int {
+		/**
+		 * Filters how long a refused person has to pick a device to end.
+		 *
+		 * @param int $seconds Default 600 (10 minutes). Kept between 1 and 30 minutes.
+		 */
+		return max( MINUTE_IN_SECONDS, min( 30 * MINUTE_IN_SECONDS, (int) apply_filters( 'user_session_manager_device_swap_lifetime', 10 * MINUTE_IN_SECONDS ) ) );
 	}
 
 	/**

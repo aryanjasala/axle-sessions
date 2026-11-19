@@ -409,12 +409,13 @@ final class Abilities implements Service {
 						'items' => array(
 							'type'       => 'object',
 							'properties' => array(
-								'user_id'    => array( 'type' => 'integer' ),
-								'user_login' => array( 'type' => 'string' ),
-								'device'     => array( 'type' => 'string' ),
-								'ip'         => array( 'type' => 'string' ),
-								'reported'   => array( 'type' => 'string' ),
-								'ended'      => array( 'type' => 'integer' ),
+								'user_id'               => array( 'type' => 'integer' ),
+								'user_login'            => array( 'type' => 'string' ),
+								'device'                => array( 'type' => 'string' ),
+								'ip'                    => array( 'type' => 'string' ),
+								'reported'              => array( 'type' => 'string' ),
+								'ended'                 => array( 'type' => 'integer' ),
+								'app_passwords_revoked' => array( 'type' => 'integer' ),
 							),
 						),
 					),
@@ -431,7 +432,7 @@ final class Abilities implements Service {
 		$this->ability(
 			'sign-out-everyone',
 			__( 'Sign everyone out', 'user-session-manager' ),
-			__( 'For an incident. Ends every session of every user you may edit, except your own when keep_current is true and the roles in exclude_roles. With require_new_passwords, every affected password also stops working, so each person has to use "Lost your password?" to choose a new one. Nobody is emailed. Your own password is never changed. It cannot be undone, and confirm must be true.', 'user-session-manager' ),
+			__( 'For an incident. Ends every session of every user you may edit, except your own when keep_current is true and the roles in exclude_roles. With require_new_passwords, every affected password also stops working, so each person has to use "Lost your password?" to choose a new one. Every application password of those users is revoked too, unless revoke_app_passwords is false, so nobody keeps REST access from before. Nobody is emailed. Your own password and application passwords are never changed. It cannot be undone, and confirm must be true.', 'user-session-manager' ),
 			array(
 				'type'                 => 'object',
 				'properties'           => array(
@@ -451,6 +452,10 @@ final class Abilities implements Service {
 						'type'    => 'boolean',
 						'default' => false,
 					),
+					'revoke_app_passwords'  => array(
+						'type'    => 'boolean',
+						'default' => true,
+					),
 				),
 				'required'             => array( 'confirm' ),
 				'additionalProperties' => false,
@@ -458,11 +463,12 @@ final class Abilities implements Service {
 			array(
 				'type'       => 'object',
 				'properties' => array(
-					'users_signed_out'  => array( 'type' => 'integer' ),
-					'sessions_ended'    => array( 'type' => 'integer' ),
-					'passwords_retired' => array( 'type' => 'integer' ),
-					'excluded'          => array( 'type' => 'integer' ),
-					'skipped'           => array( 'type' => 'integer' ),
+					'users_signed_out'      => array( 'type' => 'integer' ),
+					'sessions_ended'        => array( 'type' => 'integer' ),
+					'passwords_retired'     => array( 'type' => 'integer' ),
+					'app_passwords_revoked' => array( 'type' => 'integer' ),
+					'excluded'              => array( 'type' => 'integer' ),
+					'skipped'               => array( 'type' => 'integer' ),
 				),
 			),
 			array( $this, 'sign_out_everyone' ),
@@ -611,12 +617,13 @@ final class Abilities implements Service {
 			}
 			$user      = get_userdata( (int) $event['user'] );
 			$reports[] = array(
-				'user_id'    => (int) $event['user'],
-				'user_login' => $user ? (string) $user->user_login : '',
-				'device'     => (string) $event['device'],
-				'ip'         => (string) $event['ip'],
-				'reported'   => gmdate( 'c', (int) $event['time'] ),
-				'ended'      => (int) $event['ended'],
+				'user_id'               => (int) $event['user'],
+				'user_login'            => $user ? (string) $user->user_login : '',
+				'device'                => (string) $event['device'],
+				'ip'                    => (string) $event['ip'],
+				'reported'              => gmdate( 'c', (int) $event['time'] ),
+				'ended'                 => (int) $event['ended'],
+				'app_passwords_revoked' => count( isset( $event['app_passwords'] ) && is_array( $event['app_passwords'] ) ? $event['app_passwords'] : array() ),
 			);
 		}
 
@@ -643,16 +650,18 @@ final class Abilities implements Service {
 				'keep_current'  => ! array_key_exists( 'keep_current', $input ) || (bool) $input['keep_current'],
 				'exclude_roles' => (array) ( $input['exclude_roles'] ?? array() ),
 				'passwords'     => ! empty( $input['require_new_passwords'] ),
+				'app_passwords' => ! array_key_exists( 'revoke_app_passwords', $input ) || (bool) $input['revoke_app_passwords'],
 				'via'           => 'ability',
 			)
 		);
 
 		return array(
-			'users_signed_out'  => (int) $job['users'],
-			'sessions_ended'    => (int) $job['sessions'],
-			'passwords_retired' => (int) $job['passwords_set'],
-			'excluded'          => (int) $job['excluded'],
-			'skipped'           => (int) $job['skipped'],
+			'users_signed_out'      => (int) $job['users'],
+			'sessions_ended'        => (int) $job['sessions'],
+			'passwords_retired'     => (int) $job['passwords_set'],
+			'app_passwords_revoked' => (int) $job['app_revoked'],
+			'excluded'              => (int) $job['excluded'],
+			'skipped'               => (int) $job['skipped'],
 		);
 	}
 

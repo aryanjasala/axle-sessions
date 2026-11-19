@@ -297,6 +297,16 @@ final class ProfileSessions implements Service {
 							number_format_i18n( (int) $event['ended'] )
 						)
 					);
+					if ( '' !== NotMe::app_password_names( $event ) ) {
+						echo ' ';
+						echo esc_html(
+							sprintf(
+								/* translators: %s: names of the application passwords. */
+								__( 'Application passwords revoked: %s.', 'user-session-manager' ),
+								NotMe::app_password_names( $event )
+							)
+						);
+					}
 					?>
 				</p>
 			</div>
@@ -440,9 +450,10 @@ final class ProfileSessions implements Service {
 		$count   = isset( $_GET['usm_count'] ) ? absint( $_GET['usm_count'] ) : 0;
 		$user    = isset( $_GET['usm_user'] ) ? get_userdata( absint( $_GET['usm_user'] ) ) : false;
 		$extra   = isset( $_GET['usm_extra'] ) ? absint( $_GET['usm_extra'] ) : 0;
+		$apps    = isset( $_GET['usm_apps'] ) ? absint( $_GET['usm_apps'] ) : 0;
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
-		$text = self::message( $message, $count, $user ? $user->user_login : '', $extra );
+		$text = self::message( $message, $count, $user ? $user->user_login : '', $extra, $apps );
 		if ( '' === $text ) {
 			return;
 		}
@@ -457,9 +468,10 @@ final class ProfileSessions implements Service {
 	 * @param int    $count   Sessions affected.
 	 * @param string $user    Login of the user signed out, for signed_out_user.
 	 * @param int    $extra   Accounts that must choose a new password, for incident.
+	 * @param int    $apps    Application passwords revoked, for incident.
 	 * @return string
 	 */
-	public static function message( string $message, int $count, string $user = '', int $extra = 0 ): string {
+	public static function message( string $message, int $count, string $user = '', int $extra = 0, int $apps = 0 ): string {
 		$number = number_format_i18n( $count );
 		switch ( $message ) {
 			case 'revoked':
@@ -489,6 +501,10 @@ final class ProfileSessions implements Service {
 				if ( $extra > 0 ) {
 					/* translators: %s: number of accounts. */
 					$text .= ' ' . sprintf( _n( '%s account must now choose a new password with "Lost your password?". This cannot be undone.', '%s accounts must now choose a new password with "Lost your password?". This cannot be undone.', $extra, 'user-session-manager' ), number_format_i18n( $extra ) );
+				}
+				if ( $apps > 0 ) {
+					/* translators: %s: number of application passwords. */
+					$text .= ' ' . sprintf( _n( '%s application password was revoked.', '%s application passwords were revoked.', $apps, 'user-session-manager' ), number_format_i18n( $apps ) );
 				}
 				break;
 			default:

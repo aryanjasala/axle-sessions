@@ -8,6 +8,7 @@
 namespace AryanX\Axle\UserSessionManager\Admin;
 
 use AryanX\Axle\UserSessionManager\Access;
+use AryanX\Axle\UserSessionManager\AppPasswords;
 use AryanX\Axle\UserSessionManager\Incident;
 use AryanX\Axle\UserSessionManager\NotMe;
 use AryanX\Axle\UserSessionManager\Service;
@@ -64,6 +65,13 @@ final class SessionsPage implements Service {
 	private Incident $incident;
 
 	/**
+	 * The Policies tab.
+	 *
+	 * @var SettingsPage|null
+	 */
+	private ?SettingsPage $policies;
+
+	/**
 	 * A "Sign everyone out" job that is part way through, for the progress page.
 	 *
 	 * @var array|null
@@ -73,13 +81,15 @@ final class SessionsPage implements Service {
 	/**
 	 * Sets up the screen.
 	 *
-	 * @param Settings     $settings Saved settings.
-	 * @param Sessions     $sessions Session store.
-	 * @param SharedLogins $shared   Shared login detection.
-	 * @param NotMe        $not_me   "This wasn't me" reports.
-	 * @param Incident     $incident "Sign everyone out".
+	 * @param Settings          $settings Saved settings.
+	 * @param Sessions          $sessions Session store.
+	 * @param SharedLogins      $shared   Shared login detection.
+	 * @param NotMe             $not_me   "This wasn't me" reports.
+	 * @param Incident          $incident "Sign everyone out".
+	 * @param SettingsPage|null $policies The Policies tab.
 	 */
-	public function __construct( Settings $settings, Sessions $sessions, SharedLogins $shared, NotMe $not_me, Incident $incident ) {
+	public function __construct( Settings $settings, Sessions $sessions, SharedLogins $shared, NotMe $not_me, Incident $incident, ?SettingsPage $policies = null ) {
+		$this->policies = $policies;
 		$this->settings = $settings;
 		$this->sessions = $sessions;
 		$this->shared   = $shared;
@@ -179,6 +189,11 @@ final class SessionsPage implements Service {
 	 * The Help tab.
 	 */
 	public function help(): void {
+		if ( 'policies' === $this->tab() ) {
+			AxleUi::help_tabs( SettingsPage::help_tabs_data() );
+			return;
+		}
+
 		AxleUi::help_tabs(
 			array(
 				array(
@@ -206,6 +221,50 @@ final class SessionsPage implements Service {
 	}
 
 	/**
+	 * The tab being shown: sessions or policies. Policies need the settings capability.
+	 *
+	 * @return string
+	 */
+	private function tab(): string {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only picks which screen to show.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'sessions';
+
+		return 'policies' === $tab && null !== $this->policies ? 'policies' : 'sessions';
+	}
+
+	/**
+	 * Prints the tabs when there is more than one the person may open.
+	 *
+	 * @param string $current sessions or policies.
+	 */
+	private function render_tabs( string $current ): void {
+		if ( null === $this->policies || ! current_user_can( Access::settings_capability() ) ) {
+			return;
+		}
+		?>
+		<nav class="nav-tab-wrapper wp-clearfix" aria-label="<?php esc_attr_e( 'Sessions screens', 'user-session-manager' ); ?>">
+			<a href="<?php echo esc_url( self::url() ); ?>" class="nav-tab<?php echo 'sessions' === $current ? ' nav-tab-active' : ''; ?>"<?php echo 'sessions' === $current ? ' aria-current="page"' : ''; ?>><?php esc_html_e( 'Sessions', 'user-session-manager' ); ?></a>
+			<a href="<?php echo esc_url( SettingsPage::url() ); ?>" class="nav-tab<?php echo 'policies' === $current ? ' nav-tab-active' : ''; ?>"<?php echo 'policies' === $current ? ' aria-current="page"' : ''; ?>><?php esc_html_e( 'Policies', 'user-session-manager' ); ?></a>
+		</nav>
+		<?php
+	}
+
+	/**
+	 * Prints the Policies tab.
+	 */
+	private function render_policies(): void {
+		?>
+		<div class="wrap axle-ui usm-page">
+			<h1 class="wp-heading-inline"><?php esc_html_e( 'Sessions', 'user-session-manager' ); ?></h1>
+			<hr class="wp-header-end">
+			<?php $this->render_tabs( 'policies' ); ?>
+			<?php $this->policies->render_panel(); ?>
+			<?php AxleUi::footer(); ?>
+		</div>
+		<?php
+	}
+
+	/**
 	 * What the confirmation screen asks about, when a sign out everywhere waits for a yes.
 	 *
 	 * @var array{users: int[], handles: string[]}|null
@@ -225,7 +284,10 @@ final class SessionsPage implements Service {
 
 		// phpcs:disable WordPress.Security.NonceVerification -- Each branch below checks its own nonce before it changes anything.
 		$special = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
-		$post    = isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'];
+		if ( 'policies' === $this->tab() ) {
+			return;
+		}
+		$post = isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'];
 		// phpcs:enable WordPress.Security.NonceVerification
 		if ( 'incident' === $special && $post ) {
 			$this->start_incident();
@@ -346,6 +408,7 @@ final class SessionsPage implements Service {
 				'keep_current'  => ! empty( $_POST['usm_keep'] ),
 				'exclude_roles' => $roles,
 				'passwords'     => ! empty( $_POST['usm_passwords'] ),
+				'app_passwords' => ! empty( $_POST['usm_app_passwords'] ),
 				'via'           => 'screen',
 			)
 		);
@@ -396,6 +459,7 @@ final class SessionsPage implements Service {
 						'usm_message' => 'incident',
 						'usm_count'   => (int) $job['sessions'],
 						'usm_extra'   => (int) $job['passwords_set'],
+						'usm_apps'    => (int) $job['app_revoked'],
 					)
 				)
 			);
@@ -601,6 +665,13 @@ final class SessionsPage implements Service {
 			$this->render_confirm( $this->confirm['users'], $this->confirm['handles'] );
 			return;
 		}
+		if ( 'policies' === $this->tab() ) {
+			if ( ! current_user_can( Access::settings_capability() ) ) {
+				wp_die( esc_html__( 'Sorry, you are not allowed to change these settings.', 'user-session-manager' ), 403 );
+			}
+			$this->render_policies();
+			return;
+		}
 
 		$table = new SessionsTable( $this->sessions, $this->shared );
 		$table->prepare_items();
@@ -612,10 +683,8 @@ final class SessionsPage implements Service {
 		?>
 		<div class="wrap axle-ui usm-page">
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Sessions', 'user-session-manager' ); ?></h1>
-			<?php if ( current_user_can( Access::settings_capability() ) ) : ?>
-				<a href="<?php echo esc_url( SettingsPage::url() ); ?>" class="page-title-action"><?php esc_html_e( 'Session policies', 'user-session-manager' ); ?></a>
-			<?php endif; ?>
 			<hr class="wp-header-end">
+			<?php $this->render_tabs( 'sessions' ); ?>
 
 			<p class="axle-intro"><?php esc_html_e( 'Every browser signed in to this site, with the person, the device and the network. Sign sessions out one at a time, or sign a person out everywhere.', 'user-session-manager' ); ?></p>
 
@@ -755,7 +824,7 @@ final class SessionsPage implements Service {
 		?>
 		<section class="axle-card usm-reports" aria-labelledby="usm-reports-title">
 			<h2 class="axle-card__title" id="usm-reports-title"><?php esc_html_e( 'Reported as "This wasn\'t me"', 'user-session-manager' ); ?></h2>
-			<p class="description"><?php esc_html_e( 'People who answered a new sign-in email by saying it was not them, in the last 30 days. Their sessions were signed out and their password was reset.', 'user-session-manager' ); ?></p>
+			<p class="description"><?php esc_html_e( 'People who answered a new sign-in email by saying it was not them, in the last 30 days. Their sessions were signed out, their password was reset and their application passwords were revoked.', 'user-session-manager' ); ?></p>
 			<div class="axle-scroll" tabindex="0" role="region" aria-label="<?php esc_attr_e( 'Reports', 'user-session-manager' ); ?>">
 				<table class="widefat striped usm-report-table">
 					<thead>
@@ -765,6 +834,7 @@ final class SessionsPage implements Service {
 							<th scope="col"><?php esc_html_e( 'IP address', 'user-session-manager' ); ?></th>
 							<th scope="col"><?php esc_html_e( 'Reported', 'user-session-manager' ); ?></th>
 							<th scope="col"><?php esc_html_e( 'Sessions signed out', 'user-session-manager' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Application passwords revoked', 'user-session-manager' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -783,6 +853,7 @@ final class SessionsPage implements Service {
 								<td class="usm-ip" data-colname="<?php esc_attr_e( 'IP address', 'user-session-manager' ); ?>"><?php echo esc_html( '' !== $event['ip'] ? (string) $event['ip'] : __( 'Unknown', 'user-session-manager' ) ); ?></td>
 								<td data-colname="<?php esc_attr_e( 'Reported', 'user-session-manager' ); ?>"><?php echo wp_kses( AxleUi::relative_time( (int) $event['time'] ), Display::ALLOWED ); ?></td>
 								<td data-colname="<?php esc_attr_e( 'Sessions signed out', 'user-session-manager' ); ?>"><?php echo esc_html( number_format_i18n( (int) $event['ended'] ) ); ?></td>
+								<td data-colname="<?php esc_attr_e( 'Application passwords revoked', 'user-session-manager' ); ?>"><?php echo '' !== NotMe::app_password_names( $event ) ? esc_html( NotMe::app_password_names( $event ) ) : '<span class="axle-muted">' . esc_html__( 'None', 'user-session-manager' ) . '</span>'; ?></td>
 							</tr>
 						<?php endforeach; ?>
 					</tbody>
@@ -802,7 +873,7 @@ final class SessionsPage implements Service {
 		?>
 		<section class="axle-card axle-card--danger usm-danger" aria-labelledby="usm-danger-title">
 			<h2 class="axle-card__title" id="usm-danger-title"><?php esc_html_e( 'Sign everyone out', 'user-session-manager' ); ?></h2>
-			<p><?php esc_html_e( 'For an incident, such as a leaked password list or a stolen laptop. Every person is signed out. You can keep yourself signed in, leave out some roles, and make every password stop working.', 'user-session-manager' ); ?></p>
+			<p><?php esc_html_e( 'For an incident, such as a leaked password list or a stolen laptop. Every person is signed out and every application password is revoked. You can keep yourself signed in, leave out some roles, and make every password stop working.', 'user-session-manager' ); ?></p>
 			<p class="axle-actions"><a class="button axle-button--danger" href="<?php echo esc_url( self::url( array( 'usm_incident' => 1 ) ) ); ?>"><?php esc_html_e( 'Sign everyone out', 'user-session-manager' ); ?></a></p>
 			<?php $log = array_slice( $this->incident->log(), 0, 3 ); ?>
 			<?php if ( $log ) : ?>
@@ -814,12 +885,13 @@ final class SessionsPage implements Service {
 							<?php
 							echo wp_kses(
 								sprintf(
-									/* translators: 1: relative time, 2: who did it, 3: number of sessions, 4: number of accounts with a new password. */
-									esc_html__( '%1$s by %2$s: %3$s sessions signed out, %4$s passwords reset.', 'user-session-manager' ),
+									/* translators: 1: relative time, 2: who did it, 3: number of sessions, 4: number of accounts with a new password, 5: number of application passwords revoked. */
+									esc_html__( '%1$s by %2$s: %3$s sessions signed out, %4$s passwords reset, %5$s application passwords revoked.', 'user-session-manager' ),
 									AxleUi::relative_time( (int) $entry['time'] ),
 									esc_html( $by ? $by->user_login : __( 'WP-CLI or a script', 'user-session-manager' ) ),
 									esc_html( number_format_i18n( (int) $entry['sessions'] ) ),
-									esc_html( number_format_i18n( (int) $entry['passwords'] ) )
+									esc_html( number_format_i18n( (int) $entry['passwords'] ) ),
+									esc_html( number_format_i18n( (int) ( $entry['app_passwords'] ?? 0 ) ) )
 								),
 								Display::ALLOWED
 							);
@@ -837,6 +909,7 @@ final class SessionsPage implements Service {
 	 */
 	private function render_incident_form(): void {
 		$totals = $this->sessions->totals();
+		$apps   = AppPasswords::totals( array( get_current_user_id() ) );
 		$word   = Incident::confirm_word();
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only error code from our own redirect.
 		$error = isset( $_GET['usm_error'] ) && 'typed' === sanitize_key( wp_unslash( $_GET['usm_error'] ) );
@@ -874,6 +947,26 @@ final class SessionsPage implements Service {
 								<li><label><input type="checkbox" name="usm_roles[]" value="<?php echo esc_attr( (string) $role ); ?>"> <?php echo esc_html( translate_user_role( $name ) ); ?></label></li>
 							<?php endforeach; ?>
 						</ul>
+					<?php endif; ?>
+					<?php if ( AppPasswords::is_supported() ) : ?>
+						<p>
+							<label><input type="checkbox" name="usm_app_passwords" value="1" checked> <?php esc_html_e( 'Also revoke application passwords', 'user-session-manager' ); ?></label><br>
+							<span class="description usm-app-preview">
+								<?php
+								echo esc_html(
+									sprintf(
+										/* translators: 1: number of application passwords, 2: number of users, 3: "at least " when the count stopped early or an empty string. */
+										_n( 'This revokes %3$s%1$s application password of %2$s user. Apps and scripts that use it lose REST and XML-RPC access at once.', 'This revokes %3$s%1$s application passwords of %2$s users. Apps and scripts that use them lose REST and XML-RPC access at once.', $apps['passwords'], 'user-session-manager' ),
+										number_format_i18n( $apps['passwords'] ),
+										number_format_i18n( $apps['users'] ),
+										$apps['truncated'] ? __( 'at least ', 'user-session-manager' ) : ''
+									)
+								);
+								echo ' ';
+								esc_html_e( 'Signing out does not stop an application password, so someone who made one in a hijacked session would keep their access. Your own are kept, so you can finish the job.', 'user-session-manager' );
+								?>
+							</span>
+						</p>
 					<?php endif; ?>
 					<p>
 						<label><input type="checkbox" name="usm_passwords" value="1"> <?php esc_html_e( 'Also require new passwords', 'user-session-manager' ); ?></label><br>

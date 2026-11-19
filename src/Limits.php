@@ -44,14 +44,23 @@ final class Limits implements Service {
 	private bool $signing_on = false;
 
 	/**
+	 * The way out of a refused login.
+	 *
+	 * @var DeviceSwap|null
+	 */
+	private ?DeviceSwap $swap;
+
+	/**
 	 * Sets up the limits.
 	 *
-	 * @param Settings $settings Saved settings.
-	 * @param Sessions $sessions Session store.
+	 * @param Settings        $settings Saved settings.
+	 * @param Sessions        $sessions Session store.
+	 * @param DeviceSwap|null $swap The way out of a refused login, when it is on.
 	 */
-	public function __construct( Settings $settings, Sessions $sessions ) {
+	public function __construct( Settings $settings, Sessions $sessions, ?DeviceSwap $swap = null ) {
 		$this->settings = $settings;
 		$this->sessions = $sessions;
+		$this->swap     = $swap;
 	}
 
 	/**
@@ -91,6 +100,11 @@ final class Limits implements Service {
 
 		$active = count( $this->active_sessions( $user ) );
 		if ( $active < $max ) {
+			return $user;
+		}
+
+		// The sign-in form lets the password (and a second step) be checked first, then shows the devices.
+		if ( null !== $this->swap && $this->swap->applies( $user ) ) {
 			return $user;
 		}
 
@@ -217,6 +231,13 @@ final class Limits implements Service {
 		}
 
 		if ( 'block' === $this->settings->limit_mode( $user ) ) {
+			// Kept until the login has fully succeeded, then ended and replaced by the device list.
+			if ( null !== $this->swap && $this->swap->applies( $user ) ) {
+				$this->swap->hold( $user, $verifier, $session );
+
+				return false;
+			}
+
 			$this->sessions->forget( $user->ID, $verifier );
 			/** This action is documented in src/Limits.php */
 			do_action( 'user_session_manager_login_blocked', $user, $max, count( $others ) );
