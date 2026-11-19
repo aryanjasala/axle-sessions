@@ -80,7 +80,7 @@ Nothing until they sign in again. The limit is applied at login. An idle timeout
 
 = Will "Refuse the new login" lock out someone who lost their phone? =
 
-No. After they enter the right password (and the Two Factor code, if they use it), they see their other devices and can sign one out to get in. The list works once, in that browser, for 10 minutes. You can turn this off in the Policies tab. Then a refusal is final until the old session ends or an administrator signs it out. Signing out the oldest session stays the default.
+No. After they enter the right password (and the Two Factor code, if they use it), they see their other devices and can sign one out to get in. This is offered to accounts that use Two Factor, and to accounts that cannot manage options or promote users. An administrator without Two Factor is never offered it, so a stolen password alone cannot push out their session. The list works once, in that browser, for 10 minutes. You can turn this off in the Policies tab. Then a refusal is final until the old session ends or an administrator signs it out. Signing out the oldest session stays the default.
 
 = Does "This wasn't me" stop an API key someone made? =
 

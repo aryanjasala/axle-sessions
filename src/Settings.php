@@ -238,15 +238,37 @@ final class Settings {
 	 * @return bool
 	 */
 	public function device_swap_enabled( \WP_User $user ): bool {
+		$allowed = (bool) $this->get( 'device_swap' ) && self::swap_allowed_for( $user );
+
 		/**
 		 * Filters whether a login refused over the session limit offers the person's other devices.
 		 *
 		 * The offer only appears after the password (and Two Factor, when the user has it) was checked.
+		 * The default rule keeps a stolen password alone from pushing out an administrator: it is
+		 * offered when the account uses Two Factor, or when the account cannot manage options or
+		 * promote users (and on multisite is not a super admin). Return true or false to widen or narrow it.
 		 *
-		 * @param bool     $enabled From the setting. Default true.
+		 * @param bool     $enabled The setting and the rule above.
 		 * @param \WP_User $user    The user who was refused.
 		 */
-		return (bool) apply_filters( 'user_session_manager_device_swap_enabled', $this->get( 'device_swap' ), $user );
+		return (bool) apply_filters( 'user_session_manager_device_swap_enabled', $allowed, $user );
+	}
+
+	/**
+	 * The default rule for who may use the device list.
+	 *
+	 * @param \WP_User $user The user who was refused.
+	 * @return bool True with Two Factor, or for an account that is not a powerful one.
+	 */
+	private static function swap_allowed_for( \WP_User $user ): bool {
+		if ( DeviceSwap::uses_two_factor( $user ) ) {
+			return true;
+		}
+		if ( is_multisite() && is_super_admin( $user->ID ) ) {
+			return false;
+		}
+
+		return ! user_can( $user, 'manage_options' ) && ! user_can( $user, 'promote_users' );
 	}
 
 	/**

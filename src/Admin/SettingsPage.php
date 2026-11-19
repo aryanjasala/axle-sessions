@@ -204,7 +204,7 @@ final class SettingsPage implements Service {
 								<p>
 									<label><input type="checkbox" name="device_swap" value="1" <?php checked( $settings['device_swap'] ); ?>> <?php esc_html_e( 'Let a refused person sign out one of their other devices to get in', 'user-session-manager' ); ?></label>
 								</p>
-								<p class="description"><?php esc_html_e( 'Only used when refusing. The list of devices appears after the password (and Two Factor, when the person uses it) was accepted, and works once for 10 minutes in the same browser. The person is not asked for the password again. Turn this off if a refusal must be final, for example when a stolen password alone should never end someone else\'s session.', 'user-session-manager' ); ?></p>
+								<p class="description"><?php esc_html_e( 'Only used when refusing, and only for accounts that use Two Factor or cannot manage options or promote users (never for a super admin without Two Factor), so a stolen password alone cannot push out an administrator. The list of devices appears after the password (and Two Factor, when the person uses it) was accepted, and works once for 10 minutes in the same browser. The person is not asked for the password again. Turn this off if a refusal must be final for everyone.', 'user-session-manager' ); ?></p>
 							</fieldset>
 						</td>
 					</tr>

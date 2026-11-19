@@ -81,8 +81,12 @@ A handle like `7-9f86...` is an HMAC of the session, so the token and the stored
     <td width="50%" valign="top"><img src=".wordpress-org/screenshot-2.png" alt="Users > Sessions with every signed-in device on the site"><br><sub>Users > Sessions with every signed-in device on the site</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-3.png" alt="Settings > User Sessions with policies per role"><br><sub>Settings > User Sessions with policies per role</sub></td>
-    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-4.png" alt="A login refused over the session limit"><br><sub>A login refused over the session limit</sub></td>
+    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-3.png" alt="Users > Sessions > Policies with policies per role"><br><sub>Users > Sessions > Policies with policies per role</sub></td>
+    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-4.png" alt="A login refused over the session limit, with the other devices to sign out"><br><sub>A login refused over the session limit, with the other devices to sign out</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-5.png" alt="The "This wasn't me" page, listing the application passwords it will revoke"><br><sub>The "This wasn't me" page, listing the application passwords it will revoke</sub></td>
+    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-6.png" alt="Sign everyone out, with the application passwords to revoke"><br><sub>Sign everyone out, with the application passwords to revoke</sub></td>
   </tr>
 </table>
 

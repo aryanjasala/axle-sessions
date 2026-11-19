@@ -1148,6 +1148,25 @@ test.describe( 'User Session Manager', () => {
 		expect( wpEval( `echo (int) is_array( get_user_meta( ${ id( 'alice' ) }, 'user_session_manager_swap', true ) );` ) ).toBe( '0' );
 	} );
 
+	test( 'an administrator without Two Factor is refused for good: a stolen password alone cannot push out their session', async ( { browser } ) => {
+		wp( 'user-session-manager', 'set-policy', 'administrator', '--max-sessions=1' );
+		wp( 'user-session-manager', 'settings', '--limit-mode=block' );
+		await open( browser, 'carol', IPHONE );
+		const second = await open( browser, 'carol', FIREFOX );
+		await expect( second.page.locator( '#login_error' ) ).toContainText( 'This account can be signed in on 1 device at a time.' );
+		expect( second.page.url() ).not.toContain( 'user_session_manager_devices' );
+		expect( ( await second.context.cookies() ).some( ( c ) => c.name.startsWith( 'usm_swap_' ) ) ).toBe( false );
+		expect( sessions( 'carol' ).map( ( s ) => s.ua ) ).toEqual( [ IPHONE ] );
+		// A site can widen the rule with the filter.
+		wpEval( `file_put_contents( WPMU_PLUGIN_DIR . '/usm-e2e-widen.php', '<?php add_filter( "user_session_manager_device_swap_enabled", "__return_true" );' );` );
+		try {
+			const third = await open( browser, 'carol', CHROME );
+			await expect( third.page ).toHaveURL( /user_session_manager_devices/ );
+		} finally {
+			wpEval( `@unlink( WPMU_PLUGIN_DIR . '/usm-e2e-widen.php' );` );
+		}
+	} );
+
 	test( 'the device list works once, only in the browser that signed in, and only for a few minutes', async ( { browser } ) => {
 		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
 		wp( 'user-session-manager', 'settings', '--limit-mode=block' );

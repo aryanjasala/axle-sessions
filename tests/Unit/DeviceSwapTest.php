@@ -65,6 +65,8 @@ final class DeviceSwapTest extends SessionTestCase {
 			}
 		);
 		Functions\when( 'is_ssl' )->justReturn( false );
+		Functions\when( 'user_can' )->justReturn( false );
+		Functions\when( 'is_super_admin' )->justReturn( false );
 	}
 
 	private function swap(): DeviceSwap {
@@ -144,6 +146,62 @@ final class DeviceSwapTest extends SessionTestCase {
 
 		$this->options[ Settings::OPTION ] = array( 'device_swap' => false );
 		$this->assertFalse( $this->swap()->applies( $user ) );
+	}
+
+	public function test_a_stolen_password_alone_cannot_push_out_an_administrator(): void {
+		$admin  = $this->user( 7, 'boss' );
+		$editor = $this->user( 8, 'ed' );
+		$caps   = array( 7 => array( 'manage_options', 'promote_users' ), 8 => array() );
+		Functions\when( 'user_can' )->alias(
+			static function ( $user, $cap ) use ( $caps ) {
+				return in_array( $cap, $caps[ $user->ID ], true );
+			}
+		);
+
+		$this->assertFalse( $this->settings->device_swap_enabled( $admin ) );
+		$this->assertTrue( $this->settings->device_swap_enabled( $editor ) );
+
+		// A user who can only promote users is also kept out.
+		$caps[8] = array( 'promote_users' );
+		Functions\when( 'user_can' )->alias(
+			static function ( $user, $cap ) use ( $caps ) {
+				return in_array( $cap, $caps[ $user->ID ], true );
+			}
+		);
+		$this->assertFalse( $this->settings->device_swap_enabled( $editor ) );
+	}
+
+	public function test_an_administrator_with_two_factor_gets_the_list_and_a_filter_can_widen_it(): void {
+		$admin = $this->user( 7, 'boss' );
+		Functions\when( 'user_can' )->justReturn( true );
+		$this->assertFalse( $this->settings->device_swap_enabled( $admin ) );
+
+		Filters\expectApplied( 'user_session_manager_uses_two_factor' )->andReturn( true );
+		$this->assertTrue( $this->settings->device_swap_enabled( $admin ) );
+
+		$this->options[ Settings::OPTION ] = array( 'device_swap' => false );
+		$this->assertFalse( $this->settings->device_swap_enabled( $admin ) );
+	}
+
+	public function test_a_super_admin_without_two_factor_never_gets_the_list_on_multisite(): void {
+		$user = $this->user( 7, 'root' );
+		Functions\when( 'is_multisite' )->justReturn( true );
+		Functions\when( 'is_super_admin' )->justReturn( true );
+		Functions\when( 'get_site_option' )->alias(
+			function ( $name, $default = false ) {
+				return array_key_exists( $name, $this->options ) ? $this->options[ $name ] : $default;
+			}
+		);
+
+		$this->assertFalse( $this->settings->device_swap_enabled( $user ) );
+	}
+
+	public function test_the_filter_can_narrow_or_widen_the_rule(): void {
+		$admin = $this->user( 7, 'boss' );
+		Functions\when( 'user_can' )->justReturn( true );
+		Filters\expectApplied( 'user_session_manager_device_swap_enabled' )->once()->with( false, $admin )->andReturn( true );
+
+		$this->assertTrue( $this->settings->device_swap_enabled( $admin ) );
 	}
 
 	public function test_the_setting_and_the_lifetime_can_be_filtered_and_are_clamped(): void {

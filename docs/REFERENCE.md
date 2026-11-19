@@ -114,8 +114,9 @@ How it stays safe:
 - What brings the person back to the page is a random token in an HttpOnly cookie, never in the address. Only a keyed hash is stored in the `user_session_manager_swap` user meta, with a hash of the browser's user agent, "Remember Me", the page to return to, and an expiry (10 minutes, `user_session_manager_device_swap_lifetime`, 1 to 30). One token per account.
 - Choosing a device needs the cookie and a form token derived from it. The token is deleted before anything else happens, so a replayed request does nothing. If the account is still over its limit after one device (the limit was lowered), a fresh token is issued for one more.
 - Only a session of the same account can be ended. A wrong, expired, used or other-browser token gets the same page (403), and more than 10 misses from one address in 15 minutes get a 429 (`user_session_manager_device_swap_attempts`).
+- **Who gets it.** Only accounts that use Two Factor, or that can neither `manage_options` nor `promote_users` (on multisite, never a super admin without Two Factor). So a stolen password alone cannot push an administrator out of their session. An administrator without Two Factor gets the plain refusal. Widen or narrow this with `user_session_manager_device_swap_enabled`, which receives the result of this rule.
 - It only applies to the sign-in form on wp-login.php. A login that skips the form is still refused as before.
-- Turn it off with **Let a refused person sign out one of their other devices to get in**, `wp user-session-manager settings --device-swap=off` or the `user_session_manager_device_swap_enabled` filter. The trade-off: with it on, a stolen password alone (no second step) lets someone end a device of the account to get in. The owner still gets the new device email and the ended device shows "signed out from another device".
+- Turn it off with **Let a refused person sign out one of their other devices to get in**, `wp user-session-manager settings --device-swap=off` or the `user_session_manager_device_swap_enabled` filter. For accounts the rule allows without Two Factor (ordinary users), a stolen password alone can end one of their devices to get in. The owner still gets the new device email and the ended device shows "signed out from another device".
 
 ## Actions other plugins can listen to
 
@@ -137,7 +138,7 @@ Elevate and Agent Governance close their own doors from these:
 | --- | --- | --- |
 | `user_session_manager_not_me_revoke_app_passwords` | `( bool $revoke, int $user_id )` | Whether "This wasn't me" revokes application passwords. Default true |
 | `user_session_manager_app_password_preview_limit` | `( int $limit )` | Accounts the incident preview counts keys for. Default 500, 50 to 5000 |
-| `user_session_manager_device_swap_enabled` | `( bool $enabled, WP_User $user )` | Whether a refused login offers the device list. From the setting, default on |
+| `user_session_manager_device_swap_enabled` | `( bool $enabled, WP_User $user )` | Whether a refused login offers the device list. Default: the setting, and the rule that it is for Two Factor accounts and accounts that cannot manage options or promote users |
 | `user_session_manager_device_swap_lifetime` | `( int $seconds )` | How long the device list stays open. Default 600, 60 to 1800 |
 | `user_session_manager_device_swap_attempts` | `( int $attempts )` | Wrong tokens one address may try in 15 minutes. Default 10, at least 3 |
 | `user_session_manager_uses_two_factor` | `( bool $uses, WP_User $user )` | True for an account with a second step from a plugin other than Two Factor, so `wp_login` is not fired again after the device list |
