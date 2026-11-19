@@ -34,6 +34,8 @@ User Session Manager shows those sessions and lets you end them.
 * **Shared login detection**: when the sessions of an account look like more than one person, such as two computers on different networks at the same time, the account gets a "Possibly shared" badge with the reasons. Per role you choose whether that also emails the user and the site administrator, or keeps only the newest session. A login is never refused on this guess.
 * **This wasn't me**: the new device email has a link for the owner of the account. Opening it changes nothing. Pressing the button on the page it opens signs the device out, makes the password stop working, emails a reset link and tells the site administrator. The link works once, for 7 days.
 * **Sign everyone out**, for incidents: keep yourself signed in, leave out roles, optionally make every password stop working. You type a confirmation, and large sites are handled in batches.
+* **Application passwords too**: signing someone out does not stop an application password, so "This wasn't me" and "Sign everyone out" revoke them as well. The incident form shows how many will go first.
+* **Let me in by ending the other device**: with "Refuse the new login", a refused person sees their other devices after the password (and Two Factor) was accepted, ends one, and is signed in without typing the password again.
 * **Shortened IP addresses**, if you would rather not store the full address.
 * A **Site Health** check that warns when administrator sessions never time out.
 
@@ -78,7 +80,11 @@ Nothing until they sign in again. The limit is applied at login. An idle timeout
 
 = Will "Refuse the new login" lock out someone who lost their phone? =
 
-It can, until the old session expires or an administrator signs it out from Users > Sessions. That is why signing out the oldest session is the default.
+No. After they enter the right password (and the Two Factor code, if they use it), they see their other devices and can sign one out to get in. This is offered to accounts that use Two Factor, and to accounts that cannot manage options or promote users. An administrator without Two Factor is never offered it, so a stolen password alone cannot push out their session. The list works once, in that browser, for 10 minutes. You can turn this off in the Policies tab. Then a refusal is final until the old session ends or an administrator signs it out. Signing out the oldest session stays the default.
+
+= Does "This wasn't me" stop an API key someone made? =
+
+Yes. It revokes every application password on the account, and so does "Sign everyone out" (except yours, so you can finish the job). A person can make new ones after signing in again.
 
 = Does it work with social login and two-factor plugins? =
 
@@ -112,8 +118,10 @@ No. The plugin reads sessions from user meta, where WordPress keeps them by defa
 
 1. Profile > Your sessions, with the current device marked.
 2. Users > Sessions with every signed-in device on the site.
-3. Settings > User Sessions with policies per role.
-4. A login refused over the session limit.
+3. Users > Sessions > Policies with policies per role.
+4. A login refused over the session limit, with the other devices to sign out.
+5. The "This wasn't me" page, listing the application passwords it will revoke.
+6. Sign everyone out, with the application passwords to revoke.
 
 == Changelog ==
 

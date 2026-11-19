@@ -340,17 +340,22 @@
           "--new-device-email=on"
         ]
       ],
-      "url": "/wp-admin/options-general.php?page=user-session-manager",
+      "url": "/wp-admin/users.php?page=user-sessions&tab=policies",
       "cleanup": [
         [
           "option",
           "delete",
           "user_session_manager_settings"
         ]
+      ],
+      "steps": [
+        {
+          "waitFor": ".usm-policies"
+        }
       ]
     },
     {
-      "name": "Login refused over the session limit",
+      "name": "Login refused over the limit, with the other devices to end",
       "setup": [
         {
           "js": "seed.js",
@@ -381,6 +386,67 @@
           "user-session-manager",
           "settings",
           "--limit-mode=block"
+        ]
+      ],
+      "loggedOut": true,
+      "url": "/wp-login.php",
+      "steps": [
+        {
+          "logIn": "maria",
+          "password": "demo-password-123"
+        },
+        {
+          "waitFor": ".usm-swap-device"
+        }
+      ],
+      "include": [
+        "#login"
+      ],
+      "cleanup": [
+        [
+          "option",
+          "delete",
+          "user_session_manager_settings"
+        ],
+        {
+          "js": "seed.js",
+          "call": "removePeople"
+        }
+      ]
+    },
+    {
+      "name": "Login refused over the session limit, when ending a device is turned off",
+      "setup": [
+        {
+          "js": "seed.js",
+          "call": "createPeople"
+        },
+        {
+          "js": "seed.js",
+          "call": "addSessions",
+          "args": [
+            [
+              [
+                "maria",
+                "windows",
+                "192.0.2.18",
+                180,
+                4
+              ]
+            ]
+          ]
+        },
+        [
+          "user-session-manager",
+          "set-policy",
+          "editor",
+          "--max-sessions=1"
+        ],
+        [
+          "user-session-manager",
+          "settings",
+          "--limit-mode=block",
+          "--device-swap=off"
         ]
       ],
       "loggedOut": true,
@@ -639,13 +705,18 @@
           "--history-days=30"
         ]
       ],
-      "url": "/wp-admin/options-general.php?page=user-session-manager",
+      "url": "/wp-admin/users.php?page=user-sessions&tab=policies",
       "cleanup": [
         [
           "option",
           "delete",
           "user_session_manager_settings"
         ]
+      ],
+      "steps": [
+        {
+          "waitFor": ".usm-policies"
+        }
       ]
     },
     {
@@ -697,12 +768,63 @@
       ]
     },
     {
+      "name": "This wasn't me, done page",
+      "setup": [
+        {
+          "js": "seed.js",
+          "call": "createPeople"
+        },
+        {
+          "js": "seed.js",
+          "call": "addSessions",
+          "args": [
+            [
+              [
+                "maria",
+                "windows",
+                "192.0.2.18",
+                180,
+                4
+              ]
+            ]
+          ]
+        },
+        {
+          "js": "seed.js",
+          "call": "makeNotMe",
+          "args": [
+            "maria"
+          ],
+          "save": "link"
+        }
+      ],
+      "loggedOut": true,
+      "url": "{link}",
+      "steps": [
+        {
+          "click": "button[type=submit]"
+        },
+        {
+          "waitFor": ".message"
+        }
+      ],
+      "include": [
+        "#login"
+      ],
+      "cleanup": [
+        {
+          "js": "seed.js",
+          "call": "removePeople"
+        }
+      ]
+    },
+    {
       "name": "This link no longer works page",
       "loggedOut": true,
       "url": "/wp-login.php?action=user_session_manager_not_me&usm_key=3.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "steps": [
         {
-          "waitFor": ".message"
+          "waitFor": "#login_error"
         }
       ],
       "include": [

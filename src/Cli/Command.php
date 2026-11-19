@@ -303,16 +303,17 @@ final class Command {
 		foreach ( $this->not_me->events( 0, max( 0, (int) ( $assoc_args['days'] ?? 30 ) ) ) as $event ) {
 			$user   = get_userdata( (int) $event['user'] );
 			$rows[] = array(
-				'user'     => $user ? $user->user_login : (string) $event['user'],
-				'device'   => (string) $event['device'],
-				'ip'       => (string) $event['ip'],
-				'reported' => gmdate( 'Y-m-d H:i:s', (int) $event['time'] ),
-				'scope'    => (string) $event['scope'],
-				'ended'    => (int) $event['ended'],
+				'user'          => $user ? $user->user_login : (string) $event['user'],
+				'device'        => (string) $event['device'],
+				'ip'            => (string) $event['ip'],
+				'reported'      => gmdate( 'Y-m-d H:i:s', (int) $event['time'] ),
+				'scope'         => (string) $event['scope'],
+				'ended'         => (int) $event['ended'],
+				'app_passwords' => NotMe::app_password_names( $event ),
 			);
 		}
 
-		\WP_CLI\Utils\format_items( (string) ( $assoc_args['format'] ?? 'table' ), $rows, array( 'user', 'device', 'ip', 'reported', 'scope', 'ended' ) );
+		\WP_CLI\Utils\format_items( (string) ( $assoc_args['format'] ?? 'table' ), $rows, array( 'user', 'device', 'ip', 'reported', 'scope', 'ended', 'app_passwords' ) );
 	}
 
 	/**
@@ -331,6 +332,9 @@ final class Command {
 	 *
 	 * [--require-new-passwords]
 	 * : Also make every password stop working.
+	 *
+	 * [--keep-app-passwords]
+	 * : Leave application passwords alone. By default every application password is revoked too, except those of the --keep-user account.
 	 *
 	 * [--yes]
 	 * : Do not ask first.
@@ -353,20 +357,22 @@ final class Command {
 		}
 		$roles     = isset( $assoc_args['exclude-roles'] ) ? array_map( 'trim', explode( ',', (string) $assoc_args['exclude-roles'] ) ) : array();
 		$passwords = isset( $assoc_args['require-new-passwords'] );
+		$apps      = ! isset( $assoc_args['keep-app-passwords'] );
 
-		\WP_CLI::confirm( 'Sign every user out' . ( $passwords ? ' and make every password stop working' : '' ) . '? This cannot be undone.', $assoc_args );
+		\WP_CLI::confirm( 'Sign every user out' . ( $passwords ? ', make every password stop working' : '' ) . ( $apps ? ' and revoke every application password' : '' ) . '? This cannot be undone.', $assoc_args );
 
 		$job = $this->incident->run_all(
 			array(
 				'keep_current'  => $keep > 0,
 				'exclude_roles' => $roles,
 				'passwords'     => $passwords,
+				'app_passwords' => $apps,
 				'via'           => 'cli',
 				'check_caps'    => false,
 			)
 		);
 
-		\WP_CLI::success( sprintf( 'Signed %d users out of %d sessions. %d passwords made unusable. %d users left out.', $job['users'], $job['sessions'], $job['passwords_set'], $job['excluded'] ) );
+		\WP_CLI::success( sprintf( 'Signed %d users out of %d sessions. %d passwords made unusable. %d application passwords revoked. %d users left out.', $job['users'], $job['sessions'], $job['passwords_set'], $job['app_revoked'], $job['excluded'] ) );
 	}
 
 	/**
@@ -517,6 +523,9 @@ final class Command {
 	 * [--limit-mode=<mode>]
 	 * : evict_oldest or block.
 	 *
+	 * [--device-swap=<on|off>]
+	 * : Let a person refused over the limit end one of their other devices to sign in.
+	 *
 	 * [--new-device-email=<on|off>]
 	 * : Email users about logins from a new browser or network.
 	 *
@@ -562,7 +571,7 @@ final class Command {
 			}
 			$changes['not_me_scope'] = (string) $assoc_args['not-me-scope'];
 		}
-		foreach ( array( 'new-device-email', 'mask-ip', 'not-me' ) as $flag ) {
+		foreach ( array( 'new-device-email', 'mask-ip', 'not-me', 'device-swap' ) as $flag ) {
 			if ( isset( $assoc_args[ $flag ] ) ) {
 				$changes[ str_replace( '-', '_', $flag ) ] = in_array( strtolower( (string) $assoc_args[ $flag ] ), array( 'on', '1', 'yes', 'true' ), true );
 			}

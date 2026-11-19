@@ -58,4 +58,6 @@ delete_metadata( 'user', 0, 'user_session_manager_shared', '', true );
 // Sign-in history, "This wasn't me" links and the dismissed "Get started" card.
 delete_metadata( 'user', 0, 'user_session_manager_history', '', true );
 delete_metadata( 'user', 0, 'user_session_manager_not_me', '', true );
+// A pending "sign out another device" step.
+delete_metadata( 'user', 0, 'user_session_manager_swap', '', true );
 delete_metadata( 'user', 0, 'user_session_manager_hide_steps', '', true );

@@ -232,6 +232,10 @@ final class Privacy implements Service {
 							'name'  => __( 'IP address', 'user-session-manager' ),
 							'value' => (string) $event['ip'],
 						),
+						array(
+							'name'  => __( 'Application passwords revoked', 'user-session-manager' ),
+							'value' => NotMe::app_password_names( $event ),
+						),
 					),
 				);
 			}
@@ -292,6 +296,7 @@ final class Privacy implements Service {
 			$flagged = $this->shared->forget( $user->ID );
 			$history = null !== $this->history && $this->history->forget( $user->ID );
 			$reports = null !== $this->not_me && ( $this->not_me->forget_events( $user->ID ) | $this->not_me->forget_links( $user->ID ) );
+			delete_user_meta( $user->ID, DeviceSwap::META );
 			$removed = $ended > 0 || $forgot || $flagged || $history || $reports;
 			if ( $ended > 0 ) {
 				$messages[] = sprintf(

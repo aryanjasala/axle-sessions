@@ -44,6 +44,9 @@ WordPress already records every login: the browser, the IP address, when it star
 - **Sign-in history** on each profile: when and where an account signed in over the last 90 days, and how each session ended (signed out, expired, idle, from another device, by an administrator, limit reached, reported, password changed)
 - **A clear message on the login screen** saying why you were signed out and when, shown only to the browser that held the session
 - **Sign everyone out** for incidents: keep yourself, leave out roles, optionally retire every password, typed confirm, in batches, with WP-CLI and an ability
+- **Close every door**: "This wasn't me" and "Sign everyone out" also revoke application passwords, so a key made in a hijacked session stops working. The incident form shows the count first
+- **Let me in by ending the other device**: a login refused over the limit shows the person's other devices after the password (and Two Factor) check, and lets them end one and sign in without typing the password again
+- **One screen**: the policies are the Policies tab on Users > Sessions, and the old Settings address redirects there
 
 ## Install
 
@@ -78,8 +81,12 @@ A handle like `7-9f86...` is an HMAC of the session, so the token and the stored
     <td width="50%" valign="top"><img src=".wordpress-org/screenshot-2.png" alt="Users > Sessions with every signed-in device on the site"><br><sub>Users > Sessions with every signed-in device on the site</sub></td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-3.png" alt="Settings > User Sessions with policies per role"><br><sub>Settings > User Sessions with policies per role</sub></td>
-    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-4.png" alt="A login refused over the session limit"><br><sub>A login refused over the session limit</sub></td>
+    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-3.png" alt="Users > Sessions > Policies with policies per role"><br><sub>Users > Sessions > Policies with policies per role</sub></td>
+    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-4.png" alt="A login refused over the session limit, with the other devices to sign out"><br><sub>A login refused over the session limit, with the other devices to sign out</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-5.png" alt="The "This wasn't me" page, listing the application passwords it will revoke"><br><sub>The "This wasn't me" page, listing the application passwords it will revoke</sub></td>
+    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-6.png" alt="Sign everyone out, with the application passwords to revoke"><br><sub>Sign everyone out, with the application passwords to revoke</sub></td>
   </tr>
 </table>
 
@@ -110,6 +117,8 @@ src/
 ├── SharedLogins.php       flags, emails and sign outs for accounts that look shared
 ├── Pruner.php             the hourly clean-up
 ├── Privacy.php            export, erase and policy text
+├── AppPasswords.php       lists and revokes application passwords for incidents
+├── DeviceSwap.php         the device list after a refused login
 ├── Access.php             who may see and end whose sessions
 ├── Abilities.php          abilities for AI agents
 ├── Admin/                 profile section, Users > Sessions, Users column, settings
@@ -138,15 +147,15 @@ Small plugins that each fill one gap in WordPress, all free with no pro version.
 | <img src="https://raw.githubusercontent.com/aryanjasala/agent-governance/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Agent Governance](https://github.com/aryanjasala/agent-governance) | Hold risky AI agent calls for approval, preview what they change, and roll back a session |
 | <img src="https://raw.githubusercontent.com/aryanjasala/axle-ai-guard/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Axle AI Guard](https://github.com/aryanjasala/axle-ai-guard) | See and control every AI call your plugins make: cost, data sent, budgets and a kill switch |
 | <img src="https://raw.githubusercontent.com/aryanjasala/axle-config-sync/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Axle Config Sync](https://github.com/aryanjasala/axle-config-sync) | Keep settings in git, diff them against the live site, apply with a preview and undo |
-| <img src="https://raw.githubusercontent.com/aryanjasala/axle-leftovers/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Axle Leftovers](https://github.com/aryanjasala/axle-leftovers) | Find what deleted plugins left behind, see who owns it and why, and clean it up with undo |
+| <img src="https://raw.githubusercontent.com/aryanjasala/axle-leftovers/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Axle Leftovers](https://github.com/aryanjasala/axle-leftovers) | Find what deleted plugins and themes left behind, see who owns it and why, and clean it up with undo |
 | <img src="https://raw.githubusercontent.com/aryanjasala/axle-license-tracker/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Axle License Tracker](https://github.com/aryanjasala/axle-license-tracker) | See which premium plugins are licensed, which lapsed and stopped getting updates, and what renews when |
-| <img src="https://raw.githubusercontent.com/aryanjasala/axle-review/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Axle Review](https://github.com/aryanjasala/axle-review) | Share drafts through private links and collect outside feedback as block Notes |
+| <img src="https://raw.githubusercontent.com/aryanjasala/axle-review/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Axle Review](https://github.com/aryanjasala/axle-review) | Share drafts through private links, collect outside feedback as block Notes, and know when an approval is out of date |
 | <img src="https://raw.githubusercontent.com/aryanjasala/axle-runtime-doctor/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Axle Runtime Doctor](https://github.com/aryanjasala/axle-runtime-doctor) | Check OPcache coverage, the object cache, PHP support and limits, cron and more, with the fix for your host |
 | <img src="https://raw.githubusercontent.com/aryanjasala/axle-smoke-test/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Axle Smoke Test](https://github.com/aryanjasala/axle-smoke-test) | Check key pages after every update or deploy, see what broke and roll it back |
-| <img src="https://raw.githubusercontent.com/aryanjasala/block-doctor/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Block Doctor](https://github.com/aryanjasala/block-doctor) | Scan the whole site for invalid and broken blocks and fix them in bulk, with undo |
-| <img src="https://raw.githubusercontent.com/aryanjasala/block-theme-ops/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Block Theme Ops](https://github.com/aryanjasala/block-theme-ops) | Find Site Editor changes that override your theme files, see the diff, reset them or send them to Git |
+| <img src="https://raw.githubusercontent.com/aryanjasala/block-doctor/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Block Doctor](https://github.com/aryanjasala/block-doctor) | Scan the site for broken blocks and fix them in bulk, with undo. See which posts use each block before you switch a plugin off |
+| <img src="https://raw.githubusercontent.com/aryanjasala/block-theme-ops/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Block Theme Ops](https://github.com/aryanjasala/block-theme-ops) | Find Site Editor changes that override your theme files, see the diff, reset them, send them to Git, move them to another site or lock them |
 | <img src="https://raw.githubusercontent.com/aryanjasala/role-right-sizer/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Role Right-Sizer](https://github.com/aryanjasala/role-right-sizer) | Recommends the smallest role each user needs, from what they actually do |
-| <img src="https://raw.githubusercontent.com/aryanjasala/update-rehearsal/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Update Rehearsal](https://github.com/aryanjasala/update-rehearsal) | Try plugin, theme, core and PHP updates on a disposable copy of your site in WordPress Playground first |
+| <img src="https://raw.githubusercontent.com/aryanjasala/update-rehearsal/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Update Rehearsal](https://github.com/aryanjasala/update-rehearsal) | Try plugin, theme, core and PHP updates, a new plugin, or life without one, on a disposable copy of your site in WordPress Playground first |
 
 ## License
 

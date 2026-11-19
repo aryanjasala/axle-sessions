@@ -232,3 +232,27 @@
 .usm-page .usm-report-table td a {
 	text-decoration: underline;
 }
+
+/* On a phone the search box sits under the views instead of floating beside them. */
+@media screen and (max-width: 782px) {
+	.usm-page .subsubsub {
+		float: none;
+		margin: 8px 0;
+	}
+
+	.usm-page .search-box {
+		float: none;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		width: 100%;
+		margin: 8px 0;
+		position: static;
+	}
+
+	.usm-page .search-box input[type="search"] {
+		flex: 1 1 140px;
+		min-width: 0;
+		margin: 0;
+	}
+}

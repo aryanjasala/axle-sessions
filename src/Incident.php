@@ -69,6 +69,7 @@ final class Incident {
 	 *     @type bool     $keep_current  Keep the signed-in user's own sessions. Default true.
 	 *     @type string[] $exclude_roles Roles whose users are left alone.
 	 *     @type bool     $passwords     Also make every password stop working. Default false.
+	 *     @type bool     $app_passwords Also revoke every application password. Default true.
 	 *     @type string   $via           screen, cli or ability.
 	 *     @type bool     $check_caps    Check edit_user for each user. Default true; WP-CLI turns it off.
 	 * }
@@ -80,6 +81,7 @@ final class Incident {
 				'keep_current'  => true,
 				'exclude_roles' => array(),
 				'passwords'     => false,
+				'app_passwords' => true,
 				'via'           => 'screen',
 				'check_caps'    => true,
 			),
@@ -94,6 +96,9 @@ final class Incident {
 			'keep'          => $args['keep_current'] && $by > 0 ? $by : 0,
 			'exclude_roles' => array_values( array_filter( array_map( 'sanitize_key', (array) $args['exclude_roles'] ) ) ),
 			'passwords'     => (bool) $args['passwords'],
+			'app_passwords' => (bool) $args['app_passwords'] && AppPasswords::is_supported(),
+			'app_revoked'   => 0,
+			'app_users'     => 0,
 			'after'         => 0,
 			'visited'       => 0,
 			'users'         => 0,
@@ -108,7 +113,7 @@ final class Incident {
 		/**
 		 * Fires when "Sign everyone out" starts.
 		 *
-		 * @param array $job The job: by, via, keep, exclude_roles and passwords.
+		 * @param array $job The job: by, via, keep, exclude_roles, passwords and app_passwords.
 		 */
 		do_action( 'user_session_manager_incident_started', $job );
 
@@ -130,7 +135,7 @@ final class Incident {
 		$began = microtime( true );
 		while ( true ) {
 			$ids = $this->sessions->user_ids_after(
-				array( 'meta_key' => $job['passwords'] ? false : Sessions::META ), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				array( 'meta_key' => $job['passwords'] || $job['app_passwords'] ? false : Sessions::META ), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 				(int) $job['after'],
 				self::SLICE
 			);
@@ -227,6 +232,15 @@ final class Incident {
 			++$job['passwords_set'];
 		}
 
+		// The person running the job keeps their own application passwords: they may be how the job is being run.
+		if ( $job['app_passwords'] && $user_id !== (int) $job['by'] && $user_id !== (int) $job['keep'] ) {
+			$revoked = AppPasswords::revoke_for_user( $user_id, 'incident' );
+			if ( $revoked ) {
+				++$job['app_users'];
+				$job['app_revoked'] += count( $revoked );
+			}
+		}
+
 		return $job;
 	}
 
@@ -243,6 +257,7 @@ final class Incident {
 			'users'         => (int) $job['users'],
 			'sessions'      => (int) $job['sessions'],
 			'passwords'     => (int) $job['passwords_set'],
+			'app_passwords' => (int) $job['app_revoked'],
 			'excluded'      => (int) $job['excluded'],
 			'skipped'       => (int) $job['skipped'],
 			'exclude_roles' => $job['exclude_roles'],
@@ -261,7 +276,7 @@ final class Incident {
 		/**
 		 * Fires when "Sign everyone out" has visited every user.
 		 *
-		 * @param array $entry time, by, via, users and sessions (signed out), passwords (made unusable), excluded, skipped, exclude_roles and kept_own.
+		 * @param array $entry time, by, via, users and sessions (signed out), passwords (made unusable), app_passwords (revoked), excluded, skipped, exclude_roles and kept_own.
 		 * @param array $job   The finished job.
 		 */
 		do_action( 'user_session_manager_incident_finished', $entry, $job );
