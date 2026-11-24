@@ -1,11 +1,11 @@
 /**
- * User Session Manager: in-place confirm steps, the typed confirm for "Sign everyone out"
+ * Axle Sessions: in-place confirm steps, the typed confirm for "Sign everyone out"
  * and spoken results. Everything also works without it: the links go straight to the
  * server-side step.
  *
  * Hooks for other scripts:
- *   wp.hooks.applyFilters( 'user_session_manager.confirm_message', message, link )
- *   wp.hooks.doAction( 'user_session_manager.confirm_opened', link, box )
+ *   wp.hooks.applyFilters( 'axle_sessions.confirm_message', message, link )
+ *   wp.hooks.doAction( 'axle_sessions.confirm_opened', link, box )
  */
 ( function () {
 	'use strict';
@@ -54,7 +54,7 @@
 		var title = link.getAttribute( 'data-usm-confirm-title' ) || data.title || '';
 		var message = link.getAttribute( 'data-usm-confirm' ) || '';
 		if ( wp.hooks && wp.hooks.applyFilters ) {
-			message = wp.hooks.applyFilters( 'user_session_manager.confirm_message', message, link );
+			message = wp.hooks.applyFilters( 'axle_sessions.confirm_message', message, link );
 		}
 
 		var id = 'usm-confirm-' + Date.now();
@@ -106,7 +106,7 @@
 		yes.focus();
 		speak( title + '. ' + message );
 		if ( wp.hooks && wp.hooks.doAction ) {
-			wp.hooks.doAction( 'user_session_manager.confirm_opened', link, box );
+			wp.hooks.doAction( 'axle_sessions.confirm_opened', link, box );
 		}
 	}
 

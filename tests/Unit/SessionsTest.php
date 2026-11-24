@@ -2,14 +2,14 @@
 /**
  * Tests for reading and ending sessions.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\Admin\SessionsTable;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
+use AryanX\Axle\Sessions\Admin\SessionsTable;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 
@@ -52,7 +52,7 @@ final class SessionsTest extends SessionTestCase {
 		$store  = $this->store();
 		$handle = $store->handle( 7, $gone );
 
-		Actions\expectDone( 'user_session_manager_session_revoked' )
+		Actions\expectDone( 'axle_sessions_session_revoked' )
 			->once()
 			->with(
 				7,
@@ -82,7 +82,7 @@ final class SessionsTest extends SessionTestCase {
 		$this->session( 7, 'phone' );
 		$this->session( 7, 'tablet' );
 
-		Actions\expectDone( 'user_session_manager_session_revoked' )->twice();
+		Actions\expectDone( 'axle_sessions_session_revoked' )->twice();
 
 		$this->assertSame( 2, $this->store()->revoke_others( 7, $current, 'profile' ) );
 		$this->assertSame( array( $current ), array_keys( $this->stored( 7 ) ) );
@@ -92,7 +92,7 @@ final class SessionsTest extends SessionTestCase {
 		$this->session( 7, 'a' );
 		$this->session( 7, 'b' );
 
-		Actions\expectDone( 'user_session_manager_user_signed_out_everywhere' )->once()->with( 7, 2, 'cli' );
+		Actions\expectDone( 'axle_sessions_user_signed_out_everywhere' )->once()->with( 7, 2, 'cli' );
 
 		$this->assertSame( 2, $this->store()->sign_out_everywhere( 7, 'cli' ) );
 		$this->assertSame( array(), $this->stored( 7 ) );
@@ -113,7 +113,7 @@ final class SessionsTest extends SessionTestCase {
 		$this->assertSame( '203.0.113.0', $this->store()->storable_ip( '203.0.113.7', 7 ) );
 		$this->assertSame( '', $this->store()->storable_ip( '', 7 ) );
 
-		Filters\expectApplied( 'user_session_manager_mask_ip' )->once()->andReturn( false );
+		Filters\expectApplied( 'axle_sessions_mask_ip' )->once()->andReturn( false );
 		$this->assertSame( '203.0.113.7', $this->store()->storable_ip( '203.0.113.7', 7 ) );
 	}
 
@@ -180,7 +180,7 @@ final class SessionsTest extends SessionTestCase {
 		$this->session( 2, 'b1' );
 		\WP_User_Query::$queue = array( array( 2 ), array( 3 ) );
 
-		Filters\expectApplied( 'user_session_manager_max_users_scanned' )->andReturn( 1 );
+		Filters\expectApplied( 'axle_sessions_max_users_scanned' )->andReturn( 1 );
 
 		$found = $this->store()->query();
 		$this->assertTrue( $found['truncated'] );
@@ -230,7 +230,7 @@ final class SessionsTest extends SessionTestCase {
 	public function test_the_list_per_page_filter_is_clamped(): void {
 		$this->assertSame( 20, SessionsTable::per_page() );
 
-		Filters\expectApplied( 'user_session_manager_list_per_page' )->once()->with( 20 )->andReturn( 0 );
+		Filters\expectApplied( 'axle_sessions_list_per_page' )->once()->with( 20 )->andReturn( 0 );
 		$this->assertSame( 1, SessionsTable::per_page() );
 	}
 }

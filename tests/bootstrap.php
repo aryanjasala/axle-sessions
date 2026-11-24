@@ -4,7 +4,7 @@
  * classes the plugin touches. WordPress functions are mocked per test with
  * Brain Monkey, so WordPress itself is not loaded.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
 require dirname( __DIR__ ) . '/vendor/autoload.php';

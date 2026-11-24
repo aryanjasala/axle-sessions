@@ -3,22 +3,22 @@
  * Tests for shared login detection: the checks, the flag, the hooks, the
  * actions per role, and the ability, WP-CLI and privacy pieces around them.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\Abilities;
-use AryanX\Axle\UserSessionManager\Activity;
-use AryanX\Axle\UserSessionManager\Admin\Display;
-use AryanX\Axle\UserSessionManager\Cli\Command;
-use AryanX\Axle\UserSessionManager\NewDevice;
-use AryanX\Axle\UserSessionManager\Privacy;
-use AryanX\Axle\UserSessionManager\Pruner;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
-use AryanX\Axle\UserSessionManager\SharedLoginDetector;
-use AryanX\Axle\UserSessionManager\SharedLogins;
+use AryanX\Axle\Sessions\Abilities;
+use AryanX\Axle\Sessions\Activity;
+use AryanX\Axle\Sessions\Admin\Display;
+use AryanX\Axle\Sessions\Cli\Command;
+use AryanX\Axle\Sessions\NewDevice;
+use AryanX\Axle\Sessions\Privacy;
+use AryanX\Axle\Sessions\Pruner;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
+use AryanX\Axle\Sessions\SharedLoginDetector;
+use AryanX\Axle\Sessions\SharedLogins;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
@@ -86,7 +86,7 @@ final class SharedLoginsTest extends SessionTestCase {
 	 * @return array
 	 */
 	private function row( string $handle, string $ua, string $ip, int $ago, string $country = '' ): array {
-		$parsed = \AryanX\Axle\UserSessionManager\UserAgent::parse( $ua );
+		$parsed = \AryanX\Axle\Sessions\UserAgent::parse( $ua );
 
 		return array(
 			'handle'      => $handle,
@@ -228,7 +228,7 @@ final class SharedLoginsTest extends SessionTestCase {
 		$user = $this->user( 7, 'alice' );
 		$this->two_computers( 7 );
 
-		Actions\expectDone( 'user_session_manager_shared_login_detected' )
+		Actions\expectDone( 'axle_sessions_shared_login_detected' )
 			->once()
 			->with(
 				$user,
@@ -270,7 +270,7 @@ final class SharedLoginsTest extends SessionTestCase {
 			)
 		);
 
-		Actions\expectDone( 'user_session_manager_shared_login_detected' )->once();
+		Actions\expectDone( 'axle_sessions_shared_login_detected' )->once();
 		$this->assertNotNull( $this->shared()->check( $user ) );
 	}
 
@@ -278,11 +278,11 @@ final class SharedLoginsTest extends SessionTestCase {
 		$user = $this->user( 7, 'alice' );
 		$this->two_computers( 7 );
 
-		Filters\expectApplied( 'user_session_manager_shared_login_rules' )
+		Filters\expectApplied( 'axle_sessions_shared_login_rules' )
 			->once()
 			->with( SharedLoginDetector::RULES, $user )
 			->andReturn( array( 'max_networks_per_type' => 0 ) + SharedLoginDetector::RULES );
-		Actions\expectDone( 'user_session_manager_shared_login_detected' )->never();
+		Actions\expectDone( 'axle_sessions_shared_login_detected' )->never();
 
 		$this->assertNull( $this->shared()->check( $user ) );
 		$this->assertArrayNotHasKey( SharedLogins::META, $this->meta[7] );
@@ -293,10 +293,10 @@ final class SharedLoginsTest extends SessionTestCase {
 		$this->two_computers( 7 );
 		$this->options[ Settings::OPTION ] = array( 'shared' => array( 'author' => 'off' ) );
 
-		Filters\expectApplied( 'user_session_manager_shared_login_exempt' )->once()->with( true, $user )->andReturn( true );
+		Filters\expectApplied( 'axle_sessions_shared_login_exempt' )->once()->with( true, $user )->andReturn( true );
 		$this->assertNull( $this->shared()->check( $user ) );
 
-		Filters\expectApplied( 'user_session_manager_shared_login_exempt' )->once()->with( true, $user )->andReturn( false );
+		Filters\expectApplied( 'axle_sessions_shared_login_exempt' )->once()->with( true, $user )->andReturn( false );
 		$this->assertSame( 'flag', $this->shared()->check( $user )['action'], 'Not exempt after all, and "off" is not an action.' );
 	}
 
@@ -321,11 +321,11 @@ final class SharedLoginsTest extends SessionTestCase {
 		$user = $this->user( 7, 'alice' );
 		$this->two_computers( 7 );
 
-		Filters\expectApplied( 'user_session_manager_shared_login_action' )
+		Filters\expectApplied( 'axle_sessions_shared_login_action' )
 			->once()
 			->with( 'flag', $user, \Mockery::type( 'array' ) )
 			->andReturn( 'notify' );
-		Filters\expectApplied( 'user_session_manager_shared_login_email' )
+		Filters\expectApplied( 'axle_sessions_shared_login_email' )
 			->twice()
 			->andReturnUsing(
 				static function ( $email, $who, $flag, $audience ) {
@@ -351,7 +351,7 @@ final class SharedLoginsTest extends SessionTestCase {
 		$this->two_computers( 7 );
 		$this->options[ Settings::OPTION ] = array( 'shared' => array( 'author' => 'notify' ) );
 
-		Filters\expectApplied( 'user_session_manager_shared_login_email' )
+		Filters\expectApplied( 'axle_sessions_shared_login_email' )
 			->twice()
 			->andReturnUsing(
 				static function ( $email, $who, $flag, $audience ) {
@@ -370,7 +370,7 @@ final class SharedLoginsTest extends SessionTestCase {
 		$this->two_computers( 7 );
 		$newest = Sessions::verifier( 'mac' );
 
-		Actions\expectDone( 'user_session_manager_session_revoked' )->once()->with( 7, \Mockery::type( 'array' ), 'shared' );
+		Actions\expectDone( 'axle_sessions_session_revoked' )->once()->with( 7, \Mockery::type( 'array' ), 'shared' );
 
 		$flag = $this->shared()->check( $user );
 
@@ -397,7 +397,7 @@ final class SharedLoginsTest extends SessionTestCase {
 		$user = $this->user( 7, 'alice' );
 		$this->two_computers( 7 );
 
-		Filters\expectApplied( 'user_session_manager_shared_login_action' )->once()->andReturn( 'block' );
+		Filters\expectApplied( 'axle_sessions_shared_login_action' )->once()->andReturn( 'block' );
 
 		$this->assertSame( 'flag', $this->shared()->check( $user )['action'] );
 		$this->assertCount( 2, $this->stored( 7 ), 'Never blocks or signs out on a guess unless asked.' );
@@ -424,7 +424,7 @@ final class SharedLoginsTest extends SessionTestCase {
 			)
 		);
 
-		Filters\expectApplied( 'user_session_manager_shared_login_country' )
+		Filters\expectApplied( 'axle_sessions_shared_login_country' )
 			->twice()
 			->andReturnUsing(
 				static function ( $country, $ip, $user_id ) {
@@ -443,10 +443,10 @@ final class SharedLoginsTest extends SessionTestCase {
 		$this->assertSame( '2 phones on different networks were used at the same time.', SharedLogins::evidence_text( array( 'type' => 'same_type', 'device_type' => 'mobile', 'count' => 2 ) ) );
 		$this->assertSame( '5 different devices were used within 1 day, more than the 4 allowed.', SharedLogins::evidence_text( array( 'type' => 'devices', 'count' => 5, 'limit' => 4, 'window' => DAY_IN_SECONDS ) ) );
 
-		Filters\expectApplied( 'user_session_manager_shared_login_evidence_text' )->once()->with( \Mockery::type( 'string' ), array( 'type' => 'networks', 'count' => 3, 'limit' => 2 ) )->andReturn( 'Three places.' );
+		Filters\expectApplied( 'axle_sessions_shared_login_evidence_text' )->once()->with( \Mockery::type( 'string' ), array( 'type' => 'networks', 'count' => 3, 'limit' => 2 ) )->andReturn( 'Three places.' );
 		$this->assertSame( 'Three places.', SharedLogins::evidence_text( array( 'type' => 'networks', 'count' => 3, 'limit' => 2 ) ) );
 
-		Filters\expectApplied( 'user_session_manager_shared_login_evidence_text' )->once()->andReturn( ' ' );
+		Filters\expectApplied( 'axle_sessions_shared_login_evidence_text' )->once()->andReturn( ' ' );
 		$this->assertStringStartsWith( 'Used from', SharedLogins::evidence_text( array( 'type' => 'networks', 'count' => 3, 'limit' => 2 ) ) );
 	}
 
@@ -465,7 +465,7 @@ final class SharedLoginsTest extends SessionTestCase {
 			'updated'  => time() - 8 * DAY_IN_SECONDS,
 			'evidence' => array( array( 'type' => 'networks' ) ),
 		);
-		Filters\expectApplied( 'user_session_manager_shared_login_rules' )->once()->andReturn( array( 'keep_days' => 30 ) );
+		Filters\expectApplied( 'axle_sessions_shared_login_rules' )->once()->andReturn( array( 'keep_days' => 30 ) );
 		$this->assertSame( 'flag', $this->shared()->get( 7 )['action'] );
 	}
 
@@ -473,12 +473,12 @@ final class SharedLoginsTest extends SessionTestCase {
 		$user = $this->user( 7, 'alice' );
 		$this->two_computers( 7 );
 
-		Actions\expectDone( 'user_session_manager_shared_login_detected' )->once();
+		Actions\expectDone( 'axle_sessions_shared_login_detected' )->once();
 		$this->shared()->on_activity( 7 );
 		$this->shared()->on_activity( 99 );
 
 		unset( $this->meta[7][ SharedLogins::META ] );
-		Actions\expectDone( 'user_session_manager_shared_login_detected' )->once();
+		Actions\expectDone( 'axle_sessions_shared_login_detected' )->once();
 		$this->shared()->on_login( $user );
 	}
 
@@ -489,7 +489,7 @@ final class SharedLoginsTest extends SessionTestCase {
 		$this->token        = 'mine';
 		$verifier           = $this->session( 7, 'mine', array( 'last_seen' => time() - 400 ) );
 
-		Actions\expectDone( 'user_session_manager_session_active' )
+		Actions\expectDone( 'axle_sessions_session_active' )
 			->once()
 			->with(
 				7,
@@ -577,7 +577,7 @@ final class SharedLoginsTest extends SessionTestCase {
 		$privacy = new Privacy( $settings, $sessions, new NewDevice( $settings, $sessions ), $shared );
 
 		$groups = array_count_values( array_column( $privacy->export( 'alice@example.com' )['data'], 'group_id' ) );
-		$this->assertSame( 2, $groups['user-session-manager-shared'] );
+		$this->assertSame( 2, $groups['axle-sessions-shared'] );
 
 		$this->assertTrue( $privacy->erase( 'alice@example.com' )['items_removed'] );
 		$this->assertArrayNotHasKey( SharedLogins::META, $this->meta[7] );

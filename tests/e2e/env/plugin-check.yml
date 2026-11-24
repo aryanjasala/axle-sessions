@@ -4,7 +4,7 @@
 services:
   wp:
     volumes:
-      - ../../../dist/user-session-manager:/var/www/html/wp-content/plugins/user-session-manager:ro
+      - ../../../dist/axle-sessions:/var/www/html/wp-content/plugins/axle-sessions:ro
   cli:
     volumes:
-      - ../../../dist/user-session-manager:/var/www/html/wp-content/plugins/user-session-manager:ro
+      - ../../../dist/axle-sessions:/var/www/html/wp-content/plugins/axle-sessions:ro

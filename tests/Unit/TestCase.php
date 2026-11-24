@@ -2,10 +2,10 @@
 /**
  * Base class for unit tests.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
 use Brain\Monkey;
 use Brain\Monkey\Functions;

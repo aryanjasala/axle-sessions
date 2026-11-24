@@ -1,5 +1,5 @@
 name: Feature request
-description: An idea that would make User Session Manager more useful.
+description: An idea that would make Axle Sessions more useful.
 labels: [enhancement]
 body:
   - type: textarea

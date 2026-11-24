@@ -1,19 +1,19 @@
 <p align="center"><img src=".wordpress-org/icon-256x256.png" alt="" width="88"></p>
 
-<h1 align="center">User Session Manager</h1>
+<h1 align="center">Axle Sessions</h1>
 
 <p align="center">
-  <a href="https://try.axlewp.com/user-session-manager"><img src="https://img.shields.io/badge/Try%20in-WordPress%20Playground-3858e9?logo=wordpress&logoColor=white" alt="Try in WordPress Playground"></a>
-  <a href="https://github.com/aryanjasala/user-session-manager/releases/latest"><img src="https://img.shields.io/github/v/release/aryanjasala/user-session-manager?label=release&color=2271b1" alt="Latest release"></a>
+  <a href="https://try.axlewp.com/axle-sessions"><img src="https://img.shields.io/badge/Try%20in-WordPress%20Playground-3858e9?logo=wordpress&logoColor=white" alt="Try in WordPress Playground"></a>
+  <a href="https://github.com/aryanjasala/axle-sessions/releases/latest"><img src="https://img.shields.io/github/v/release/aryanjasala/axle-sessions?label=release&color=2271b1" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/WordPress-6.6%2B-3858e9?logo=wordpress&logoColor=white" alt="WordPress 6.6+">
   <img src="https://img.shields.io/badge/PHP-7.4%2B-777bb4?logo=php&logoColor=white" alt="PHP 7.4+">
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue" alt="License: GPL-2.0-or-later"></a>
   <br>
-  <a href="https://github.com/aryanjasala/user-session-manager/actions/workflows/phpcs.yml"><img src="https://github.com/aryanjasala/user-session-manager/actions/workflows/phpcs.yml/badge.svg" alt="PHPCS"></a>
-  <a href="https://github.com/aryanjasala/user-session-manager/actions/workflows/phpstan.yml"><img src="https://github.com/aryanjasala/user-session-manager/actions/workflows/phpstan.yml/badge.svg" alt="PHPStan"></a>
-  <a href="https://github.com/aryanjasala/user-session-manager/actions/workflows/unit-tests.yml"><img src="https://github.com/aryanjasala/user-session-manager/actions/workflows/unit-tests.yml/badge.svg" alt="Unit tests"></a>
-  <a href="https://github.com/aryanjasala/user-session-manager/actions/workflows/e2e-tests.yml"><img src="https://github.com/aryanjasala/user-session-manager/actions/workflows/e2e-tests.yml/badge.svg" alt="E2E tests"></a>
-  <a href="https://github.com/aryanjasala/user-session-manager/actions/workflows/plugin-check.yml"><img src="https://github.com/aryanjasala/user-session-manager/actions/workflows/plugin-check.yml/badge.svg" alt="Plugin Check"></a>
+  <a href="https://github.com/aryanjasala/axle-sessions/actions/workflows/phpcs.yml"><img src="https://github.com/aryanjasala/axle-sessions/actions/workflows/phpcs.yml/badge.svg" alt="PHPCS"></a>
+  <a href="https://github.com/aryanjasala/axle-sessions/actions/workflows/phpstan.yml"><img src="https://github.com/aryanjasala/axle-sessions/actions/workflows/phpstan.yml/badge.svg" alt="PHPStan"></a>
+  <a href="https://github.com/aryanjasala/axle-sessions/actions/workflows/unit-tests.yml"><img src="https://github.com/aryanjasala/axle-sessions/actions/workflows/unit-tests.yml/badge.svg" alt="Unit tests"></a>
+  <a href="https://github.com/aryanjasala/axle-sessions/actions/workflows/e2e-tests.yml"><img src="https://github.com/aryanjasala/axle-sessions/actions/workflows/e2e-tests.yml/badge.svg" alt="E2E tests"></a>
+  <a href="https://github.com/aryanjasala/axle-sessions/actions/workflows/plugin-check.yml"><img src="https://github.com/aryanjasala/axle-sessions/actions/workflows/plugin-check.yml/badge.svg" alt="Plugin Check"></a>
 </p>
 
 <p align="center">See every device signed in to WordPress, sign out the lost phone, and limit sessions per role.</p>
@@ -24,7 +24,7 @@
 
 ---
 
-WordPress already records every login: the browser, the IP address, when it started and when it ends. It just never shows it, and the only control is "Log Out Everywhere Else" on your own profile. User Session Manager lists those sessions on each profile and across the site, signs out any one of them, and adds per-role limits, an idle timeout, a new device email and a flag for accounts that look shared. It also lets the owner of an account answer a sign-in alert with one click, keeps a 90 day sign-in history, and has a one-step "Sign everyone out" for incidents.
+WordPress already records every login: the browser, the IP address, when it started and when it ends. It just never shows it, and the only control is "Log Out Everywhere Else" on your own profile. Axle Sessions lists those sessions on each profile and across the site, signs out any one of them, and adds per-role limits, an idle timeout, a new device email and a flag for accounts that look shared. It also lets the owner of an account answer a sign-in alert with one click, keeps a 90 day sign-in history, and has a one-step "Sign everyone out" for incidents.
 
 > [!NOTE]
 > Free and open source under the GPL. No pro version, no upsells, no ads in wp-admin, no tracking. And it stays that way.
@@ -50,25 +50,25 @@ WordPress already records every login: the browser, the IP address, when it star
 
 ## Install
 
-1. Download `user-session-manager.zip` from the [latest release](https://github.com/aryanjasala/user-session-manager/releases/latest).
+1. Download `axle-sessions.zip` from the [latest release](https://github.com/aryanjasala/axle-sessions/releases/latest).
 2. In WordPress, go to **Plugins > Add New Plugin > Upload Plugin**, choose the zip and activate it.
 
 Or with WP-CLI:
 
 ```sh
-wp plugin install https://github.com/aryanjasala/user-session-manager/releases/latest/download/user-session-manager.zip --activate
+wp plugin install https://github.com/aryanjasala/axle-sessions/releases/latest/download/axle-sessions.zip --activate
 ```
 
-Needs WordPress 6.6+ and PHP 7.4+. To try it first, [try.axlewp.com/user-session-manager](https://try.axlewp.com/user-session-manager) opens a private WordPress in your browser with the latest release and some demo content. Nothing to install.
+Needs WordPress 6.6+ and PHP 7.4+. To try it first, [try.axlewp.com/axle-sessions](https://try.axlewp.com/axle-sessions) opens a private WordPress in your browser with the latest release and some demo content. Nothing to install.
 
 ## Quick look
 
 Set a policy for a role, then find and sign out a session from the command line:
 
 ```sh
-wp user-session-manager set-policy administrator --max-sessions=2 --idle-minutes=30
-wp user-session-manager list --user=maria
-wp user-session-manager revoke 7-9f86d081884c7d659a2feaa0
+wp axle-sessions set-policy administrator --max-sessions=2 --idle-minutes=30
+wp axle-sessions list --user=maria
+wp axle-sessions revoke 7-9f86d081884c7d659a2feaa0
 ```
 
 A handle like `7-9f86...` is an HMAC of the session, so the token and the stored verifier never appear on a page, in WP-CLI output or in an ability response.
@@ -104,7 +104,7 @@ A handle like `7-9f86...` is an HMAC of the session, so the token and the stored
 ## Project structure
 
 ```
-user-session-manager.php   plugin header and PSR-4 autoloader
+axle-sessions.php   plugin header and PSR-4 autoloader
 src/
 ├── Plugin.php             creates the services
 ├── Settings.php           the settings and the policy for each user
@@ -123,7 +123,7 @@ src/
 ├── Abilities.php          abilities for AI agents
 ├── Admin/                 profile section, Users > Sessions, Users column, settings
 ├── Health/SiteHealth.php  the Site Health check
-└── Cli/Command.php        wp user-session-manager
+└── Cli/Command.php        wp axle-sessions
 assets/admin.css
 tests/
 ├── Unit/                  PHPUnit

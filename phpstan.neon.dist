@@ -2,7 +2,7 @@
 parameters:
 	level: 6
 	paths:
-		- user-session-manager.php
+		- axle-sessions.php
 		- uninstall.php
 		- src
 	scanFiles:

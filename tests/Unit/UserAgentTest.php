@@ -2,12 +2,12 @@
 /**
  * Tests for the user agent parser.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\UserAgent;
+use AryanX\Axle\Sessions\UserAgent;
 use Brain\Monkey\Filters;
 
 final class UserAgentTest extends TestCase {
@@ -58,7 +58,7 @@ final class UserAgentTest extends TestCase {
 	}
 
 	public function test_a_filter_can_plug_in_another_parser_and_bad_values_fall_back(): void {
-		Filters\expectApplied( 'user_session_manager_parse_user_agent' )
+		Filters\expectApplied( 'axle_sessions_parse_user_agent' )
 			->once()
 			->with( \Mockery::type( 'array' ), 'Custom/1.0' )
 			->andReturn(

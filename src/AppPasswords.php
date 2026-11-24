@@ -2,10 +2,10 @@
 /**
  * Application passwords: the door that stays open after a sign out.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
  * Passwords are removed one by one through core's own delete call, so core's
  * `wp_delete_application_password` action fires for each, and other plugins
  * (Elevate, Agent Governance, audit logs) can listen to either that action or
- * this plugin's `user_session_manager_app_passwords_revoked`.
+ * this plugin's `axle_sessions_app_passwords_revoked`.
  */
 final class AppPasswords {
 
@@ -87,7 +87,7 @@ final class AppPasswords {
 			 * @param array[]  $revoked Each revoked password: uuid, name, created and last_used (Unix times). The secret is never included.
 			 * @param string   $context not_me, incident, cli or ability.
 			 */
-			do_action( 'user_session_manager_app_passwords_revoked', $user_id, $revoked, $context );
+			do_action( 'axle_sessions_app_passwords_revoked', $user_id, $revoked, $context );
 		}
 
 		return $revoked;
@@ -116,7 +116,7 @@ final class AppPasswords {
 		 *
 		 * @param int $limit Default 500. Kept between 50 and 5000.
 		 */
-		$limit = max( 50, min( 5000, (int) apply_filters( 'user_session_manager_app_password_preview_limit', 500 ) ) );
+		$limit = max( 50, min( 5000, (int) apply_filters( 'axle_sessions_app_password_preview_limit', 500 ) ) );
 		$ids   = get_users(
 			array(
 				'fields'       => 'ID',

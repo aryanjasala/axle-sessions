@@ -2,10 +2,10 @@
 /**
  * "Last active" tracking and the idle timeout.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -150,7 +150,7 @@ final class Activity implements Service {
 			 * @param int   $user_id The user.
 			 * @param array $session Session data: expiration, ip, ua, login, last_seen and handle.
 			 */
-			do_action( 'user_session_manager_session_active', $user_id, $session + array( 'handle' => $this->sessions->handle( $user_id, $verifier ) ) );
+			do_action( 'axle_sessions_session_active', $user_id, $session + array( 'handle' => $this->sessions->handle( $user_id, $verifier ) ) );
 		}
 	}
 
@@ -169,7 +169,7 @@ final class Activity implements Service {
 		 * @param array  $session Session data: expiration, ip, ua, login, last_seen and handle.
 		 * @param string $context request (the idle session came back), login (found while the user signed in again) or prune (the hourly clean-up).
 		 */
-		do_action( 'user_session_manager_idle_session_ended', $user_id, $session, $context );
+		do_action( 'axle_sessions_idle_session_ended', $user_id, $session, $context );
 	}
 
 	/**
@@ -189,7 +189,7 @@ final class Activity implements Service {
 		 * @param bool $track   Default true, except for cron and Heartbeat requests.
 		 * @param int  $user_id The current user.
 		 */
-		return (bool) apply_filters( 'user_session_manager_track_request', ! $heartbeat && ! wp_doing_cron(), $user_id );
+		return (bool) apply_filters( 'axle_sessions_track_request', ! $heartbeat && ! wp_doing_cron(), $user_id );
 	}
 
 	/**

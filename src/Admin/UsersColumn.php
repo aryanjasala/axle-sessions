@@ -2,14 +2,14 @@
 /**
  * The Sessions column on the Users list.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Admin;
+namespace AryanX\Axle\Sessions\Admin;
 
-use AryanX\Axle\UserSessionManager\Access;
-use AryanX\Axle\UserSessionManager\Service;
-use AryanX\Axle\UserSessionManager\Sessions;
+use AryanX\Axle\Sessions\Access;
+use AryanX\Axle\Sessions\Service;
+use AryanX\Axle\Sessions\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -57,7 +57,7 @@ final class UsersColumn implements Service {
 	public function add_column( $columns ): array {
 		$columns = (array) $columns;
 		if ( Access::can_view_all() && $this->sessions->is_supported() ) {
-			$columns[ self::COLUMN ] = __( 'Sessions', 'user-session-manager' );
+			$columns[ self::COLUMN ] = __( 'Sessions', 'axle-sessions' );
 		}
 
 		return $columns;
@@ -78,19 +78,19 @@ final class UsersColumn implements Service {
 
 		// A count says whether the person is signed in, so it is only shown for people the current user may edit.
 		if ( ! Access::can_manage( (int) $user_id ) ) {
-			return '<span aria-hidden="true">&ndash;</span><span class="screen-reader-text">' . esc_html__( 'Not available', 'user-session-manager' ) . '</span>';
+			return '<span aria-hidden="true">&ndash;</span><span class="screen-reader-text">' . esc_html__( 'Not available', 'axle-sessions' ) . '</span>';
 		}
 
 		$count = $this->sessions->count( (int) $user_id );
 		if ( 0 === $count ) {
-			return '<span aria-hidden="true">0</span><span class="screen-reader-text">' . esc_html__( 'No sessions', 'user-session-manager' ) . '</span>';
+			return '<span aria-hidden="true">0</span><span class="screen-reader-text">' . esc_html__( 'No sessions', 'axle-sessions' ) . '</span>';
 		}
 
 		return sprintf(
 			'<a href="%1$s" aria-label="%2$s">%3$d</a>',
 			esc_url( SessionsPage::url( array( 'user_id' => (int) $user_id ) ) ),
 			/* translators: %d: number of sessions. */
-			esc_attr( sprintf( _n( '%d active session', '%d active sessions', $count, 'user-session-manager' ), $count ) ),
+			esc_attr( sprintf( _n( '%d active session', '%d active sessions', $count, 'axle-sessions' ), $count ) ),
 			$count
 		);
 	}

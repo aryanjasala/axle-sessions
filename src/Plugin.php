@@ -2,17 +2,17 @@
 /**
  * Plugin bootstrap.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
-use AryanX\Axle\UserSessionManager\Admin\ProfileSessions;
-use AryanX\Axle\UserSessionManager\Admin\SessionsPage;
-use AryanX\Axle\UserSessionManager\Admin\SettingsPage;
-use AryanX\Axle\UserSessionManager\Admin\UsersColumn;
-use AryanX\Axle\UserSessionManager\Cli\Command;
-use AryanX\Axle\UserSessionManager\Health\SiteHealth;
+use AryanX\Axle\Sessions\Admin\ProfileSessions;
+use AryanX\Axle\Sessions\Admin\SessionsPage;
+use AryanX\Axle\Sessions\Admin\SettingsPage;
+use AryanX\Axle\Sessions\Admin\UsersColumn;
+use AryanX\Axle\Sessions\Cli\Command;
+use AryanX\Axle\Sessions\Health\SiteHealth;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -209,7 +209,7 @@ final class Plugin {
 		}
 
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
-			\WP_CLI::add_command( 'user-session-manager', new Command( $this->settings, $this->sessions, $this->pruner, $this->shared, $this->history, $this->not_me, $this->incident ) );
+			\WP_CLI::add_command( 'axle-sessions', new Command( $this->settings, $this->sessions, $this->pruner, $this->shared, $this->history, $this->not_me, $this->incident ) );
 		}
 	}
 }

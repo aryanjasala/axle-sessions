@@ -1,4 +1,4 @@
-=== User Session Manager ===
+=== Axle Sessions ===
 Contributors: aryanjasala
 Tags: sessions, security, login, logout, devices
 Requires at least: 6.6
@@ -14,7 +14,7 @@ See every device signed in to WordPress, sign out one of them, and limit session
 
 WordPress already keeps a record of every login: which browser, which IP address, when it started and when it ends. It just never shows it. The only control is "Log Out Everywhere Else" on your own profile, so nobody can see which devices are signed in, sign out just the lost phone, or see who is signed in across the site.
 
-User Session Manager shows those sessions and lets you end them.
+Axle Sessions shows those sessions and lets you end them.
 
 **For everyone, on their profile:**
 
@@ -49,20 +49,20 @@ Sessions hold an IP address and a browser string. The plugin takes part in Tools
 
 = WP-CLI =
 
-* `wp user-session-manager list [--user=<user>]` lists active sessions with their handles.
-* `wp user-session-manager revoke <handle>` signs out one session.
-* `wp user-session-manager sign-out <user>` signs a user out everywhere.
-* `wp user-session-manager prune` removes expired sessions and signs out idle ones.
-* `wp user-session-manager history <user>` shows when an account signed in and how each session ended.
-* `wp user-session-manager reports` lists "This wasn't me" reports.
-* `wp user-session-manager sign-out-everyone` signs every user out, with exclusions.
-* `wp user-session-manager shared` lists accounts that look shared, with the reasons.
-* `wp user-session-manager policies` and `set-policy <role>` read and change the per-role policies.
-* `wp user-session-manager settings` reads and changes the other settings.
+* `wp axle-sessions list [--user=<user>]` lists active sessions with their handles.
+* `wp axle-sessions revoke <handle>` signs out one session.
+* `wp axle-sessions sign-out <user>` signs a user out everywhere.
+* `wp axle-sessions prune` removes expired sessions and signs out idle ones.
+* `wp axle-sessions history <user>` shows when an account signed in and how each session ended.
+* `wp axle-sessions reports` lists "This wasn't me" reports.
+* `wp axle-sessions sign-out-everyone` signs every user out, with exclusions.
+* `wp axle-sessions shared` lists accounts that look shared, with the reasons.
+* `wp axle-sessions policies` and `set-policy <role>` read and change the per-role policies.
+* `wp axle-sessions settings` reads and changes the other settings.
 
 = For developers =
 
-Every limit and default has a filter, and every sign out fires an action. On WordPress 6.9 and later, AI agents can list sessions, find accounts that look shared and sign sessions out through the Abilities API. The full list is in [the reference](https://github.com/aryanjasala/user-session-manager/blob/main/docs/REFERENCE.md).
+Every limit and default has a filter, and every sign out fires an action. On WordPress 6.9 and later, AI agents can list sessions, find accounts that look shared and sign sessions out through the Abilities API. The full list is in [the reference](https://github.com/aryanjasala/axle-sessions/blob/main/docs/REFERENCE.md).
 
 == Frequently Asked Questions ==
 
@@ -92,11 +92,11 @@ Yes, for plugins that sign people in through WordPress's own login functions. A 
 
 = How does it decide that an account looks shared? =
 
-From the sessions it already has: the network of each IP address, the browser and device, and when each session was last used. By default it flags more than two networks at the same time, two computers (or two phones, or two tablets) on different networks at the same time, or more than four different devices in a day. A laptop on Wi-Fi and a phone on mobile data are one person, so they are not flagged. Developers can change every limit with the `user_session_manager_shared_login_rules` filter, and add countries from their own lookup.
+From the sessions it already has: the network of each IP address, the browser and device, and when each session was last used. By default it flags more than two networks at the same time, two computers (or two phones, or two tablets) on different networks at the same time, or more than four different devices in a day. A laptop on Wi-Fi and a phone on mobile data are one person, so they are not flagged. Developers can change every limit with the `axle_sessions_shared_login_rules` filter, and add countries from their own lookup.
 
 = Will it lock out people who share an account on purpose? =
 
-No. By default it only shows a badge. Signing out every session but the newest is a choice per role, and a login is never refused. For accounts meant to be shared, such as a kiosk, set the role to "Do not check" or use the `user_session_manager_shared_login_exempt` filter.
+No. By default it only shows a badge. Signing out every session but the newest is a choice per role, and a login is never refused. For accounts meant to be shared, such as a kiosk, set the role to "Do not check" or use the `axle_sessions_shared_login_exempt` filter.
 
 = Is the "This wasn't me" link safe? =
 

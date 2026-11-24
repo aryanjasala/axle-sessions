@@ -2,15 +2,15 @@
 /**
  * Tests for ending another device to finish a refused login.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\DeviceSwap;
-use AryanX\Axle\UserSessionManager\Limits;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
+use AryanX\Axle\Sessions\DeviceSwap;
+use AryanX\Axle\Sessions\Limits;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
@@ -176,7 +176,7 @@ final class DeviceSwapTest extends SessionTestCase {
 		Functions\when( 'user_can' )->justReturn( true );
 		$this->assertFalse( $this->settings->device_swap_enabled( $admin ) );
 
-		Filters\expectApplied( 'user_session_manager_uses_two_factor' )->andReturn( true );
+		Filters\expectApplied( 'axle_sessions_uses_two_factor' )->andReturn( true );
 		$this->assertTrue( $this->settings->device_swap_enabled( $admin ) );
 
 		$this->options[ Settings::OPTION ] = array( 'device_swap' => false );
@@ -199,17 +199,17 @@ final class DeviceSwapTest extends SessionTestCase {
 	public function test_the_filter_can_narrow_or_widen_the_rule(): void {
 		$admin = $this->user( 7, 'boss' );
 		Functions\when( 'user_can' )->justReturn( true );
-		Filters\expectApplied( 'user_session_manager_device_swap_enabled' )->once()->with( false, $admin )->andReturn( true );
+		Filters\expectApplied( 'axle_sessions_device_swap_enabled' )->once()->with( false, $admin )->andReturn( true );
 
 		$this->assertTrue( $this->settings->device_swap_enabled( $admin ) );
 	}
 
 	public function test_the_setting_and_the_lifetime_can_be_filtered_and_are_clamped(): void {
 		$user = $this->user( 7, 'alice' );
-		Filters\expectApplied( 'user_session_manager_device_swap_enabled' )->once()->with( true, $user )->andReturn( false );
+		Filters\expectApplied( 'axle_sessions_device_swap_enabled' )->once()->with( true, $user )->andReturn( false );
 		$this->assertFalse( $this->settings->device_swap_enabled( $user ) );
 
-		Filters\expectApplied( 'user_session_manager_device_swap_lifetime' )->once()->andReturn( 99999 );
+		Filters\expectApplied( 'axle_sessions_device_swap_lifetime' )->once()->andReturn( 99999 );
 		$this->assertSame( 1800, $this->settings->device_swap_lifetime() );
 	}
 
@@ -223,12 +223,12 @@ final class DeviceSwapTest extends SessionTestCase {
 		$session  = $this->store->get( 7, $new );
 
 		// Over the limit on the form: the new session is kept for the moment, and the login is not announced.
-		Actions\expectDone( 'user_session_manager_session_started' )->never();
+		Actions\expectDone( 'axle_sessions_session_started' )->never();
 		$this->assertFalse( $limits->enforce_limit( $user, $new, $session ) );
 		$this->assertNotNull( $this->store->get( 7, $new ) );
 
 		// A second step takes over the login (wp_login never reaches us), so the session is dropped at the end.
-		Actions\expectDone( 'user_session_manager_login_blocked' )->once();
+		Actions\expectDone( 'axle_sessions_login_blocked' )->once();
 		$swap->drop_undecided();
 		$this->assertNull( $this->store->get( 7, $new ) );
 		$this->assertNotNull( $this->store->get( 7, $old ) );
@@ -244,13 +244,13 @@ final class DeviceSwapTest extends SessionTestCase {
 		$_REQUEST['redirect_to'] = 'https://example.com/wp-admin/edit.php';
 
 		$swap->hold( $user, $new, $this->store->get( 7, $new ) );
-		Actions\expectDone( 'user_session_manager_device_swap_offered' )->once()->with( $user, 1, 1 );
+		Actions\expectDone( 'axle_sessions_device_swap_offered' )->once()->with( $user, 1, 1 );
 
 		try {
 			$swap->decide( 'alice', $user );
 			$this->fail( 'The browser should have been redirected.' );
 		} catch ( \RuntimeException $e ) {
-			$this->assertStringContainsString( 'action=user_session_manager_devices', $e->getMessage() );
+			$this->assertStringContainsString( 'action=axle_sessions_devices', $e->getMessage() );
 		}
 
 		$this->assertNull( $this->store->get( 7, $new ) );
@@ -276,7 +276,7 @@ final class DeviceSwapTest extends SessionTestCase {
 		$user = $this->user( 7, 'alice' );
 		$this->assertFalse( DeviceSwap::uses_two_factor( $user ) );
 
-		Filters\expectApplied( 'user_session_manager_uses_two_factor' )->once()->with( false, $user )->andReturn( true );
+		Filters\expectApplied( 'axle_sessions_uses_two_factor' )->once()->with( false, $user )->andReturn( true );
 		$this->assertTrue( DeviceSwap::uses_two_factor( $user ) );
 	}
 

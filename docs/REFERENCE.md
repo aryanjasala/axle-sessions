@@ -4,21 +4,21 @@
 
 WordPress already keeps a record of every login in the `session_tokens` user meta: one entry per browser, with when it expires, the IP address, the browser string and the login time. The only control core gives you is "Log Out Everywhere Else" on your own profile.
 
-User Session Manager reads and writes that same meta with the same structure. Core stores each session under a verifier, the SHA-256 hash of the token in the login cookie, and only ends a session when it has the raw token. This plugin ends a session from its verifier alone, so an admin can sign out a browser they never had the cookie for.
+Axle Sessions reads and writes that same meta with the same structure. Core stores each session under a verifier, the SHA-256 hash of the token in the login cookie, and only ends a session when it has the raw token. This plugin ends a session from its verifier alone, so an admin can sign out a browser they never had the cookie for.
 
 Verifiers never reach a page. The screens, WP-CLI and abilities use a **handle** instead: `<user ID>-<24 hex characters>`, an HMAC of the user ID and the verifier keyed with the site's auth salt. A handle cannot be turned back into the verifier or the token.
 
 ## Last active
 
-Each session gets a `last_seen` time inside its own entry in `session_tokens`. It is set at login and saved again on an authenticated request (admin, REST, or the front end while logged in) when the last save is older than 5 minutes (`user_session_manager_last_seen_interval`). So a busy session writes to the database at most once every 5 minutes.
+Each session gets a `last_seen` time inside its own entry in `session_tokens`. It is set at login and saved again on an authenticated request (admin, REST, or the front end while logged in) when the last save is older than 5 minutes (`axle_sessions_last_seen_interval`). So a busy session writes to the database at most once every 5 minutes.
 
-Heartbeat polls and cron do not count as activity, so a forgotten admin tab still goes idle (`user_session_manager_track_request`).
+Heartbeat polls and cron do not count as activity, so a forgotten admin tab still goes idle (`axle_sessions_track_request`).
 
 Sessions from before the plugin was active have no `last_seen` yet. They count as active until their next request records one.
 
 ## Policies
 
-Set per role on the **Policies** tab of Users > Sessions (**Network Admin > Users > Sessions** on multisite; the old Settings > User Sessions address redirects there) or with `wp user-session-manager set-policy`. A user with several roles gets the most generous value of each: no limit beats any limit, and a longer limit beats a shorter one. Users with no role on the site have no limits.
+Set per role on the **Policies** tab of Users > Sessions (**Network Admin > Users > Sessions** on multisite; the old Settings > User Sessions address redirects there) or with `wp axle-sessions set-policy`. A user with several roles gets the most generous value of each: no limit beats any limit, and a longer limit beats a shorter one. Users with no role on the site have no limits.
 
 | Setting | 0 means | Effect |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ Set per role on the **Policies** tab of Users > Sessions (**Network Admin > User
 
 Idle sessions never count towards the limit. They are signed out first.
 
-**Refuse the new login** works on the login form (`wp_signon()`), so other plugins' login forms that use it are covered too. A login that skips it and calls `wp_set_auth_cookie()` directly, such as some social login plugins, cannot be refused before the session exists. In refuse mode that new session is ended right away instead, and `user_session_manager_login_blocked` fires.
+**Refuse the new login** works on the login form (`wp_signon()`), so other plugins' login forms that use it are covered too. A login that skips it and calls `wp_set_auth_cookie()` directly, such as some social login plugins, cannot be refused before the session exists. In refuse mode that new session is ended right away instead, and `axle_sessions_login_blocked` fires.
 
 Password checks that create no session, such as XML-RPC and application passwords, are never refused.
 
@@ -37,13 +37,13 @@ Password checks that create no session, such as XML-RPC and application password
 
 Off by default. When it is on, a user gets an email when they sign in from a browser and IP address pair not seen on their account in the last 30 days (the setting next to it). Browser here means the browser and system, such as "Safari on iOS", without the version, so an update is not a new device.
 
-Sessions are deleted when they end, so the plugin keeps a short memory per user in the `user_session_manager_devices` user meta: an HMAC of each browser, system and IP address, with the browser label and when it was last seen. The IP address itself is not kept. At most 50 entries per user.
+Sessions are deleted when they end, so the plugin keeps a short memory per user in the `axle_sessions_devices` user meta: an HMAC of each browser, system and IP address, with the browser label and when it was last seen. The IP address itself is not kept. At most 50 entries per user.
 
 The first login the plugin sees for a user only fills that memory (from their current sessions too), so turning the email on does not email everyone.
 
 ## Shared login detection
 
-Some accounts are used by more than one person: a password passed around a team, or a paid membership shared with friends. User Session Manager looks for signs of that in the sessions it already has: the IP address (shortened, if the site stores shortened addresses), the parsed browser and the times. It calls no outside service.
+Some accounts are used by more than one person: a password passed around a team, or a paid membership shared with friends. Axle Sessions looks for signs of that in the sessions it already has: the IP address (shortened, if the site stores shortened addresses), the parsed browser and the times. It calls no outside service.
 
 The check runs when someone signs in and each time "last active" is saved for a session (at most every 5 minutes), on that user's sessions only. Sessions count as used at the same time when their last activity is within 15 minutes of the most recently used one. A network is the first three parts of an IPv4 address (the first 48 bits of IPv6), so shortened addresses work the same.
 
@@ -56,9 +56,9 @@ The check runs when someone signs in and each time "last active" is saved for a 
 
 One person with a laptop on Wi-Fi and a phone on mobile data is two networks and two kinds of device, so they are not flagged.
 
-When a sign shows up, the sessions behind it get a **Possibly shared** badge on the profile and on Users > Sessions, and both screens list the reasons: which sessions, from where, and when they were last used. Users > Sessions gets a **Possibly shared** view once any account is flagged. The flag lives in the `user_session_manager_shared` user meta with a copy of those sessions, and is dropped 7 days after the last sign (`keep_days`).
+When a sign shows up, the sessions behind it get a **Possibly shared** badge on the profile and on Users > Sessions, and both screens list the reasons: which sessions, from where, and when they were last used. Users > Sessions gets a **Possibly shared** view once any account is flagged. The flag lives in the `axle_sessions_shared` user meta with a copy of those sessions, and is dropped 7 days after the last sign (`keep_days`).
 
-What else happens is set per role in the "Account looks shared" column on the Policies tab, or with `wp user-session-manager set-policy <role> --shared=<mode>`:
+What else happens is set per role in the "Account looks shared" column on the Policies tab, or with `wp axle-sessions set-policy <role> --shared=<mode>`:
 
 | Choice | `--shared` | Effect |
 | --- | --- | --- |
@@ -75,23 +75,23 @@ A user with several roles gets the most generous choice: "Do not check" beats th
 
 On your own account the row action is "Sign out everywhere else", and the question has two answers. **Sign out everywhere else** is the default: this browser stays signed in, like core's "Log Out Everywhere Else". **Sign out everywhere, this browser too** ends every session and goes to the login screen. The browser you are using has no checkbox and no "Sign out" in the list, so a bulk action never signs it out by accident.
 
-On profiles that show the sessions table, core's own "Log Out Everywhere Else" row is hidden, since the table does the same (`user_session_manager_hide_core_sessions`).
+On profiles that show the sessions table, core's own "Log Out Everywhere Else" row is hidden, since the table does the same (`axle_sessions_hide_core_sessions`).
 
 
 ## This wasn't me
 
-On by default, and only used when the new device email is on. The email gets a link to `wp-login.php?action=user_session_manager_not_me&usm_key=<user ID>.<token>`. It works for 7 days (`user_session_manager_not_me_lifetime`) and once.
+On by default, and only used when the new device email is on. The email gets a link to `wp-login.php?action=axle_sessions_not_me&usm_key=<user ID>.<token>`. It works for 7 days (`axle_sessions_not_me_lifetime`) and once.
 
 - The link opens a page with no login needed. It says which device signed in and what pressing the button does. Opening it (a mail scanner does) changes nothing.
-- Pressing **This wasn't me, secure the account** signs the account out everywhere (setting: or only the reported session), replaces the password with one nobody knows, **revokes every application password of the account**, emails a reset link to the address on the account, records the report and emails the administrators (`user_session_manager_not_me_recipients`).
-- The token is random. Only a keyed hash is stored in the `user_session_manager_not_me` user meta, with the user, the session handle and the expiry. Hashes are compared in constant time, the link is deleted before anything happens, and at most 5 links per user are kept.
-- A wrong, expired or used link gets the same page. More than 10 wrong keys from one address in 15 minutes get a 429 (`user_session_manager_not_me_attempts`).
+- Pressing **This wasn't me, secure the account** signs the account out everywhere (setting: or only the reported session), replaces the password with one nobody knows, **revokes every application password of the account**, emails a reset link to the address on the account, records the report and emails the administrators (`axle_sessions_not_me_recipients`).
+- The token is random. Only a keyed hash is stored in the `axle_sessions_not_me` user meta, with the user, the session handle and the expiry. Hashes are compared in constant time, the link is deleted before anything happens, and at most 5 links per user are kept.
+- A wrong, expired or used link gets the same page. More than 10 wrong keys from one address in 15 minutes get a 429 (`axle_sessions_not_me_attempts`).
 - The confirm page lists the application passwords that will be revoked. Opening it changes nothing.
-- Reports (user, device, IP address as stored, time, sessions signed out, names of the application passwords revoked) show on the profile, on Users > Sessions for 30 days, in Site Health for 7 days, in `wp user-session-manager reports` and in the `list-not-me-reports` ability. Up to 50 are kept.
+- Reports (user, device, IP address as stored, time, sessions signed out, names of the application passwords revoked) show on the profile, on Users > Sessions for 30 days, in Site Health for 7 days, in `wp axle-sessions reports` and in the `list-not-me-reports` ability. Up to 50 are kept.
 
 ## Sign-in history
 
-Kept in the `user_session_manager_history` user meta, newest first: handle, device, IP address (shortened when that setting is on), start, last active, end, how it ended and who did it. It is written only when a session starts or ends, never on ordinary requests, trimmed on every write to the retention time (**Keep sign-in history for**, default 90 days, 0 keeps none) and to 100 entries (`user_session_manager_history_limit`), and cleaned hourly for users who never return. A session that ran out on its own is shown as expired once its time has passed. Sessions that started before the plugin was updated appear while active, and get an entry when they end.
+Kept in the `axle_sessions_history` user meta, newest first: handle, device, IP address (shortened when that setting is on), start, last active, end, how it ended and who did it. It is written only when a session starts or ends, never on ordinary requests, trimmed on every write to the retention time (**Keep sign-in history for**, default 90 days, 0 keeps none) and to 100 entries (`axle_sessions_history_limit`), and cleaned hourly for users who never return. A session that ran out on its own is shown as expired once its time has passed. Sessions that started before the plugin was updated appear while active, and get an entry when they end.
 
 ## The login screen message
 
@@ -99,24 +99,24 @@ When WordPress refuses an old login cookie, the history is searched for that coo
 
 ## Sign everyone out
 
-On Users > Sessions, under the list. It shows how many sessions will end, then asks for the words `SIGN OUT` (`user_session_manager_incident_confirm_word`). Choices: keep yourself signed in, leave out roles (single sites), and **Also require new passwords**, which makes every password stop working, including for people not signed in. Nobody is emailed. Your own password is never changed. It runs in slices of a few seconds, with a progress page that carries on by itself, so a large site never hits a time limit. Each person it signs out needs `edit_user` for them. It is logged (last 20 runs), and `user_session_manager_incident_started` and `_finished` fire.
+On Users > Sessions, under the list. It shows how many sessions will end, then asks for the words `SIGN OUT` (`axle_sessions_incident_confirm_word`). Choices: keep yourself signed in, leave out roles (single sites), and **Also require new passwords**, which makes every password stop working, including for people not signed in. Nobody is emailed. Your own password is never changed. It runs in slices of a few seconds, with a progress page that carries on by itself, so a large site never hits a time limit. Each person it signs out needs `edit_user` for them. It is logged (last 20 runs), and `axle_sessions_incident_started` and `_finished` fire.
 
 **Application passwords.** Signing a session out, or changing a password, does nothing to an application password, so someone who made one in a hijacked session keeps REST and XML-RPC access. "Sign everyone out" therefore also revokes every application password of the people it visits (untick **Also revoke application passwords**, pass `--keep-app-passwords` or `revoke_app_passwords: false` to keep them). The form shows how many will go first. The person running the job keeps their own, since they may be how the job is run. "This wasn't me" revokes all of the reported account's application passwords. Each one is deleted through core's `WP_Application_Passwords::delete_application_password()`, so core's `wp_delete_application_password` action fires for each too.
 
 ## Ending another device to sign in
 
-When **Over the limit** is "Refuse the new login", a person refused at the sign-in form is not left stuck. After WordPress accepted the password, and Two Factor when the account uses it, the browser goes to `wp-login.php?action=user_session_manager_devices`, which lists the account's other devices. Choosing one ends it and signs the person in here, without asking for the password again, and then sends them on to the page they asked for.
+When **Over the limit** is "Refuse the new login", a person refused at the sign-in form is not left stuck. After WordPress accepted the password, and Two Factor when the account uses it, the browser goes to `wp-login.php?action=axle_sessions_devices`, which lists the account's other devices. Choosing one ends it and signs the person in here, without asking for the password again, and then sends them on to the page they asked for.
 
 How it stays safe:
 
 - Nothing is signed in while the list shows. The login's new session is removed and the login cookies are cleared first.
 - The decision is made on `wp_login` at priority 99 and on `two_factor_user_authenticated`. A login that a second-step plugin takes over never reaches it, so the list only appears after the second step. A wrong password never reaches it.
-- What brings the person back to the page is a random token in an HttpOnly cookie, never in the address. Only a keyed hash is stored in the `user_session_manager_swap` user meta, with a hash of the browser's user agent, "Remember Me", the page to return to, and an expiry (10 minutes, `user_session_manager_device_swap_lifetime`, 1 to 30). One token per account.
+- What brings the person back to the page is a random token in an HttpOnly cookie, never in the address. Only a keyed hash is stored in the `axle_sessions_swap` user meta, with a hash of the browser's user agent, "Remember Me", the page to return to, and an expiry (10 minutes, `axle_sessions_device_swap_lifetime`, 1 to 30). One token per account.
 - Choosing a device needs the cookie and a form token derived from it. The token is deleted before anything else happens, so a replayed request does nothing. If the account is still over its limit after one device (the limit was lowered), a fresh token is issued for one more.
-- Only a session of the same account can be ended. A wrong, expired, used or other-browser token gets the same page (403), and more than 10 misses from one address in 15 minutes get a 429 (`user_session_manager_device_swap_attempts`).
-- **Who gets it.** Only accounts that use Two Factor, or that can neither `manage_options` nor `promote_users` (on multisite, never a super admin without Two Factor). So a stolen password alone cannot push an administrator out of their session. An administrator without Two Factor gets the plain refusal. Widen or narrow this with `user_session_manager_device_swap_enabled`, which receives the result of this rule.
+- Only a session of the same account can be ended. A wrong, expired, used or other-browser token gets the same page (403), and more than 10 misses from one address in 15 minutes get a 429 (`axle_sessions_device_swap_attempts`).
+- **Who gets it.** Only accounts that use Two Factor, or that can neither `manage_options` nor `promote_users` (on multisite, never a super admin without Two Factor). So a stolen password alone cannot push an administrator out of their session. An administrator without Two Factor gets the plain refusal. Widen or narrow this with `axle_sessions_device_swap_enabled`, which receives the result of this rule.
 - It only applies to the sign-in form on wp-login.php. A login that skips the form is still refused as before.
-- Turn it off with **Let a refused person sign out one of their other devices to get in**, `wp user-session-manager settings --device-swap=off` or the `user_session_manager_device_swap_enabled` filter. For accounts the rule allows without Two Factor (ordinary users), a stolen password alone can end one of their devices to get in. The owner still gets the new device email and the ended device shows "signed out from another device".
+- Turn it off with **Let a refused person sign out one of their other devices to get in**, `wp axle-sessions settings --device-swap=off` or the `axle_sessions_device_swap_enabled` filter. For accounts the rule allows without Two Factor (ordinary users), a stolen password alone can end one of their devices to get in. The owner still gets the new device email and the ended device shows "signed out from another device".
 
 ## Actions other plugins can listen to
 
@@ -124,95 +124,95 @@ Elevate and Agent Governance close their own doors from these:
 
 | Action | Arguments | When |
 | --- | --- | --- |
-| `user_session_manager_not_me_reported` | `( WP_User $user, array $report )` | Someone pressed "This wasn't me". `$report` has `user`, `time`, `device`, `ip`, `scope`, `ended`, `reset` and `app_passwords` (name, created, last_used of each revoked key) |
-| `user_session_manager_app_passwords_revoked` | `( int $user_id, array $revoked, string $context )` | Application passwords were revoked. Each of `$revoked` has `uuid`, `name`, `created`, `last_used`, never the secret. `$context` is `not_me` or `incident` |
-| `user_session_manager_user_signed_out_everywhere` | `( int $user_id, int $count, string $context )` | Every session of one user ended. `$context` includes `not_me` and `incident` |
-| `user_session_manager_incident_started` | `( array $job )` | "Sign everyone out" started. `$job` has `by`, `via`, `keep`, `exclude_roles`, `passwords`, `app_passwords` |
-| `user_session_manager_incident_finished` | `( array $entry, array $job )` | It visited every user. `$entry` has `time`, `by`, `via`, `users`, `sessions`, `passwords`, `app_passwords`, `excluded`, `skipped`, `exclude_roles`, `kept_own` |
-| `user_session_manager_device_swap_offered` | `( WP_User $user, int $max, int $active )` | A refused login was offered the device list |
-| `user_session_manager_device_swapped` | `( WP_User $user, array $ended )` | A person ended a device and signed in. The ended session also fires `user_session_manager_session_revoked` with context `swap` |
+| `axle_sessions_not_me_reported` | `( WP_User $user, array $report )` | Someone pressed "This wasn't me". `$report` has `user`, `time`, `device`, `ip`, `scope`, `ended`, `reset` and `app_passwords` (name, created, last_used of each revoked key) |
+| `axle_sessions_app_passwords_revoked` | `( int $user_id, array $revoked, string $context )` | Application passwords were revoked. Each of `$revoked` has `uuid`, `name`, `created`, `last_used`, never the secret. `$context` is `not_me` or `incident` |
+| `axle_sessions_user_signed_out_everywhere` | `( int $user_id, int $count, string $context )` | Every session of one user ended. `$context` includes `not_me` and `incident` |
+| `axle_sessions_incident_started` | `( array $job )` | "Sign everyone out" started. `$job` has `by`, `via`, `keep`, `exclude_roles`, `passwords`, `app_passwords` |
+| `axle_sessions_incident_finished` | `( array $entry, array $job )` | It visited every user. `$entry` has `time`, `by`, `via`, `users`, `sessions`, `passwords`, `app_passwords`, `excluded`, `skipped`, `exclude_roles`, `kept_own` |
+| `axle_sessions_device_swap_offered` | `( WP_User $user, int $max, int $active )` | A refused login was offered the device list |
+| `axle_sessions_device_swapped` | `( WP_User $user, array $ended )` | A person ended a device and signed in. The ended session also fires `axle_sessions_session_revoked` with context `swap` |
 
 ## Filters added for these features
 
 | Filter | Arguments | Use |
 | --- | --- | --- |
-| `user_session_manager_not_me_revoke_app_passwords` | `( bool $revoke, int $user_id )` | Whether "This wasn't me" revokes application passwords. Default true |
-| `user_session_manager_app_password_preview_limit` | `( int $limit )` | Accounts the incident preview counts keys for. Default 500, 50 to 5000 |
-| `user_session_manager_device_swap_enabled` | `( bool $enabled, WP_User $user )` | Whether a refused login offers the device list. Default: the setting, and the rule that it is for Two Factor accounts and accounts that cannot manage options or promote users |
-| `user_session_manager_device_swap_lifetime` | `( int $seconds )` | How long the device list stays open. Default 600, 60 to 1800 |
-| `user_session_manager_device_swap_attempts` | `( int $attempts )` | Wrong tokens one address may try in 15 minutes. Default 10, at least 3 |
-| `user_session_manager_uses_two_factor` | `( bool $uses, WP_User $user )` | True for an account with a second step from a plugin other than Two Factor, so `wp_login` is not fired again after the device list |
+| `axle_sessions_not_me_revoke_app_passwords` | `( bool $revoke, int $user_id )` | Whether "This wasn't me" revokes application passwords. Default true |
+| `axle_sessions_app_password_preview_limit` | `( int $limit )` | Accounts the incident preview counts keys for. Default 500, 50 to 5000 |
+| `axle_sessions_device_swap_enabled` | `( bool $enabled, WP_User $user )` | Whether a refused login offers the device list. Default: the setting, and the rule that it is for Two Factor accounts and accounts that cannot manage options or promote users |
+| `axle_sessions_device_swap_lifetime` | `( int $seconds )` | How long the device list stays open. Default 600, 60 to 1800 |
+| `axle_sessions_device_swap_attempts` | `( int $attempts )` | Wrong tokens one address may try in 15 minutes. Default 10, at least 3 |
+| `axle_sessions_uses_two_factor` | `( bool $uses, WP_User $user )` | True for an account with a second step from a plugin other than Two Factor, so `wp_login` is not fired again after the device list |
 
 ## WP-CLI and abilities for these features
 
-- `wp user-session-manager sign-out-everyone [--keep-user=<user>] [--exclude-roles=<roles>] [--require-new-passwords] [--keep-app-passwords] [--yes]`: revokes application passwords unless `--keep-app-passwords`.
-- `wp user-session-manager settings --device-swap=<on|off>`.
-- `wp user-session-manager reports` has an `app_passwords` column.
-- Ability `user-session-manager/sign-out-everyone` (destructive, not idempotent): input `confirm` (must be true), `keep_current` (default true), `exclude_roles`, `require_new_passwords` (default false), `revoke_app_passwords` (default true). Output `users_signed_out`, `sessions_ended`, `passwords_retired`, `app_passwords_revoked`, `excluded`, `skipped`.
-- Ability `user-session-manager/list-not-me-reports` (read-only): each report has `app_passwords_revoked` (a count).
+- `wp axle-sessions sign-out-everyone [--keep-user=<user>] [--exclude-roles=<roles>] [--require-new-passwords] [--keep-app-passwords] [--yes]`: revokes application passwords unless `--keep-app-passwords`.
+- `wp axle-sessions settings --device-swap=<on|off>`.
+- `wp axle-sessions reports` has an `app_passwords` column.
+- Ability `axle-sessions/sign-out-everyone` (destructive, not idempotent): input `confirm` (must be true), `keep_current` (default true), `exclude_roles`, `require_new_passwords` (default false), `revoke_app_passwords` (default true). Output `users_signed_out`, `sessions_ended`, `passwords_retired`, `app_passwords_revoked`, `excluded`, `skipped`.
+- Ability `axle-sessions/list-not-me-reports` (read-only): each report has `app_passwords_revoked` (a count).
 
 ## Hooks
 
 | Hook | Type | Use |
 | --- | --- | --- |
-| `user_session_manager_capability` | filter | `( string $capability )`. Who may see everyone's sessions and sign other people out. Default `edit_users`; `list_users` is needed as well, and `edit_user` for the person being signed out |
-| `user_session_manager_settings_capability` | filter | `( string $capability )`. Who may change the policies. Default `manage_options`, or `manage_network_options` on multisite |
-| `user_session_manager_max_sessions` | filter | `( int $max, WP_User $user )`. Sessions a user may have at once. 0 means no limit |
-| `user_session_manager_limit_mode` | filter | `( string $mode, WP_User $user )`. `evict_oldest` or `block`. Anything else falls back to `evict_oldest` |
-| `user_session_manager_idle_timeout` | filter | `( int $minutes, WP_User $user )`. 0 turns the idle timeout off |
-| `user_session_manager_session_lifetime` | filter | `( int $seconds, WP_User $user, bool $remember )`. Length of a new session. 0 or less keeps the WordPress default |
-| `user_session_manager_last_seen_interval` | filter | `( int $seconds )`. How often "last active" is saved per session, at most. Default 300, 0 to 86400 |
-| `user_session_manager_track_request` | filter | `( bool $track, int $user_id )`. Whether a request counts as activity. Default true, except Heartbeat and cron |
-| `user_session_manager_parse_user_agent` | filter | `( array $parsed, string $ua )`. `browser`, `version`, `os`, `device` (desktop, mobile, tablet, bot or unknown) and `label`. Plug in a parser library here |
-| `user_session_manager_mask_ip` | filter | `( bool $mask, string $ip, int $user_id )`. Whether to store a shortened IP address (the last part of IPv4 set to zero, the last 80 bits of IPv6) |
-| `user_session_manager_new_device_email` | filter | `( array\|false $email, WP_User $user, array $session )`. `to`, `subject`, `message` and `headers`. Return false or an empty `to` to skip it |
-| `user_session_manager_device_memory_days` | filter | `( int $days )`. Days a browser and IP address stay known. From the setting, 1 to 365 |
-| `user_session_manager_device_limit` | filter | `( int $max )`. Browser and IP address pairs remembered per user. Default 50 |
-| `user_session_manager_blocked_login_message` | filter | `( string $message, WP_User $user, int $max, int $active )`. The login form error in refuse mode. It states the limit and the sessions the user has now apart, since a lowered limit can leave someone over it. Basic HTML allowed |
-| `user_session_manager_confirm_message` | filter | `( string $message, int[] $users, int $sessions, bool $you )`. The question asked before users are signed out everywhere. `$you` is true when the person asking is one of them, and then the default answer keeps their browser signed in |
-| `user_session_manager_notice` | filter | `( string $text, string $code, int $count, string $user )`. The notice after a sign out from a screen. `$code` is `revoked`, `not_found`, `signed_out_others`, `signed_out_user` or `bulk`; `$user` is the login for `signed_out_user` |
-| `user_session_manager_shared_login_rules` | filter | `( array $rules, WP_User $user )`. When an account looks shared: `overlap` (seconds, default 900), `max_networks` (2), `max_networks_per_type` (1), `max_countries` (1), `window` (seconds, 86400), `max_devices` (4) and `keep_days` (7). 0 turns a check off |
-| `user_session_manager_shared_login_action` | filter | `( string $action, WP_User $user, array $evidence )`. `flag`, `notify` or `sign_out_others`, from the role's setting. Anything else falls back to `flag` |
-| `user_session_manager_shared_login_exempt` | filter | `( bool $exempt, WP_User $user )`. True leaves the user out of shared login detection. Default true when one of their roles is set to "Do not check" |
-| `user_session_manager_shared_login_country` | filter | `( string $country, string $ip, int $user_id )`. The country of an address, from your own lookup. Default empty, which leaves countries out of the check |
-| `user_session_manager_shared_login_email` | filter | `( array\|false $email, WP_User $user, array $flag, string $audience )`. The email about an account that looks shared. `$audience` is `user` or `admin`. Return false or an empty `to` to skip it |
-| `user_session_manager_shared_login_evidence_text` | filter | `( string $text, array $evidence )`. How one reason reads on the screens, in WP-CLI, abilities and the emails |
-| `user_session_manager_hide_core_sessions` | filter | `( bool $hide, int $user_id )`. Whether core's "Log Out Everywhere Else" row is hidden on a profile that shows the sessions table. Default true |
-| `user_session_manager_list_per_page` | filter | `( int $per_page )`. Rows per page on Users > Sessions. Default 20 |
-| `user_session_manager_max_users_scanned` | filter | `( int $max )`. Signed-in users one listing reads at most. Default 10000 |
-| `user_session_manager_prune_batch` | filter | `( int $size )`. Users one run of the hourly clean-up looks at. Default 500 |
-| `user_session_manager_session_started` | action | `( WP_User $user, array $session )`. A user signed in and their new session was saved, after the limit was applied |
-| `user_session_manager_session_revoked` | action | `( int $user_id, array $session, string $context )`. One session was signed out. `$context` is `profile`, `admin`, `bulk`, `cli`, `ability` or `shared` (keep only the newest session) |
-| `user_session_manager_session_active` | action | `( int $user_id, array $session )`. "Last active" was saved for a session, at most once per interval |
-| `user_session_manager_shared_login_detected` | action | `( WP_User $user, array $sessions, array $evidence )`. An account looks shared, and the reasons involve a session not seen before. Each of `$sessions` has `handle`, `device`, `device_type`, `ip`, `country`, `login` and `last_seen`. Each of `$evidence` has `type` (`networks`, `countries`, `same_type` or `devices`), `count`, `limit`, `handles` and `time` |
-| `user_session_manager_user_signed_out_everywhere` | action | `( int $user_id, int $count, string $context )`. Every session of a user was ended. `$context` also can be `privacy` |
-| `user_session_manager_session_evicted` | action | `( int $user_id, array $evicted, array $new )`. An old session was signed out to make room for a new login |
-| `user_session_manager_login_blocked` | action | `( WP_User $user, int $max, int $active )`. A login was refused over the limit |
-| `user_session_manager_idle_session_ended` | action | `( int $user_id, array $session, string $context )`. An idle session was signed out. `$context` is `request`, `login` or `prune` |
-| `user_session_manager_new_device_login` | action | `( WP_User $user, array $session )`. A login from a browser and IP address pair not seen recently |
-| `user_session_manager_before_bulk` | action | `( string $action, string[] $handles )`. Before a bulk sign out on Users > Sessions. `$action` is `revoke` or `sign_out` |
-| `user_session_manager_after_bulk` | action | `( string $action, string[] $handles, int $count )`. After a bulk sign out |
-| `user_session_manager_pruned` | action | `( array $result )`. After a batch of the clean-up: `users`, `expired`, `idle`, `last` and `done` |
-| `user_session_manager_not_me_enabled` | filter | `( bool $enabled )`. Whether the link is added and works. From the setting |
-| `user_session_manager_not_me_scope` | filter | `( string $scope, WP_User $user )`. `all` or `session` |
-| `user_session_manager_not_me_lifetime` | filter | `( int $seconds )`. How long a link works. Default 7 days, 1 hour to 30 days |
-| `user_session_manager_not_me_attempts` | filter | `( int $attempts )`. Wrong keys one address may try in 15 minutes. Default 10, at least 3 |
-| `user_session_manager_not_me_recipients` | filter | `( string[] $emails, WP_User $user, array $report )`. Who is told. Default the site administration address |
-| `user_session_manager_not_me_alert_email` | filter | `( array\|false $email, WP_User $user, array $report )`. The email to the administrators |
-| `user_session_manager_not_me_reset_email` | filter | `( array\|false $email, WP_User $user )`. The email with the reset link |
-| `user_session_manager_not_me_log_limit` | filter | `( int $max )`. Reports kept. Default 50 |
-| `user_session_manager_history_days` | filter | `( int $days )`. Days history is kept. 0 keeps none |
-| `user_session_manager_history_limit` | filter | `( int $limit )`. Entries kept per user. Default 100, 10 to 500 |
-| `user_session_manager_history_rows` | filter | `( int $rows )`. Rows on the profile before "Show all sign-ins". Default 20 |
-| `user_session_manager_history_reason_label` | filter | `( string $label, string $reason )`. The words for how a session ended |
-| `user_session_manager_signed_out_message` | filter | `( string $text, string $reason, int $when )`. The login screen message |
-| `user_session_manager_incident_capability` | filter | `( string $capability )`. Needed for Sign everyone out, on top of seeing every session. Default `edit_users` |
-| `user_session_manager_incident_confirm_word` | filter | `( string $word )`. The words typed to confirm. Default `SIGN OUT` |
-| `user_session_manager_not_me_reported` | action | `( WP_User $user, array $report )`. Someone pressed "This wasn't me" |
-| `user_session_manager_history_session_ended` | action | `( int $user_id, array $entry, string $reason )`. The history recorded how a session ended |
-| `user_session_manager_incident_started` | action | `( array $job )`. Sign everyone out started |
-| `user_session_manager_incident_finished` | action | `( array $entry, array $job )`. Sign everyone out visited every user |
-| `user_session_manager_settings_saved` | action | `( array $settings, array $old )`. The policies or settings changed, from the screen or WP-CLI |
+| `axle_sessions_capability` | filter | `( string $capability )`. Who may see everyone's sessions and sign other people out. Default `edit_users`; `list_users` is needed as well, and `edit_user` for the person being signed out |
+| `axle_sessions_settings_capability` | filter | `( string $capability )`. Who may change the policies. Default `manage_options`, or `manage_network_options` on multisite |
+| `axle_sessions_max_sessions` | filter | `( int $max, WP_User $user )`. Sessions a user may have at once. 0 means no limit |
+| `axle_sessions_limit_mode` | filter | `( string $mode, WP_User $user )`. `evict_oldest` or `block`. Anything else falls back to `evict_oldest` |
+| `axle_sessions_idle_timeout` | filter | `( int $minutes, WP_User $user )`. 0 turns the idle timeout off |
+| `axle_sessions_session_lifetime` | filter | `( int $seconds, WP_User $user, bool $remember )`. Length of a new session. 0 or less keeps the WordPress default |
+| `axle_sessions_last_seen_interval` | filter | `( int $seconds )`. How often "last active" is saved per session, at most. Default 300, 0 to 86400 |
+| `axle_sessions_track_request` | filter | `( bool $track, int $user_id )`. Whether a request counts as activity. Default true, except Heartbeat and cron |
+| `axle_sessions_parse_user_agent` | filter | `( array $parsed, string $ua )`. `browser`, `version`, `os`, `device` (desktop, mobile, tablet, bot or unknown) and `label`. Plug in a parser library here |
+| `axle_sessions_mask_ip` | filter | `( bool $mask, string $ip, int $user_id )`. Whether to store a shortened IP address (the last part of IPv4 set to zero, the last 80 bits of IPv6) |
+| `axle_sessions_new_device_email` | filter | `( array\|false $email, WP_User $user, array $session )`. `to`, `subject`, `message` and `headers`. Return false or an empty `to` to skip it |
+| `axle_sessions_device_memory_days` | filter | `( int $days )`. Days a browser and IP address stay known. From the setting, 1 to 365 |
+| `axle_sessions_device_limit` | filter | `( int $max )`. Browser and IP address pairs remembered per user. Default 50 |
+| `axle_sessions_blocked_login_message` | filter | `( string $message, WP_User $user, int $max, int $active )`. The login form error in refuse mode. It states the limit and the sessions the user has now apart, since a lowered limit can leave someone over it. Basic HTML allowed |
+| `axle_sessions_confirm_message` | filter | `( string $message, int[] $users, int $sessions, bool $you )`. The question asked before users are signed out everywhere. `$you` is true when the person asking is one of them, and then the default answer keeps their browser signed in |
+| `axle_sessions_notice` | filter | `( string $text, string $code, int $count, string $user )`. The notice after a sign out from a screen. `$code` is `revoked`, `not_found`, `signed_out_others`, `signed_out_user` or `bulk`; `$user` is the login for `signed_out_user` |
+| `axle_sessions_shared_login_rules` | filter | `( array $rules, WP_User $user )`. When an account looks shared: `overlap` (seconds, default 900), `max_networks` (2), `max_networks_per_type` (1), `max_countries` (1), `window` (seconds, 86400), `max_devices` (4) and `keep_days` (7). 0 turns a check off |
+| `axle_sessions_shared_login_action` | filter | `( string $action, WP_User $user, array $evidence )`. `flag`, `notify` or `sign_out_others`, from the role's setting. Anything else falls back to `flag` |
+| `axle_sessions_shared_login_exempt` | filter | `( bool $exempt, WP_User $user )`. True leaves the user out of shared login detection. Default true when one of their roles is set to "Do not check" |
+| `axle_sessions_shared_login_country` | filter | `( string $country, string $ip, int $user_id )`. The country of an address, from your own lookup. Default empty, which leaves countries out of the check |
+| `axle_sessions_shared_login_email` | filter | `( array\|false $email, WP_User $user, array $flag, string $audience )`. The email about an account that looks shared. `$audience` is `user` or `admin`. Return false or an empty `to` to skip it |
+| `axle_sessions_shared_login_evidence_text` | filter | `( string $text, array $evidence )`. How one reason reads on the screens, in WP-CLI, abilities and the emails |
+| `axle_sessions_hide_core_sessions` | filter | `( bool $hide, int $user_id )`. Whether core's "Log Out Everywhere Else" row is hidden on a profile that shows the sessions table. Default true |
+| `axle_sessions_list_per_page` | filter | `( int $per_page )`. Rows per page on Users > Sessions. Default 20 |
+| `axle_sessions_max_users_scanned` | filter | `( int $max )`. Signed-in users one listing reads at most. Default 10000 |
+| `axle_sessions_prune_batch` | filter | `( int $size )`. Users one run of the hourly clean-up looks at. Default 500 |
+| `axle_sessions_session_started` | action | `( WP_User $user, array $session )`. A user signed in and their new session was saved, after the limit was applied |
+| `axle_sessions_session_revoked` | action | `( int $user_id, array $session, string $context )`. One session was signed out. `$context` is `profile`, `admin`, `bulk`, `cli`, `ability` or `shared` (keep only the newest session) |
+| `axle_sessions_session_active` | action | `( int $user_id, array $session )`. "Last active" was saved for a session, at most once per interval |
+| `axle_sessions_shared_login_detected` | action | `( WP_User $user, array $sessions, array $evidence )`. An account looks shared, and the reasons involve a session not seen before. Each of `$sessions` has `handle`, `device`, `device_type`, `ip`, `country`, `login` and `last_seen`. Each of `$evidence` has `type` (`networks`, `countries`, `same_type` or `devices`), `count`, `limit`, `handles` and `time` |
+| `axle_sessions_user_signed_out_everywhere` | action | `( int $user_id, int $count, string $context )`. Every session of a user was ended. `$context` also can be `privacy` |
+| `axle_sessions_session_evicted` | action | `( int $user_id, array $evicted, array $new )`. An old session was signed out to make room for a new login |
+| `axle_sessions_login_blocked` | action | `( WP_User $user, int $max, int $active )`. A login was refused over the limit |
+| `axle_sessions_idle_session_ended` | action | `( int $user_id, array $session, string $context )`. An idle session was signed out. `$context` is `request`, `login` or `prune` |
+| `axle_sessions_new_device_login` | action | `( WP_User $user, array $session )`. A login from a browser and IP address pair not seen recently |
+| `axle_sessions_before_bulk` | action | `( string $action, string[] $handles )`. Before a bulk sign out on Users > Sessions. `$action` is `revoke` or `sign_out` |
+| `axle_sessions_after_bulk` | action | `( string $action, string[] $handles, int $count )`. After a bulk sign out |
+| `axle_sessions_pruned` | action | `( array $result )`. After a batch of the clean-up: `users`, `expired`, `idle`, `last` and `done` |
+| `axle_sessions_not_me_enabled` | filter | `( bool $enabled )`. Whether the link is added and works. From the setting |
+| `axle_sessions_not_me_scope` | filter | `( string $scope, WP_User $user )`. `all` or `session` |
+| `axle_sessions_not_me_lifetime` | filter | `( int $seconds )`. How long a link works. Default 7 days, 1 hour to 30 days |
+| `axle_sessions_not_me_attempts` | filter | `( int $attempts )`. Wrong keys one address may try in 15 minutes. Default 10, at least 3 |
+| `axle_sessions_not_me_recipients` | filter | `( string[] $emails, WP_User $user, array $report )`. Who is told. Default the site administration address |
+| `axle_sessions_not_me_alert_email` | filter | `( array\|false $email, WP_User $user, array $report )`. The email to the administrators |
+| `axle_sessions_not_me_reset_email` | filter | `( array\|false $email, WP_User $user )`. The email with the reset link |
+| `axle_sessions_not_me_log_limit` | filter | `( int $max )`. Reports kept. Default 50 |
+| `axle_sessions_history_days` | filter | `( int $days )`. Days history is kept. 0 keeps none |
+| `axle_sessions_history_limit` | filter | `( int $limit )`. Entries kept per user. Default 100, 10 to 500 |
+| `axle_sessions_history_rows` | filter | `( int $rows )`. Rows on the profile before "Show all sign-ins". Default 20 |
+| `axle_sessions_history_reason_label` | filter | `( string $label, string $reason )`. The words for how a session ended |
+| `axle_sessions_signed_out_message` | filter | `( string $text, string $reason, int $when )`. The login screen message |
+| `axle_sessions_incident_capability` | filter | `( string $capability )`. Needed for Sign everyone out, on top of seeing every session. Default `edit_users` |
+| `axle_sessions_incident_confirm_word` | filter | `( string $word )`. The words typed to confirm. Default `SIGN OUT` |
+| `axle_sessions_not_me_reported` | action | `( WP_User $user, array $report )`. Someone pressed "This wasn't me" |
+| `axle_sessions_history_session_ended` | action | `( int $user_id, array $entry, string $reason )`. The history recorded how a session ended |
+| `axle_sessions_incident_started` | action | `( array $job )`. Sign everyone out started |
+| `axle_sessions_incident_finished` | action | `( array $entry, array $job )`. Sign everyone out visited every user |
+| `axle_sessions_settings_saved` | action | `( array $settings, array $old )`. The policies or settings changed, from the screen or WP-CLI |
 
 Every `$session` array passed to an action has `expiration`, `ip`, `ua`, `login`, `last_seen` and `handle`. Never the token or the verifier.
 
@@ -220,18 +220,18 @@ Every `$session` array passed to an action has `expiration`, `ip`, `ua`, `login`
 
 ```php
 // Administrators: one session at a time, refused rather than evicted, signed out after 20 idle minutes.
-add_filter( 'user_session_manager_max_sessions', function ( $max, $user ) {
+add_filter( 'axle_sessions_max_sessions', function ( $max, $user ) {
 	return in_array( 'administrator', $user->roles, true ) ? 1 : $max;
 }, 10, 2 );
-add_filter( 'user_session_manager_limit_mode', function ( $mode, $user ) {
+add_filter( 'axle_sessions_limit_mode', function ( $mode, $user ) {
 	return in_array( 'administrator', $user->roles, true ) ? 'block' : $mode;
 }, 10, 2 );
-add_filter( 'user_session_manager_idle_timeout', function ( $minutes, $user ) {
+add_filter( 'axle_sessions_idle_timeout', function ( $minutes, $user ) {
 	return in_array( 'administrator', $user->roles, true ) ? 20 : $minutes;
 }, 10, 2 );
 
 // Send new device alerts for administrators to the security team as well.
-add_filter( 'user_session_manager_new_device_email', function ( $email, $user ) {
+add_filter( 'axle_sessions_new_device_email', function ( $email, $user ) {
 	if ( in_array( 'administrator', $user->roles, true ) ) {
 		$email['headers'][] = 'Bcc: security@example.com';
 	}
@@ -239,12 +239,12 @@ add_filter( 'user_session_manager_new_device_email', function ( $email, $user ) 
 }, 10, 2 );
 
 // Countries from your own GeoIP database. The plugin never calls an outside service.
-add_filter( 'user_session_manager_shared_login_country', function ( $country, $ip ) {
+add_filter( 'axle_sessions_shared_login_country', function ( $country, $ip ) {
 	return my_geoip_country( $ip ); // Your own lookup.
 }, 10, 2 );
 
 // Flag members with more than three devices in a day, not four.
-add_filter( 'user_session_manager_shared_login_rules', function ( $rules, $user ) {
+add_filter( 'axle_sessions_shared_login_rules', function ( $rules, $user ) {
 	if ( in_array( 'subscriber', $user->roles, true ) ) {
 		$rules['max_devices'] = 3;
 	}
@@ -252,41 +252,41 @@ add_filter( 'user_session_manager_shared_login_rules', function ( $rules, $user 
 }, 10, 2 );
 
 // Log every sign out to your own audit trail.
-add_action( 'user_session_manager_session_revoked', function ( $user_id, $session, $context ) {
+add_action( 'axle_sessions_session_revoked', function ( $user_id, $session, $context ) {
 	error_log( sprintf( 'Session of user %d on %s signed out from %s', $user_id, $session['ip'], $context ) );
 }, 10, 3 );
 ```
 
 ## Abilities
 
-On WordPress 6.9 and later, User Session Manager registers [abilities](https://developer.wordpress.org/apis/abilities/), which AI agents find and run through the [MCP adapter](https://github.com/WordPress/mcp-adapter) and anything else through the REST API under `/wp-abilities/v1/`. Each one is marked public, which the MCP adapter needs before it lists an ability. Useful for "I lost my phone" or a suspected break-in.
+On WordPress 6.9 and later, Axle Sessions registers [abilities](https://developer.wordpress.org/apis/abilities/), which AI agents find and run through the [MCP adapter](https://github.com/WordPress/mcp-adapter) and anything else through the REST API under `/wp-abilities/v1/`. Each one is marked public, which the MCP adapter needs before it lists an ability. Useful for "I lost my phone" or a suspected break-in.
 
 | Ability | Does | Needs |
 | --- | --- | --- |
-| `user-session-manager/list-sessions` | Read-only. Sessions with handle, device, IP address, signed in, last active and expires. No input: your own. `user` (ID, login or email): that user's. `all`: everyone's. `limit`, 1 to 100, default 50 | Any logged-in user for their own. The plugin capability, `list_users` and `edit_user` for someone else's |
-| `user-session-manager/revoke-session` | Signs out the session with `handle`. Destructive and idempotent: a session that already ended returns `revoked: false` | Your own session, or the plugin capability for someone else's |
-| `user-session-manager/list-shared-logins` | Read-only. Accounts that look shared, with each reason, the sessions behind it (handle, device, IP address, country, signed in, last active), what was done and when. No input: every flagged account. `user`: only that user. `limit`, 1 to 100, default 50 | The plugin capability and `list_users` for every account. Your own account without them, or the plugin capability and `edit_user` for someone else's |
-| `user-session-manager/list-sign-in-history` | Read-only. Sign-in history with how each session ended. `user`, `limit` (1 to 200) | Yourself, or the plugin capability, `list_users` and `edit_user` |
-| `user-session-manager/list-not-me-reports` | Read-only. "This wasn't me" reports for people you may edit. `days` | The plugin capability and `list_users` |
-| `user-session-manager/sign-out-everyone` | Destructive. Sign everyone out. `confirm` must be true. `keep_current`, `exclude_roles`, `require_new_passwords` | The plugin capability and `list_users`, plus `edit_user` for each person |
-| `user-session-manager/sign-out-user` | Ends every session of `user`. Returns `sessions_ended` | Yourself, or the plugin capability for someone else |
+| `axle-sessions/list-sessions` | Read-only. Sessions with handle, device, IP address, signed in, last active and expires. No input: your own. `user` (ID, login or email): that user's. `all`: everyone's. `limit`, 1 to 100, default 50 | Any logged-in user for their own. The plugin capability, `list_users` and `edit_user` for someone else's |
+| `axle-sessions/revoke-session` | Signs out the session with `handle`. Destructive and idempotent: a session that already ended returns `revoked: false` | Your own session, or the plugin capability for someone else's |
+| `axle-sessions/list-shared-logins` | Read-only. Accounts that look shared, with each reason, the sessions behind it (handle, device, IP address, country, signed in, last active), what was done and when. No input: every flagged account. `user`: only that user. `limit`, 1 to 100, default 50 | The plugin capability and `list_users` for every account. Your own account without them, or the plugin capability and `edit_user` for someone else's |
+| `axle-sessions/list-sign-in-history` | Read-only. Sign-in history with how each session ended. `user`, `limit` (1 to 200) | Yourself, or the plugin capability, `list_users` and `edit_user` |
+| `axle-sessions/list-not-me-reports` | Read-only. "This wasn't me" reports for people you may edit. `days` | The plugin capability and `list_users` |
+| `axle-sessions/sign-out-everyone` | Destructive. Sign everyone out. `confirm` must be true. `keep_current`, `exclude_roles`, `require_new_passwords` | The plugin capability and `list_users`, plus `edit_user` for each person |
+| `axle-sessions/sign-out-user` | Ends every session of `user`. Returns `sessions_ended` | Yourself, or the plugin capability for someone else |
 
 Run them over REST with `GET .../list-sessions/run?input[user]=alice` and `DELETE .../revoke-session/run?input[handle]=7-...`.
 
 ## WP-CLI
 
 ```sh
-wp user-session-manager list [--user=<user>] [--fields=<fields>] [--format=table|csv|json|yaml|ids|count]
-wp user-session-manager revoke <handle>...
-wp user-session-manager sign-out <user>                 # ID, login or email
-wp user-session-manager prune                           # expired and idle sessions, every user
-wp user-session-manager shared [--fields=<fields>] [--format=table|csv|json|yaml|ids|count]   # accounts that look shared
-wp user-session-manager policies [--format=<format>]
-wp user-session-manager set-policy <role> [--max-sessions=<n>] [--idle-minutes=<n>] [--lifetime-hours=<n>] [--remember-hours=<n>] [--shared=off|flag|notify|sign_out_others]
-wp user-session-manager history <user> [--fields=<fields>] [--format=<format>]
-wp user-session-manager reports [--days=<n>] [--format=<format>]
-wp user-session-manager sign-out-everyone [--keep-user=<user>] [--exclude-roles=<roles>] [--require-new-passwords] [--yes]
-wp user-session-manager settings [--not-me=on|off] [--not-me-scope=all|session] [--history-days=<n>] [--limit-mode=evict_oldest|block] [--new-device-email=on|off] [--device-days=<n>] [--mask-ip=on|off] [--format=json]
+wp axle-sessions list [--user=<user>] [--fields=<fields>] [--format=table|csv|json|yaml|ids|count]
+wp axle-sessions revoke <handle>...
+wp axle-sessions sign-out <user>                 # ID, login or email
+wp axle-sessions prune                           # expired and idle sessions, every user
+wp axle-sessions shared [--fields=<fields>] [--format=table|csv|json|yaml|ids|count]   # accounts that look shared
+wp axle-sessions policies [--format=<format>]
+wp axle-sessions set-policy <role> [--max-sessions=<n>] [--idle-minutes=<n>] [--lifetime-hours=<n>] [--remember-hours=<n>] [--shared=off|flag|notify|sign_out_others]
+wp axle-sessions history <user> [--fields=<fields>] [--format=<format>]
+wp axle-sessions reports [--days=<n>] [--format=<format>]
+wp axle-sessions sign-out-everyone [--keep-user=<user>] [--exclude-roles=<roles>] [--require-new-passwords] [--yes]
+wp axle-sessions settings [--not-me=on|off] [--not-me-scope=all|session] [--history-days=<n>] [--limit-mode=evict_oldest|block] [--new-device-email=on|off] [--device-days=<n>] [--mask-ip=on|off] [--format=json]
 ```
 
 `--user` on `list` is WP-CLI's global flag, so the command also runs as that user. Extra fields for `--fields`: `user_id`, `device_type` and `ua`.
@@ -296,16 +296,16 @@ wp user-session-manager settings [--not-me=on|off] [--not-me-scope=all|session] 
 | Where | Contents |
 | --- | --- |
 | `session_tokens` user meta (core's) | The sessions themselves. The plugin adds `last_seen` to each, and shortens `ip` when asked |
-| `user_session_manager_devices` user meta | Only with the new device email on: HMAC fingerprints of browser, system and IP address, with the browser label and last seen time. Entries older than 30 days are dropped |
-| `user_session_manager_shared` user meta | Only for accounts that look shared: the reasons, a copy of the sessions behind them (browser, IP address as stored, country when a filter gives one, times) and what was done. Dropped 7 days after the last sign |
-| `user_session_manager_settings` option (network option on multisite) | Per-role policies, what happens when an account looks shared, over-the-limit mode, new device email, days to remember devices, IP shortening |
-| `user_session_manager_history` user meta | Sign-in history: device, IP address as stored, times, how each session ended. Kept for the retention time, 100 entries at most |
-| `user_session_manager_not_me` user meta | Hashes of "This wasn't me" links with the session handle and expiry. 5 at most, removed when used or expired |
-| `user_session_manager_not_me_events` option | The last 50 reports (not autoloaded) |
-| `user_session_manager_incidents` option | The last 20 runs of Sign everyone out (not autoloaded) |
-| `user_session_manager_prune_cursor` option (network option on multisite) | Where the hourly clean-up carries on |
+| `axle_sessions_devices` user meta | Only with the new device email on: HMAC fingerprints of browser, system and IP address, with the browser label and last seen time. Entries older than 30 days are dropped |
+| `axle_sessions_shared` user meta | Only for accounts that look shared: the reasons, a copy of the sessions behind them (browser, IP address as stored, country when a filter gives one, times) and what was done. Dropped 7 days after the last sign |
+| `axle_sessions_settings` option (network option on multisite) | Per-role policies, what happens when an account looks shared, over-the-limit mode, new device email, days to remember devices, IP shortening |
+| `axle_sessions_history` user meta | Sign-in history: device, IP address as stored, times, how each session ended. Kept for the retention time, 100 entries at most |
+| `axle_sessions_not_me` user meta | Hashes of "This wasn't me" links with the session handle and expiry. 5 at most, removed when used or expired |
+| `axle_sessions_not_me_events` option | The last 50 reports (not autoloaded) |
+| `axle_sessions_incidents` option | The last 20 runs of Sign everyone out (not autoloaded) |
+| `axle_sessions_prune_cursor` option (network option on multisite) | Where the hourly clean-up carries on |
 
-The `user_session_manager_prune` cron event runs hourly, on the main site of a network. Each run looks at 500 users with sessions, removes expired ones (core only does that when the user signs in again) and signs out idle ones.
+The `axle_sessions_prune` cron event runs hourly, on the main site of a network. Each run looks at 500 users with sessions, removes expired ones (core only does that when the user signs in again) and signs out idle ones.
 
 The total shown in Site Health is cached in the object cache until any user's sessions change.
 

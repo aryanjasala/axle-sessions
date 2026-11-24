@@ -1,7 +1,7 @@
 {
 	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
 	"meta": {
-		"title": "User Session Manager demo",
+		"title": "Axle Sessions demo",
 		"author": "aryanjasala"
 	},
 	"landingPage": "/wp-admin/users.php?page=user-sessions",
@@ -18,12 +18,12 @@
 			"step": "installPlugin",
 			"pluginData": {
 				"resource": "git:directory",
-				"url": "https://github.com/aryanjasala/user-session-manager",
+				"url": "https://github.com/aryanjasala/axle-sessions",
 				"ref": "main"
 			},
 			"options": {
 				"activate": true,
-				"targetFolderName": "user-session-manager"
+				"targetFolderName": "axle-sessions"
 			}
 		},
 		{

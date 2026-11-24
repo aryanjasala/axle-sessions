@@ -2,14 +2,14 @@
 /**
  * Tests for "last active" tracking and the idle timeout.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\Activity;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
+use AryanX\Axle\Sessions\Activity;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
@@ -51,7 +51,7 @@ final class ActivityTest extends SessionTestCase {
 		$this->session( 7, 'other' );
 		$this->cookie( 'alice', 'idle' );
 
-		Actions\expectDone( 'user_session_manager_idle_session_ended' )
+		Actions\expectDone( 'axle_sessions_idle_session_ended' )
 			->once()
 			->with(
 				7,
@@ -74,7 +74,7 @@ final class ActivityTest extends SessionTestCase {
 		$this->session( 7, 'fresh', array( 'last_seen' => time() - 60 ) );
 		$this->cookie( 'alice', 'fresh' );
 
-		Actions\expectDone( 'user_session_manager_idle_session_ended' )->never();
+		Actions\expectDone( 'axle_sessions_idle_session_ended' )->never();
 
 		$this->assertSame( 7, $this->activity()->end_idle_session( 7 ) );
 		$this->assertCount( 1, $this->stored( 7 ) );
@@ -83,7 +83,7 @@ final class ActivityTest extends SessionTestCase {
 	public function test_a_cookie_of_another_user_or_no_user_is_left_alone(): void {
 		$this->user( 7, 'alice' );
 		$this->session( 7, 'idle', array( 'last_seen' => 1 ) );
-		Filters\expectApplied( 'user_session_manager_idle_timeout' )->never();
+		Filters\expectApplied( 'axle_sessions_idle_timeout' )->never();
 
 		$this->cookie( 'mallory', 'idle' );
 		$this->assertSame( 7, $this->activity()->end_idle_session( 7 ) );
@@ -103,7 +103,7 @@ final class ActivityTest extends SessionTestCase {
 		$this->activity()->track();
 		$this->assertEqualsWithDelta( time() - 100, $this->stored( 7 )[ $verifier ]['last_seen'], 2, 'Within 5 minutes nothing is written.' );
 
-		Filters\expectApplied( 'user_session_manager_last_seen_interval' )->once()->andReturn( 60 );
+		Filters\expectApplied( 'axle_sessions_last_seen_interval' )->once()->andReturn( 60 );
 		$this->activity()->track();
 		$this->assertEqualsWithDelta( time(), $this->stored( 7 )[ $verifier ]['last_seen'], 2 );
 	}
@@ -114,7 +114,7 @@ final class ActivityTest extends SessionTestCase {
 		$this->token        = 'mine';
 		$verifier           = $this->session( 7, 'mine', array( 'last_seen' => time() - 400 ) );
 
-		Filters\expectApplied( 'user_session_manager_track_request' )->once()->with( true, 7 )->andReturn( false );
+		Filters\expectApplied( 'axle_sessions_track_request' )->once()->with( true, 7 )->andReturn( false );
 
 		$this->activity()->track();
 		$this->assertEqualsWithDelta( time() - 400, $this->stored( 7 )[ $verifier ]['last_seen'], 2 );

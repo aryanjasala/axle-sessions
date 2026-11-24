@@ -2,22 +2,22 @@
 /**
  * Site Health check.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Health;
+namespace AryanX\Axle\Sessions\Health;
 
-use AryanX\Axle\UserSessionManager\Admin\SessionsPage;
-use AryanX\Axle\UserSessionManager\NotMe;
-use AryanX\Axle\UserSessionManager\Admin\SettingsPage;
-use AryanX\Axle\UserSessionManager\Service;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
+use AryanX\Axle\Sessions\Admin\SessionsPage;
+use AryanX\Axle\Sessions\NotMe;
+use AryanX\Axle\Sessions\Admin\SettingsPage;
+use AryanX\Axle\Sessions\Service;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Adds a User Session Manager test to Tools > Site Health.
+ * Adds a Axle Sessions test to Tools > Site Health.
  *
  * It flags sessions kept outside user meta (nothing can be listed or ended),
  * and administrator sessions with neither a limit nor an idle timeout.
@@ -73,8 +73,8 @@ final class SiteHealth implements Service {
 	 */
 	public function add_test( $tests ): array {
 		$tests                                   = (array) $tests;
-		$tests['direct']['user_session_manager'] = array(
-			'label' => __( 'User Session Manager', 'user-session-manager' ),
+		$tests['direct']['axle_sessions'] = array(
+			'label' => __( 'Axle Sessions', 'axle-sessions' ),
 			'test'  => array( $this, 'run' ),
 		);
 
@@ -87,13 +87,13 @@ final class SiteHealth implements Service {
 	 * @return array Site Health result.
 	 */
 	public function run(): array {
-		$actions = sprintf( '<p><a href="%s">%s</a></p>', esc_url( SettingsPage::url() ), esc_html__( 'Open session policies', 'user-session-manager' ) );
+		$actions = sprintf( '<p><a href="%s">%s</a></p>', esc_url( SettingsPage::url() ), esc_html__( 'Open session policies', 'axle-sessions' ) );
 
 		if ( ! $this->sessions->is_supported() ) {
 			return $this->result(
 				'recommended',
-				__( 'Login sessions are stored where User Session Manager cannot see them', 'user-session-manager' ),
-				__( 'Another plugin moved login sessions out of user meta (the session_token_manager filter). Sessions cannot be listed, signed out, limited or timed out until that plugin is turned off.', 'user-session-manager' ),
+				__( 'Login sessions are stored where Axle Sessions cannot see them', 'axle-sessions' ),
+				__( 'Another plugin moved login sessions out of user meta (the session_token_manager filter). Sessions cannot be listed, signed out, limited or timed out until that plugin is turned off.', 'axle-sessions' ),
 				$actions
 			);
 		}
@@ -102,13 +102,13 @@ final class SiteHealth implements Service {
 		if ( $reports ) {
 			return $this->result(
 				'recommended',
-				__( 'Someone reported a sign-in as "This wasn\'t me"', 'user-session-manager' ),
+				__( 'Someone reported a sign-in as "This wasn\'t me"', 'axle-sessions' ),
 				sprintf(
 					/* translators: %d: number of reports. */
-					_n( '%d sign-in was reported in the last 7 days by the owner of the account. The account was signed out and its password reset. Check the report, and ask the person how their password could have leaked.', '%d sign-ins were reported in the last 7 days by the owners of the accounts. Those accounts were signed out and their passwords reset. Check the reports, and ask the people how their passwords could have leaked.', count( $reports ), 'user-session-manager' ),
+					_n( '%d sign-in was reported in the last 7 days by the owner of the account. The account was signed out and its password reset. Check the report, and ask the person how their password could have leaked.', '%d sign-ins were reported in the last 7 days by the owners of the accounts. Those accounts were signed out and their passwords reset. Check the reports, and ask the people how their passwords could have leaked.', count( $reports ), 'axle-sessions' ),
 					count( $reports )
 				),
-				sprintf( '<p><a href="%s">%s</a></p>', esc_url( SessionsPage::url() ), esc_html__( 'See the reports', 'user-session-manager' ) )
+				sprintf( '<p><a href="%s">%s</a></p>', esc_url( SessionsPage::url() ), esc_html__( 'See the reports', 'axle-sessions' ) )
 			);
 		}
 
@@ -116,8 +116,8 @@ final class SiteHealth implements Service {
 		if ( 0 === $admin['max_sessions'] && 0 === $admin['idle_minutes'] ) {
 			return $this->result(
 				'recommended',
-				__( 'Administrator sessions have no idle timeout or session limit', 'user-session-manager' ),
-				__( 'A forgotten administrator login on a shared or lost computer stays signed in until it expires. Set an idle timeout or a session limit for administrators.', 'user-session-manager' ),
+				__( 'Administrator sessions have no idle timeout or session limit', 'axle-sessions' ),
+				__( 'A forgotten administrator login on a shared or lost computer stays signed in until it expires. Set an idle timeout or a session limit for administrators.', 'axle-sessions' ),
 				$actions
 			);
 		}
@@ -126,14 +126,14 @@ final class SiteHealth implements Service {
 
 		return $this->result(
 			'good',
-			__( 'Login sessions are managed', 'user-session-manager' ),
+			__( 'Login sessions are managed', 'axle-sessions' ),
 			sprintf(
 				/* translators: 1: number of sessions, 2: number of users. */
-				_n( '%1$d active session across %2$d users. Administrator sessions are limited or time out when idle.', '%1$d active sessions across %2$d users. Administrator sessions are limited or time out when idle.', $totals['sessions'], 'user-session-manager' ),
+				_n( '%1$d active session across %2$d users. Administrator sessions are limited or time out when idle.', '%1$d active sessions across %2$d users. Administrator sessions are limited or time out when idle.', $totals['sessions'], 'axle-sessions' ),
 				$totals['sessions'],
 				$totals['users']
 			),
-			sprintf( '<p><a href="%s">%s</a></p>', esc_url( SessionsPage::url() ), esc_html__( 'See all sessions', 'user-session-manager' ) )
+			sprintf( '<p><a href="%s">%s</a></p>', esc_url( SessionsPage::url() ), esc_html__( 'See all sessions', 'axle-sessions' ) )
 		);
 	}
 
@@ -151,12 +151,12 @@ final class SiteHealth implements Service {
 			'label'       => $label,
 			'status'      => $status,
 			'badge'       => array(
-				'label' => __( 'Security', 'user-session-manager' ),
+				'label' => __( 'Security', 'axle-sessions' ),
 				'color' => 'blue',
 			),
 			'description' => '<p>' . esc_html( $description ) . '</p>',
 			'actions'     => $actions,
-			'test'        => 'user_session_manager',
+			'test'        => 'axle_sessions',
 		);
 	}
 }

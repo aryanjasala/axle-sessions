@@ -2,7 +2,7 @@
 /**
  * Plugin-specific test additions. The shared template never overwrites this file.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
 // phpcs:ignoreFile

@@ -2,10 +2,10 @@
 /**
  * Reading and ending login sessions.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
 final class Sessions implements Service {
 
 	public const META        = 'session_tokens';
-	public const CACHE_GROUP = 'user_session_manager';
+	public const CACHE_GROUP = 'axle_sessions';
 
 	private const BATCH     = 500;
 	private const MAX_USERS = 10000;
@@ -244,7 +244,7 @@ final class Sessions implements Service {
 		 * @param array  $session Session data: expiration, ip, ua, login, last_seen and handle.
 		 * @param string $context profile, admin, bulk, cli or ability.
 		 */
-		do_action( 'user_session_manager_session_revoked', $user_id, $session + array( 'handle' => $this->handle( $user_id, $verifier ) ), $context );
+		do_action( 'axle_sessions_session_revoked', $user_id, $session + array( 'handle' => $this->handle( $user_id, $verifier ) ), $context );
 
 		return true;
 	}
@@ -299,7 +299,7 @@ final class Sessions implements Service {
 		 * @param int    $count   Sessions that were active.
 		 * @param string $context profile, admin, bulk, cli, ability or privacy.
 		 */
-		do_action( 'user_session_manager_user_signed_out_everywhere', $user_id, $count, $context );
+		do_action( 'axle_sessions_user_signed_out_everywhere', $user_id, $count, $context );
 
 		return $count;
 	}
@@ -565,7 +565,7 @@ final class Sessions implements Service {
 		 *
 		 * @param int $max Default 10000.
 		 */
-		return max( 1, (int) apply_filters( 'user_session_manager_max_users_scanned', self::MAX_USERS ) );
+		return max( 1, (int) apply_filters( 'axle_sessions_max_users_scanned', self::MAX_USERS ) );
 	}
 
 	/**

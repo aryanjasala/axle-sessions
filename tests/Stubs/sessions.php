@@ -2,7 +2,7 @@
 /**
  * Stand-ins for the WordPress user classes the session code touches.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
 // phpcs:ignoreFile

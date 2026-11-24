@@ -2,18 +2,18 @@
 /**
  * Tests for the hourly clean-up, the abilities and the Users column.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\Abilities;
-use AryanX\Axle\UserSessionManager\Admin\SessionsPage;
-use AryanX\Axle\UserSessionManager\Admin\UsersColumn;
-use AryanX\Axle\UserSessionManager\Pruner;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
-use AryanX\Axle\UserSessionManager\SharedLogins;
+use AryanX\Axle\Sessions\Abilities;
+use AryanX\Axle\Sessions\Admin\SessionsPage;
+use AryanX\Axle\Sessions\Admin\UsersColumn;
+use AryanX\Axle\Sessions\Pruner;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
+use AryanX\Axle\Sessions\SharedLogins;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
@@ -36,8 +36,8 @@ final class PrunerTest extends SessionTestCase {
 		$keep = $this->session( 7, 'alice-active' );
 		\WP_User_Query::$queue = array( array( 2, 7 ) );
 
-		Actions\expectDone( 'user_session_manager_idle_session_ended' )->once()->with( 7, \Mockery::type( 'array' ), 'prune' );
-		Actions\expectDone( 'user_session_manager_pruned' )->once();
+		Actions\expectDone( 'axle_sessions_idle_session_ended' )->once()->with( 7, \Mockery::type( 'array' ), 'prune' );
+		Actions\expectDone( 'axle_sessions_pruned' )->once();
 
 		$result = $this->pruner()->prune( 0, 500 );
 
@@ -60,7 +60,7 @@ final class PrunerTest extends SessionTestCase {
 		$this->user( 3, 'cy' );
 		\WP_User_Query::$queue = array( array( 2 ) );
 
-		Filters\expectApplied( 'user_session_manager_prune_batch' )->andReturn( 1 );
+		Filters\expectApplied( 'axle_sessions_prune_batch' )->andReturn( 1 );
 		$this->pruner()->run();
 		$this->assertSame( 2, $this->options[ Pruner::CURSOR ] );
 
@@ -82,13 +82,13 @@ final class PrunerTest extends SessionTestCase {
 		( $this->abilities( $settings, $sessions, new SharedLogins( $settings, $sessions ) ) )->register_abilities();
 
 		$this->assertSame( array(
-				'user-session-manager/list-sessions',
-				'user-session-manager/revoke-session',
-				'user-session-manager/sign-out-user',
-				'user-session-manager/list-shared-logins',
-				'user-session-manager/list-sign-in-history',
-				'user-session-manager/list-not-me-reports',
-				'user-session-manager/sign-out-everyone',
+				'axle-sessions/list-sessions',
+				'axle-sessions/revoke-session',
+				'axle-sessions/sign-out-user',
+				'axle-sessions/list-shared-logins',
+				'axle-sessions/list-sign-in-history',
+				'axle-sessions/list-not-me-reports',
+				'axle-sessions/sign-out-everyone',
 			),
 			array_keys( $registered ) );
 		foreach ( $registered as $args ) {
@@ -96,19 +96,19 @@ final class PrunerTest extends SessionTestCase {
 			$this->assertTrue( $args['meta']['mcp']['public'] );
 			$this->assertTrue( $args['meta']['show_in_rest'] );
 		}
-		$this->assertTrue( $registered['user-session-manager/list-sessions']['meta']['annotations']['readonly'] );
-		$this->assertTrue( $registered['user-session-manager/list-sign-in-history']['meta']['annotations']['readonly'] );
-		$this->assertTrue( $registered['user-session-manager/list-not-me-reports']['meta']['annotations']['readonly'] );
-		$this->assertTrue( $registered['user-session-manager/sign-out-everyone']['meta']['annotations']['destructive'] );
-		$this->assertFalse( $registered['user-session-manager/sign-out-everyone']['meta']['annotations']['readonly'] );
-		$this->assertTrue( $registered['user-session-manager/list-shared-logins']['meta']['annotations']['readonly'] );
+		$this->assertTrue( $registered['axle-sessions/list-sessions']['meta']['annotations']['readonly'] );
+		$this->assertTrue( $registered['axle-sessions/list-sign-in-history']['meta']['annotations']['readonly'] );
+		$this->assertTrue( $registered['axle-sessions/list-not-me-reports']['meta']['annotations']['readonly'] );
+		$this->assertTrue( $registered['axle-sessions/sign-out-everyone']['meta']['annotations']['destructive'] );
+		$this->assertFalse( $registered['axle-sessions/sign-out-everyone']['meta']['annotations']['readonly'] );
+		$this->assertTrue( $registered['axle-sessions/list-shared-logins']['meta']['annotations']['readonly'] );
 		$this->assertSame(
 			array(
 				'readonly'    => false,
 				'destructive' => true,
 				'idempotent'  => true,
 			),
-			$registered['user-session-manager/revoke-session']['meta']['annotations']
+			$registered['axle-sessions/revoke-session']['meta']['annotations']
 		);
 	}
 
@@ -192,13 +192,13 @@ final class PrunerTest extends SessionTestCase {
 		$b        = $sessions->handle( 7, $this->session( 7, 'b' ) );
 		$boss     = $sessions->handle( 9, $this->session( 9, 'boss' ) );
 
-		Actions\expectDone( 'user_session_manager_before_bulk' )->once()->with( 'revoke', array( $a, $boss ) );
-		Actions\expectDone( 'user_session_manager_after_bulk' )->once()->with( 'revoke', array( $a, $boss ), 1 );
+		Actions\expectDone( 'axle_sessions_before_bulk' )->once()->with( 'revoke', array( $a, $boss ) );
+		Actions\expectDone( 'axle_sessions_after_bulk' )->once()->with( 'revoke', array( $a, $boss ), 1 );
 		$this->assertSame( 1, $page->bulk( 'revoke', array( $a, $boss, $a, '' ) ) );
 		$this->assertCount( 1, $this->stored( 9 ), 'Users the admin may not edit keep their sessions.' );
 
 		$this->session( 7, 'c' );
-		Actions\expectDone( 'user_session_manager_user_signed_out_everywhere' )->once()->with( 7, 2, 'bulk' );
+		Actions\expectDone( 'axle_sessions_user_signed_out_everywhere' )->once()->with( 7, 2, 'bulk' );
 		$this->assertSame( 2, $page->bulk( 'sign_out', array( $b, $b ) ) );
 	}
 }

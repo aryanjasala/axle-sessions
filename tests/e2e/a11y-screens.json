@@ -320,7 +320,7 @@
       "name": "Settings > User Sessions with policies per role",
       "setup": [
         [
-          "user-session-manager",
+          "axle-sessions",
           "set-policy",
           "administrator",
           "--max-sessions=3",
@@ -328,14 +328,14 @@
           "--lifetime-hours=12"
         ],
         [
-          "user-session-manager",
+          "axle-sessions",
           "set-policy",
           "subscriber",
           "--max-sessions=1",
           "--remember-hours=720"
         ],
         [
-          "user-session-manager",
+          "axle-sessions",
           "settings",
           "--new-device-email=on"
         ]
@@ -345,7 +345,7 @@
         [
           "option",
           "delete",
-          "user_session_manager_settings"
+          "axle_sessions_settings"
         ]
       ],
       "steps": [
@@ -377,13 +377,13 @@
           ]
         },
         [
-          "user-session-manager",
+          "axle-sessions",
           "set-policy",
           "editor",
           "--max-sessions=1"
         ],
         [
-          "user-session-manager",
+          "axle-sessions",
           "settings",
           "--limit-mode=block"
         ]
@@ -406,7 +406,7 @@
         [
           "option",
           "delete",
-          "user_session_manager_settings"
+          "axle_sessions_settings"
         ],
         {
           "js": "seed.js",
@@ -437,13 +437,13 @@
           ]
         },
         [
-          "user-session-manager",
+          "axle-sessions",
           "set-policy",
           "editor",
           "--max-sessions=1"
         ],
         [
-          "user-session-manager",
+          "axle-sessions",
           "settings",
           "--limit-mode=block",
           "--device-swap=off"
@@ -467,7 +467,7 @@
         [
           "option",
           "delete",
-          "user_session_manager_settings"
+          "axle_sessions_settings"
         ],
         {
           "js": "seed.js",
@@ -556,7 +556,7 @@
       "name": "Profile with sign-in history turned off",
       "setup": [
         [
-          "user-session-manager",
+          "axle-sessions",
           "settings",
           "--history-days=0"
         ]
@@ -569,7 +569,7 @@
         [
           "option",
           "delete",
-          "user_session_manager_settings"
+          "axle_sessions_settings"
         ]
       ]
     },
@@ -699,7 +699,7 @@
       "name": "Settings > User Sessions with the new options",
       "setup": [
         [
-          "user-session-manager",
+          "axle-sessions",
           "settings",
           "--not-me-scope=session",
           "--history-days=30"
@@ -710,7 +710,7 @@
         [
           "option",
           "delete",
-          "user_session_manager_settings"
+          "axle_sessions_settings"
         ]
       ],
       "steps": [
@@ -821,7 +821,7 @@
     {
       "name": "This link no longer works page",
       "loggedOut": true,
-      "url": "/wp-login.php?action=user_session_manager_not_me&usm_key=3.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "url": "/wp-login.php?action=axle_sessions_not_me&usm_key=3.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "steps": [
         {
           "waitFor": "#login_error"

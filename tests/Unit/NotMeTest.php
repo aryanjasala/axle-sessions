@@ -2,16 +2,16 @@
 /**
  * Tests for "This wasn't me" and "Sign everyone out".
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\Incident;
-use AryanX\Axle\UserSessionManager\NewDevice;
-use AryanX\Axle\UserSessionManager\NotMe;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
+use AryanX\Axle\Sessions\Incident;
+use AryanX\Axle\Sessions\NewDevice;
+use AryanX\Axle\Sessions\NotMe;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
@@ -103,7 +103,7 @@ final class NotMeTest extends SessionTestCase {
 	public function test_the_link_is_random_stored_hashed_and_bound_to_the_session(): void {
 		list( , $link, $key, $session ) = $this->link();
 
-		$this->assertStringContainsString( 'wp-login.php?action=user_session_manager_not_me&usm_key=7.', $link );
+		$this->assertStringContainsString( 'wp-login.php?action=axle_sessions_not_me&usm_key=7.', $link );
 		$token = substr( $key, 2 );
 		$this->assertSame( 48, strlen( $token ) );
 
@@ -154,10 +154,10 @@ final class NotMeTest extends SessionTestCase {
 	}
 
 	public function test_the_lifetime_is_filterable_and_clamped(): void {
-		Filters\expectApplied( 'user_session_manager_not_me_lifetime' )->once()->andReturn( 5 );
+		Filters\expectApplied( 'axle_sessions_not_me_lifetime' )->once()->andReturn( 5 );
 		$this->assertSame( HOUR_IN_SECONDS, ( new Settings() )->not_me_lifetime() );
 
-		Filters\expectApplied( 'user_session_manager_not_me_lifetime' )->once()->andReturn( 99 * DAY_IN_SECONDS );
+		Filters\expectApplied( 'axle_sessions_not_me_lifetime' )->once()->andReturn( 99 * DAY_IN_SECONDS );
 		$this->assertSame( 30 * DAY_IN_SECONDS, ( new Settings() )->not_me_lifetime() );
 	}
 
@@ -177,7 +177,7 @@ final class NotMeTest extends SessionTestCase {
 		$this->session( 7, 'tablet' );
 		$not_me = $this->not_me();
 
-		Actions\expectDone( 'user_session_manager_not_me_reported' )->once();
+		Actions\expectDone( 'axle_sessions_not_me_reported' )->once();
 		$report = $not_me->redeem( $not_me->lookup( $key ) );
 
 		$this->assertSame( 2, $report['ended'], 'Every session of the account, by default.' );
@@ -230,8 +230,8 @@ final class NotMeTest extends SessionTestCase {
 
 	public function test_recipients_and_the_reset_email_are_filterable(): void {
 		list( , , $key ) = $this->link();
-		Filters\expectApplied( 'user_session_manager_not_me_recipients' )->once()->andReturn( array( 'security@example.com', 'it@example.com' ) );
-		Filters\expectApplied( 'user_session_manager_not_me_reset_email' )->once()->andReturn( false );
+		Filters\expectApplied( 'axle_sessions_not_me_recipients' )->once()->andReturn( array( 'security@example.com', 'it@example.com' ) );
+		Filters\expectApplied( 'axle_sessions_not_me_reset_email' )->once()->andReturn( false );
 		$not_me = $this->not_me();
 
 		$report = $not_me->redeem( $not_me->lookup( $key ) );
@@ -261,7 +261,7 @@ final class NotMeTest extends SessionTestCase {
 		$devices->check( $user, array( 'ip' => '198.51.100.4' ) + $session );
 
 		$this->assertCount( 1, $this->sent );
-		$this->assertStringContainsString( 'user_session_manager_not_me', $this->sent[0]['message'] );
+		$this->assertStringContainsString( 'axle_sessions_not_me', $this->sent[0]['message'] );
 		$this->assertStringContainsString( 'Nothing happens until you confirm', $this->sent[0]['message'] );
 
 		$this->sent = array();
@@ -271,7 +271,7 @@ final class NotMeTest extends SessionTestCase {
 		$devices->check( $user, array( 'ip' => '198.51.100.55' ) + $session );
 
 		$this->assertCount( 1, $this->sent );
-		$this->assertStringNotContainsString( 'user_session_manager_not_me', $this->sent[0]['message'] );
+		$this->assertStringNotContainsString( 'axle_sessions_not_me', $this->sent[0]['message'] );
 	}
 
 	public function test_reports_can_be_listed_by_age_and_user_and_forgotten(): void {
@@ -293,7 +293,7 @@ final class NotMeTest extends SessionTestCase {
 
 	public function test_the_report_log_is_capped(): void {
 		list( , , $key ) = $this->link();
-		Filters\expectApplied( 'user_session_manager_not_me_log_limit' )->andReturn( 5 );
+		Filters\expectApplied( 'axle_sessions_not_me_log_limit' )->andReturn( 5 );
 		$this->options[ NotMe::EVENTS ] = array_fill( 0, 9, array( 'user' => 3, 'time' => time(), 'device' => '', 'ip' => '', 'scope' => 'all', 'ended' => 0, 'reset' => true ) );
 		$not_me = $this->not_me();
 
@@ -316,8 +316,8 @@ final class NotMeTest extends SessionTestCase {
 		$this->current_user   = 1;
 		\WP_User_Query::$queue = array( array( 1, 2, 3, 4 ) );
 
-		Actions\expectDone( 'user_session_manager_incident_started' )->once();
-		Actions\expectDone( 'user_session_manager_incident_finished' )->once();
+		Actions\expectDone( 'axle_sessions_incident_started' )->once();
+		Actions\expectDone( 'axle_sessions_incident_finished' )->once();
 		$job = ( new Incident( $this->store ) )->run_all(
 			array(
 				'keep_current'  => true,
@@ -379,10 +379,10 @@ final class NotMeTest extends SessionTestCase {
 	public function test_the_typed_words_are_filterable_and_never_empty(): void {
 		$this->assertSame( 'SIGN OUT', Incident::confirm_word() );
 
-		Filters\expectApplied( 'user_session_manager_incident_confirm_word' )->once()->andReturn( ' RESET ALL ' );
+		Filters\expectApplied( 'axle_sessions_incident_confirm_word' )->once()->andReturn( ' RESET ALL ' );
 		$this->assertSame( 'RESET ALL', Incident::confirm_word() );
 
-		Filters\expectApplied( 'user_session_manager_incident_confirm_word' )->once()->andReturn( '  ' );
+		Filters\expectApplied( 'axle_sessions_incident_confirm_word' )->once()->andReturn( '  ' );
 		$this->assertSame( 'SIGN OUT', Incident::confirm_word() );
 	}
 }

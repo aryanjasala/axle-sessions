@@ -2,10 +2,10 @@
 /**
  * Personal data export, erase and the privacy policy text.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Privacy implements Service {
 
-	public const ID = 'user-session-manager';
+	public const ID = 'axle-sessions';
 
 	/**
 	 * Saved settings.
@@ -97,7 +97,7 @@ final class Privacy implements Service {
 	 */
 	public function add_exporter( array $exporters ): array {
 		$exporters[ self::ID ] = array(
-			'exporter_friendly_name' => __( 'Login sessions', 'user-session-manager' ),
+			'exporter_friendly_name' => __( 'Login sessions', 'axle-sessions' ),
 			'callback'               => array( $this, 'export' ),
 		);
 
@@ -112,7 +112,7 @@ final class Privacy implements Service {
 	 */
 	public function add_eraser( array $erasers ): array {
 		$erasers[ self::ID ] = array(
-			'eraser_friendly_name' => __( 'Login sessions', 'user-session-manager' ),
+			'eraser_friendly_name' => __( 'Login sessions', 'axle-sessions' ),
 			'callback'             => array( $this, 'erase' ),
 		);
 
@@ -134,32 +134,32 @@ final class Privacy implements Service {
 			$format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 			foreach ( $this->sessions->list_for_user( $user->ID ) as $index => $row ) {
 				$data[] = array(
-					'group_id'    => 'user-session-manager-sessions',
-					'group_label' => __( 'Login sessions', 'user-session-manager' ),
-					'item_id'     => 'user-session-manager-session-' . $index,
+					'group_id'    => 'axle-sessions-sessions',
+					'group_label' => __( 'Login sessions', 'axle-sessions' ),
+					'item_id'     => 'axle-sessions-session-' . $index,
 					'data'        => array(
 						array(
-							'name'  => __( 'Device', 'user-session-manager' ),
+							'name'  => __( 'Device', 'axle-sessions' ),
 							'value' => $row['device'],
 						),
 						array(
-							'name'  => __( 'Browser string', 'user-session-manager' ),
+							'name'  => __( 'Browser string', 'axle-sessions' ),
 							'value' => $row['ua'],
 						),
 						array(
-							'name'  => __( 'IP address', 'user-session-manager' ),
+							'name'  => __( 'IP address', 'axle-sessions' ),
 							'value' => $row['ip'],
 						),
 						array(
-							'name'  => __( 'Signed in', 'user-session-manager' ),
+							'name'  => __( 'Signed in', 'axle-sessions' ),
 							'value' => $row['login'] ? wp_date( $format, $row['login'] ) : '',
 						),
 						array(
-							'name'  => __( 'Last active', 'user-session-manager' ),
+							'name'  => __( 'Last active', 'axle-sessions' ),
 							'value' => $row['last_seen'] ? wp_date( $format, $row['last_seen'] ) : '',
 						),
 						array(
-							'name'  => __( 'Expires', 'user-session-manager' ),
+							'name'  => __( 'Expires', 'axle-sessions' ),
 							'value' => wp_date( $format, $row['expiration'] ),
 						),
 					),
@@ -168,16 +168,16 @@ final class Privacy implements Service {
 
 			foreach ( $this->devices->devices( $user->ID ) as $index => $device ) {
 				$data[] = array(
-					'group_id'    => 'user-session-manager-devices',
-					'group_label' => __( 'Remembered devices', 'user-session-manager' ),
-					'item_id'     => 'user-session-manager-device-' . $index,
+					'group_id'    => 'axle-sessions-devices',
+					'group_label' => __( 'Remembered devices', 'axle-sessions' ),
+					'item_id'     => 'axle-sessions-device-' . $index,
 					'data'        => array(
 						array(
-							'name'  => __( 'Device', 'user-session-manager' ),
+							'name'  => __( 'Device', 'axle-sessions' ),
 							'value' => (string) $device['label'],
 						),
 						array(
-							'name'  => __( 'Last seen', 'user-session-manager' ),
+							'name'  => __( 'Last seen', 'axle-sessions' ),
 							'value' => wp_date( $format, (int) $device['seen'] ),
 						),
 					),
@@ -186,29 +186,29 @@ final class Privacy implements Service {
 
 			foreach ( null === $this->history ? array() : $this->history->rows( $user->ID ) as $index => $row ) {
 				$data[] = array(
-					'group_id'    => 'user-session-manager-history',
-					'group_label' => __( 'Sign-in history', 'user-session-manager' ),
-					'item_id'     => 'user-session-manager-history-' . $index,
+					'group_id'    => 'axle-sessions-history',
+					'group_label' => __( 'Sign-in history', 'axle-sessions' ),
+					'item_id'     => 'axle-sessions-history-' . $index,
 					'data'        => array(
 						array(
-							'name'  => __( 'Device', 'user-session-manager' ),
+							'name'  => __( 'Device', 'axle-sessions' ),
 							'value' => $row['device'],
 						),
 						array(
-							'name'  => __( 'IP address', 'user-session-manager' ),
+							'name'  => __( 'IP address', 'axle-sessions' ),
 							'value' => $row['ip'],
 						),
 						array(
-							'name'  => __( 'Signed in', 'user-session-manager' ),
+							'name'  => __( 'Signed in', 'axle-sessions' ),
 							'value' => $row['start'] ? wp_date( $format, $row['start'] ) : '',
 						),
 						array(
-							'name'  => __( 'Last active', 'user-session-manager' ),
+							'name'  => __( 'Last active', 'axle-sessions' ),
 							'value' => $row['seen'] ? wp_date( $format, $row['seen'] ) : '',
 						),
 						array(
-							'name'  => __( 'How it ended', 'user-session-manager' ),
-							'value' => 'active' === $row['state'] ? __( 'Still signed in', 'user-session-manager' ) : History::reason_label( '' !== $row['reason'] ? $row['reason'] : 'unknown' ),
+							'name'  => __( 'How it ended', 'axle-sessions' ),
+							'value' => 'active' === $row['state'] ? __( 'Still signed in', 'axle-sessions' ) : History::reason_label( '' !== $row['reason'] ? $row['reason'] : 'unknown' ),
 						),
 					),
 				);
@@ -216,24 +216,24 @@ final class Privacy implements Service {
 
 			foreach ( null === $this->not_me ? array() : $this->not_me->events( $user->ID ) as $index => $event ) {
 				$data[] = array(
-					'group_id'    => 'user-session-manager-not-me',
-					'group_label' => __( '"This wasn\'t me" reports', 'user-session-manager' ),
-					'item_id'     => 'user-session-manager-not-me-' . $index,
+					'group_id'    => 'axle-sessions-not-me',
+					'group_label' => __( '"This wasn\'t me" reports', 'axle-sessions' ),
+					'item_id'     => 'axle-sessions-not-me-' . $index,
 					'data'        => array(
 						array(
-							'name'  => __( 'Reported', 'user-session-manager' ),
+							'name'  => __( 'Reported', 'axle-sessions' ),
 							'value' => wp_date( $format, (int) $event['time'] ),
 						),
 						array(
-							'name'  => __( 'Device', 'user-session-manager' ),
+							'name'  => __( 'Device', 'axle-sessions' ),
 							'value' => (string) $event['device'],
 						),
 						array(
-							'name'  => __( 'IP address', 'user-session-manager' ),
+							'name'  => __( 'IP address', 'axle-sessions' ),
 							'value' => (string) $event['ip'],
 						),
 						array(
-							'name'  => __( 'Application passwords revoked', 'user-session-manager' ),
+							'name'  => __( 'Application passwords revoked', 'axle-sessions' ),
 							'value' => NotMe::app_password_names( $event ),
 						),
 					),
@@ -243,28 +243,28 @@ final class Privacy implements Service {
 			$flag = $this->shared->get( $user->ID );
 			foreach ( $flag ? $flag['sessions'] : array() as $handle => $session ) {
 				$data[] = array(
-					'group_id'    => 'user-session-manager-shared',
-					'group_label' => __( 'Sessions that looked shared', 'user-session-manager' ),
-					'item_id'     => 'user-session-manager-shared-' . $handle,
+					'group_id'    => 'axle-sessions-shared',
+					'group_label' => __( 'Sessions that looked shared', 'axle-sessions' ),
+					'item_id'     => 'axle-sessions-shared-' . $handle,
 					'data'        => array(
 						array(
-							'name'  => __( 'Reason', 'user-session-manager' ),
+							'name'  => __( 'Reason', 'axle-sessions' ),
 							'value' => implode( ' ', array_map( array( SharedLogins::class, 'evidence_text' ), $flag['evidence'] ) ),
 						),
 						array(
-							'name'  => __( 'Device', 'user-session-manager' ),
+							'name'  => __( 'Device', 'axle-sessions' ),
 							'value' => (string) ( $session['device'] ?? '' ),
 						),
 						array(
-							'name'  => __( 'IP address', 'user-session-manager' ),
+							'name'  => __( 'IP address', 'axle-sessions' ),
 							'value' => (string) ( $session['ip'] ?? '' ),
 						),
 						array(
-							'name'  => __( 'Country', 'user-session-manager' ),
+							'name'  => __( 'Country', 'axle-sessions' ),
 							'value' => (string) ( $session['country'] ?? '' ),
 						),
 						array(
-							'name'  => __( 'Last active', 'user-session-manager' ),
+							'name'  => __( 'Last active', 'axle-sessions' ),
 							'value' => ! empty( $session['last_seen'] ) ? wp_date( $format, (int) $session['last_seen'] ) : '',
 						),
 					),
@@ -301,7 +301,7 @@ final class Privacy implements Service {
 			if ( $ended > 0 ) {
 				$messages[] = sprintf(
 					/* translators: %d: number of sessions. */
-					_n( 'Signed the user out of %d session.', 'Signed the user out of %d sessions.', $ended, 'user-session-manager' ),
+					_n( 'Signed the user out of %d session.', 'Signed the user out of %d sessions.', $ended, 'axle-sessions' ),
 					$ended
 				);
 			}
@@ -324,18 +324,18 @@ final class Privacy implements Service {
 		}
 
 		$ip = $this->settings->get( 'mask_ip' )
-			? __( 'a shortened IP address (the last part set to zero)', 'user-session-manager' )
-			: __( 'the IP address', 'user-session-manager' );
+			? __( 'a shortened IP address (the last part set to zero)', 'axle-sessions' )
+			: __( 'the IP address', 'axle-sessions' );
 
 		$text = sprintf(
 			/* translators: 1: "the IP address" or "a shortened IP address", 2: number of days, 3: number of days, 4: number of days. */
-			__( 'When you sign in, WordPress keeps a record of the session: %1$s and browser it came from, when it started, when it was last used and when it ends. The record is deleted when you sign out or the session ends. You can see your sessions on your profile and sign any of them out. If new sign-in emails are on, a scrambled fingerprint of each browser and IP address you sign in from is kept for %2$d days, so we can tell you about a sign-in from a new device. If your sessions look like more than one person uses your account, for example two computers on different networks at the same time, a copy of those sessions (browser, IP address and times) is kept with the reason for %3$d days after the last time it happened. A sign-in history keeps the device, the same address, the times and how each session ended for %4$d days. If you answer a new sign-in email with "This wasn\'t me", the device, address and time of that report are kept for the site administrators.', 'user-session-manager' ),
+			__( 'When you sign in, WordPress keeps a record of the session: %1$s and browser it came from, when it started, when it was last used and when it ends. The record is deleted when you sign out or the session ends. You can see your sessions on your profile and sign any of them out. If new sign-in emails are on, a scrambled fingerprint of each browser and IP address you sign in from is kept for %2$d days, so we can tell you about a sign-in from a new device. If your sessions look like more than one person uses your account, for example two computers on different networks at the same time, a copy of those sessions (browser, IP address and times) is kept with the reason for %3$d days after the last time it happened. A sign-in history keeps the device, the same address, the times and how each session ended for %4$d days. If you answer a new sign-in email with "This wasn\'t me", the device, address and time of that report are kept for the site administrators.', 'axle-sessions' ),
 			$ip,
 			$this->settings->device_days(),
 			SharedLoginDetector::RULES['keep_days'],
 			$this->settings->history_days()
 		);
 
-		wp_add_privacy_policy_content( __( 'User Session Manager', 'user-session-manager' ), '<p>' . esc_html( $text ) . '</p>' );
+		wp_add_privacy_policy_content( __( 'Axle Sessions', 'axle-sessions' ), '<p>' . esc_html( $text ) . '</p>' );
 	}
 }

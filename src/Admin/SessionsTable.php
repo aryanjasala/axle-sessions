@@ -2,14 +2,14 @@
 /**
  * The list table on Users > Sessions.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Admin;
+namespace AryanX\Axle\Sessions\Admin;
 
-use AryanX\Axle\UserSessionManager\Access;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\SharedLogins;
+use AryanX\Axle\Sessions\Access;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\SharedLogins;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -96,7 +96,7 @@ final class SessionsTable extends \WP_List_Table {
 		 *
 		 * @param int $per_page Default 20.
 		 */
-		return max( 1, min( 500, (int) apply_filters( 'user_session_manager_list_per_page', self::PER_PAGE ) ) );
+		return max( 1, min( 500, (int) apply_filters( 'axle_sessions_list_per_page', self::PER_PAGE ) ) );
 	}
 
 	/**
@@ -143,12 +143,12 @@ final class SessionsTable extends \WP_List_Table {
 	public function get_columns() {
 		return array(
 			'cb'         => '<input type="checkbox" />',
-			'user'       => __( 'User', 'user-session-manager' ),
-			'device'     => __( 'Device', 'user-session-manager' ),
-			'ip'         => __( 'IP address', 'user-session-manager' ),
-			'login'      => __( 'Signed in', 'user-session-manager' ),
-			'last_seen'  => __( 'Last active', 'user-session-manager' ),
-			'expiration' => __( 'Expires', 'user-session-manager' ),
+			'user'       => __( 'User', 'axle-sessions' ),
+			'device'     => __( 'Device', 'axle-sessions' ),
+			'ip'         => __( 'IP address', 'axle-sessions' ),
+			'login'      => __( 'Signed in', 'axle-sessions' ),
+			'last_seen'  => __( 'Last active', 'axle-sessions' ),
+			'expiration' => __( 'Expires', 'axle-sessions' ),
 		);
 	}
 
@@ -201,13 +201,13 @@ final class SessionsTable extends \WP_List_Table {
 				'<a href="%1$s"%2$s>%3$s</a>',
 				esc_url( SessionsPage::url() ),
 				$this->shared_view ? '' : ' class="current" aria-current="page"',
-				esc_html__( 'All sessions', 'user-session-manager' )
+				esc_html__( 'All sessions', 'axle-sessions' )
 			),
 			'shared' => sprintf(
 				'<a href="%1$s"%2$s>%3$s <span class="count">(%4$s)</span></a>',
 				esc_url( SessionsPage::url( array( 'shared' => 1 ) ) ),
 				$this->shared_view ? ' class="current" aria-current="page"' : '',
-				esc_html__( 'Possibly shared', 'user-session-manager' ),
+				esc_html__( 'Possibly shared', 'axle-sessions' ),
 				esc_html( number_format_i18n( $count ) )
 			),
 		);
@@ -220,8 +220,8 @@ final class SessionsTable extends \WP_List_Table {
 	 */
 	protected function get_bulk_actions() {
 		return array(
-			'revoke'   => __( 'Sign out', 'user-session-manager' ),
-			'sign_out' => __( 'Sign out everywhere', 'user-session-manager' ),
+			'revoke'   => __( 'Sign out', 'axle-sessions' ),
+			'sign_out' => __( 'Sign out everywhere', 'axle-sessions' ),
 		);
 	}
 
@@ -231,11 +231,11 @@ final class SessionsTable extends \WP_List_Table {
 	public function no_items(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only list arguments.
 		$filtered = ! empty( $_REQUEST['s'] ) || ! empty( $_REQUEST['role'] ) || ! empty( $_REQUEST['user_id'] ) || ! empty( $_REQUEST['shared'] );
-		echo '<div class="axle-empty"><p>' . esc_html__( 'No active sessions found. Sessions show up here when someone signs in, and disappear when they sign out or expire.', 'user-session-manager' ) . '</p>';
+		echo '<div class="axle-empty"><p>' . esc_html__( 'No active sessions found. Sessions show up here when someone signs in, and disappear when they sign out or expire.', 'axle-sessions' ) . '</p>';
 		if ( $filtered ) {
-			printf( '<a class="button" href="%s">%s</a>', esc_url( SessionsPage::url() ), esc_html__( 'Show every session', 'user-session-manager' ) );
+			printf( '<a class="button" href="%s">%s</a>', esc_url( SessionsPage::url() ), esc_html__( 'Show every session', 'axle-sessions' ) );
 		} elseif ( current_user_can( Access::settings_capability() ) ) {
-			printf( '<a class="button" href="%s">%s</a>', esc_url( SettingsPage::url() ), esc_html__( 'Open session policies', 'user-session-manager' ) );
+			printf( '<a class="button" href="%s">%s</a>', esc_url( SettingsPage::url() ), esc_html__( 'Open session policies', 'axle-sessions' ) );
 		}
 		echo '</div>';
 	}
@@ -254,14 +254,14 @@ final class SessionsTable extends \WP_List_Table {
 		$current = isset( $_REQUEST['role'] ) ? sanitize_key( wp_unslash( $_REQUEST['role'] ) ) : '';
 		?>
 		<div class="alignleft actions">
-			<label for="usm-role" class="screen-reader-text"><?php esc_html_e( 'Filter by role', 'user-session-manager' ); ?></label>
+			<label for="usm-role" class="screen-reader-text"><?php esc_html_e( 'Filter by role', 'axle-sessions' ); ?></label>
 			<select name="role" id="usm-role">
-				<option value=""><?php esc_html_e( 'All roles', 'user-session-manager' ); ?></option>
+				<option value=""><?php esc_html_e( 'All roles', 'axle-sessions' ); ?></option>
 				<?php foreach ( wp_roles()->get_names() as $role => $name ) : ?>
 					<option value="<?php echo esc_attr( $role ); ?>" <?php selected( $current, $role ); ?>><?php echo esc_html( translate_user_role( $name ) ); ?></option>
 				<?php endforeach; ?>
 			</select>
-			<?php submit_button( __( 'Filter', 'user-session-manager' ), '', 'filter_action', false ); ?>
+			<?php submit_button( __( 'Filter', 'axle-sessions' ), '', 'filter_action', false ); ?>
 		</div>
 		<?php
 	}
@@ -281,7 +281,7 @@ final class SessionsTable extends \WP_List_Table {
 		return sprintf(
 			'<label class="screen-reader-text" for="usm-cb-%1$s">%2$s</label><input type="checkbox" id="usm-cb-%1$s" name="handles[]" value="%1$s" />',
 			esc_attr( $item['handle'] ),
-			esc_html__( 'Select session', 'user-session-manager' )
+			esc_html__( 'Select session', 'axle-sessions' )
 		);
 	}
 
@@ -329,10 +329,10 @@ final class SessionsTable extends \WP_List_Table {
 			$actions['revoke'] = sprintf(
 				'<a href="%1$s" data-usm-confirm="%3$s" data-usm-confirm-title="%4$s" data-usm-confirm-button="%5$s">%2$s</a>',
 				esc_url( SessionsPage::action_url( 'revoke', $item['handle'] ) ),
-				esc_html__( 'Sign out', 'user-session-manager' ),
-				esc_attr__( 'That browser is signed out the next time it loads a page. This cannot be undone, but the person can sign in again.', 'user-session-manager' ),
+				esc_html__( 'Sign out', 'axle-sessions' ),
+				esc_attr__( 'That browser is signed out the next time it loads a page. This cannot be undone, but the person can sign in again.', 'axle-sessions' ),
 				esc_attr( $item['device'] ),
-				esc_attr__( 'Sign out this session', 'user-session-manager' )
+				esc_attr__( 'Sign out this session', 'axle-sessions' )
 			);
 		}
 		if ( Access::can_manage( $user->ID ) ) {
@@ -340,10 +340,10 @@ final class SessionsTable extends \WP_List_Table {
 			$actions['delete'] = sprintf(
 				'<a href="%1$s">%2$s</a>',
 				esc_url( SessionsPage::confirm_url( $user->ID ) ),
-				get_current_user_id() === $user->ID ? esc_html__( 'Sign out everywhere else', 'user-session-manager' ) : esc_html__( 'Sign out everywhere', 'user-session-manager' )
+				get_current_user_id() === $user->ID ? esc_html__( 'Sign out everywhere else', 'axle-sessions' ) : esc_html__( 'Sign out everywhere', 'axle-sessions' )
 			);
 		}
-		$actions['filter'] = sprintf( '<a href="%1$s">%2$s</a>', esc_url( SessionsPage::url( array( 'user_id' => $user->ID ) ) ), esc_html__( 'Only this user', 'user-session-manager' ) );
+		$actions['filter'] = sprintf( '<a href="%1$s">%2$s</a>', esc_url( SessionsPage::url( array( 'user_id' => $user->ID ) ) ), esc_html__( 'Only this user', 'axle-sessions' ) );
 
 		return $this->row_actions( $actions );
 	}
@@ -368,7 +368,7 @@ final class SessionsTable extends \WP_List_Table {
 	protected function column_default( $item, $column_name ) {
 		switch ( $column_name ) {
 			case 'ip':
-				return esc_html( '' !== $item['ip'] ? $item['ip'] : __( 'Unknown', 'user-session-manager' ) );
+				return esc_html( '' !== $item['ip'] ? $item['ip'] : __( 'Unknown', 'axle-sessions' ) );
 			case 'login':
 			case 'last_seen':
 			case 'expiration':

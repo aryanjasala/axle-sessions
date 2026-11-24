@@ -2,10 +2,10 @@
 /**
  * A small user agent parser.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -107,7 +107,7 @@ final class UserAgent {
 		 * }
 		 * @param string $ua     The user agent string.
 		 */
-		$filtered = (array) apply_filters( 'user_session_manager_parse_user_agent', $parsed, $ua );
+		$filtered = (array) apply_filters( 'axle_sessions_parse_user_agent', $parsed, $ua );
 
 		$result = array();
 		foreach ( $parsed as $key => $default ) {
@@ -133,7 +133,7 @@ final class UserAgent {
 	public static function label( string $browser, string $os ): string {
 		if ( '' !== $browser && '' !== $os ) {
 			/* translators: 1: browser name, e.g. Chrome, 2: operating system, e.g. macOS. */
-			return sprintf( __( '%1$s on %2$s', 'user-session-manager' ), $browser, $os );
+			return sprintf( __( '%1$s on %2$s', 'axle-sessions' ), $browser, $os );
 		}
 
 		if ( '' !== $browser ) {
@@ -142,10 +142,10 @@ final class UserAgent {
 
 		if ( '' !== $os ) {
 			/* translators: %s: operating system, e.g. Windows. */
-			return sprintf( __( 'Unknown browser on %s', 'user-session-manager' ), $os );
+			return sprintf( __( 'Unknown browser on %s', 'axle-sessions' ), $os );
 		}
 
-		return __( 'Unknown browser', 'user-session-manager' );
+		return __( 'Unknown browser', 'axle-sessions' );
 	}
 
 	/**

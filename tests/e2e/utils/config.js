@@ -1,7 +1,7 @@
 const path = require( 'path' );
 
 module.exports = {
-	SLUG: 'user-session-manager',
+	SLUG: 'axle-sessions',
 	// Each plugin has its own port, so its site can run next to the others.
 	// WP_PORT moves it (start the site with the same WP_PORT), WP_BASE_URL points the tests elsewhere.
 	BASE_URL: process.env.WP_BASE_URL || `http://localhost:${ process.env.WP_PORT || 8901 }`,
@@ -12,5 +12,5 @@ module.exports = {
 	// This plugin's own Docker site by default. A shared site can be used by pointing WP_COMPOSE_DIR at its compose folder.
 	COMPOSE_DIR: process.env.WP_COMPOSE_DIR || path.join( __dirname, '..', 'env' ),
 	// Options the plugin stores, cleared before each run.
-	OPTIONS: ['user_session_manager_settings', 'user_session_manager_prune_cursor', 'user_session_manager_history_cursor', 'user_session_manager_not_me_events', 'user_session_manager_incidents'],
+	OPTIONS: ['axle_sessions_settings', 'axle_sessions_prune_cursor', 'axle_sessions_history_cursor', 'axle_sessions_not_me_events', 'axle_sessions_incidents'],
 };

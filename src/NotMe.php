@@ -2,12 +2,12 @@
 /**
  * "This wasn't me": the link in the new device email.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
-use AryanX\Axle\UserSessionManager\Admin\AxleUi;
+use AryanX\Axle\Sessions\Admin\AxleUi;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,9 +28,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class NotMe implements Service {
 
-	public const ACTION = 'user_session_manager_not_me';
-	public const META   = 'user_session_manager_not_me';
-	public const EVENTS = 'user_session_manager_not_me_events';
+	public const ACTION = 'axle_sessions_not_me';
+	public const META   = 'axle_sessions_not_me';
+	public const EVENTS = 'axle_sessions_not_me_events';
 
 	private const MAX_LINKS   = 5;
 	private const MAX_EVENTS  = 50;
@@ -206,7 +206,7 @@ final class NotMe implements Service {
 		 * @param \WP_User $user   The account.
 		 * @param array    $report user, time, device, ip, scope (all or session), ended (sessions signed out), reset (whether the reset email was sent) and app_passwords (the application passwords that were revoked: each with name, created and last_used, no secrets).
 		 */
-		do_action( 'user_session_manager_not_me_reported', $user, $report );
+		do_action( 'axle_sessions_not_me_reported', $user, $report );
 
 		$this->alert_administrators( $user, $report );
 
@@ -222,7 +222,7 @@ final class NotMe implements Service {
 	public static function app_password_names( array $event ): string {
 		$names = array();
 		foreach ( isset( $event['app_passwords'] ) && is_array( $event['app_passwords'] ) ? $event['app_passwords'] : array() as $row ) {
-			$names[] = is_array( $row ) && '' !== (string) ( $row['name'] ?? '' ) ? (string) $row['name'] : __( '(no name)', 'user-session-manager' );
+			$names[] = is_array( $row ) && '' !== (string) ( $row['name'] ?? '' ) ? (string) $row['name'] : __( '(no name)', 'axle-sessions' );
 		}
 
 		return implode( ', ', $names );
@@ -247,7 +247,7 @@ final class NotMe implements Service {
 		 * @param bool $revoke  Default true.
 		 * @param int  $user_id The account.
 		 */
-		if ( ! apply_filters( 'user_session_manager_not_me_revoke_app_passwords', true, $user_id ) ) {
+		if ( ! apply_filters( 'axle_sessions_not_me_revoke_app_passwords', true, $user_id ) ) {
 			return array();
 		}
 
@@ -320,7 +320,7 @@ final class NotMe implements Service {
 	}
 
 	/**
-	 * Handles wp-login.php?action=user_session_manager_not_me: shows the page, or acts on the button.
+	 * Handles wp-login.php?action=axle_sessions_not_me: shows the page, or acts on the button.
 	 */
 	public function page(): void {
 		nocache_headers();
@@ -339,10 +339,10 @@ final class NotMe implements Service {
 		if ( $this->is_limited() ) {
 			AxleUi::guest_page(
 				array(
-					'title'  => __( 'Too many tries', 'user-session-manager' ),
-					'error'  => esc_html__( 'Too many attempts from this network. Wait a few minutes and open the link from your email again.', 'user-session-manager' ),
+					'title'  => __( 'Too many tries', 'axle-sessions' ),
+					'error'  => esc_html__( 'Too many attempts from this network. Wait a few minutes and open the link from your email again.', 'axle-sessions' ),
 					'status' => 429,
-					'links'  => array( array( wp_login_url(), __( 'Go to the sign-in page', 'user-session-manager' ) ) ),
+					'links'  => array( array( wp_login_url(), __( 'Go to the sign-in page', 'axle-sessions' ) ) ),
 				)
 			);
 			exit;
@@ -353,11 +353,11 @@ final class NotMe implements Service {
 			$this->count_failure();
 			AxleUi::guest_page(
 				array(
-					'title'  => __( 'This link no longer works', 'user-session-manager' ),
-					'error'  => esc_html__( 'This link has expired, or it has already been used.', 'user-session-manager' ),
-					'body'   => '<p>' . esc_html__( 'If you still think someone else is using your account, sign in and change your password, or ask a site administrator for help.', 'user-session-manager' ) . '</p>',
+					'title'  => __( 'This link no longer works', 'axle-sessions' ),
+					'error'  => esc_html__( 'This link has expired, or it has already been used.', 'axle-sessions' ),
+					'body'   => '<p>' . esc_html__( 'If you still think someone else is using your account, sign in and change your password, or ask a site administrator for help.', 'axle-sessions' ) . '</p>',
 					'status' => 404,
-					'links'  => array( array( wp_login_url(), __( 'Go to the sign-in page', 'user-session-manager' ) ) ),
+					'links'  => array( array( wp_login_url(), __( 'Go to the sign-in page', 'axle-sessions' ) ) ),
 				)
 			);
 			exit;
@@ -370,25 +370,25 @@ final class NotMe implements Service {
 
 		$report = $this->redeem( $found );
 		$text   = $report['reset']
-			? __( 'Done. We signed the account out and its password no longer works. We sent a link to the email address on the account so you can choose a new one.', 'user-session-manager' )
-			: __( 'Done. We signed the account out and its password no longer works. We could not send the email, so use "Lost your password?" on the sign-in page to choose a new one.', 'user-session-manager' );
-		$more   = array( __( 'A site administrator has been told.', 'user-session-manager' ) );
+			? __( 'Done. We signed the account out and its password no longer works. We sent a link to the email address on the account so you can choose a new one.', 'axle-sessions' )
+			: __( 'Done. We signed the account out and its password no longer works. We could not send the email, so use "Lost your password?" on the sign-in page to choose a new one.', 'axle-sessions' );
+		$more   = array( __( 'A site administrator has been told.', 'axle-sessions' ) );
 		if ( $report['app_passwords'] ) {
 			array_unshift(
 				$more,
 				sprintf(
 					/* translators: %s: number of application passwords. */
-					_n( '%s application password was revoked, so apps and scripts that used it can no longer get in. Make a new one after you sign in, if you still need it.', '%s application passwords were revoked, so apps and scripts that used them can no longer get in. Make new ones after you sign in, if you still need them.', count( $report['app_passwords'] ), 'user-session-manager' ),
+					_n( '%s application password was revoked, so apps and scripts that used it can no longer get in. Make a new one after you sign in, if you still need it.', '%s application passwords were revoked, so apps and scripts that used them can no longer get in. Make new ones after you sign in, if you still need them.', count( $report['app_passwords'] ), 'axle-sessions' ),
 					number_format_i18n( count( $report['app_passwords'] ) )
 				)
 			);
 		}
 		AxleUi::guest_page(
 			array(
-				'title'   => __( 'The account is safe', 'user-session-manager' ),
+				'title'   => __( 'The account is safe', 'axle-sessions' ),
 				'message' => esc_html( $text ),
 				'body'    => '<p>' . esc_html( implode( ' ', $more ) ) . '</p>',
-				'links'   => array( array( wp_login_url(), __( 'Go to the sign-in page', 'user-session-manager' ) ) ),
+				'links'   => array( array( wp_login_url(), __( 'Go to the sign-in page', 'axle-sessions' ) ) ),
 			)
 		);
 		exit;
@@ -407,29 +407,29 @@ final class NotMe implements Service {
 		$apps  = AppPasswords::list_for_user( $found['user']->ID );
 
 		$what = 'all' === $scope
-			? __( 'We will sign the account out on every device, including this one.', 'user-session-manager' )
-			: __( 'We will sign that device out.', 'user-session-manager' );
+			? __( 'We will sign the account out on every device, including this one.', 'axle-sessions' )
+			: __( 'We will sign that device out.', 'axle-sessions' );
 
 		ob_start();
 		?>
-		<p><?php esc_html_e( 'If it was you, close this page. Nothing has changed.', 'user-session-manager' ); ?></p>
-		<p><strong><?php esc_html_e( 'If it was not you, press the button. This is what happens:', 'user-session-manager' ); ?></strong></p>
+		<p><?php esc_html_e( 'If it was you, close this page. Nothing has changed.', 'axle-sessions' ); ?></p>
+		<p><strong><?php esc_html_e( 'If it was not you, press the button. This is what happens:', 'axle-sessions' ); ?></strong></p>
 		<ul class="usm-guest-list">
 			<li><?php echo esc_html( $what ); ?></li>
-			<li><?php esc_html_e( 'The current password stops working. You choose a new one from a link we email to the address on the account.', 'user-session-manager' ); ?></li>
+			<li><?php esc_html_e( 'The current password stops working. You choose a new one from a link we email to the address on the account.', 'axle-sessions' ); ?></li>
 			<?php if ( $apps ) : ?>
 				<li>
 					<?php
 					echo esc_html(
 						sprintf(
 							/* translators: 1: number of application passwords, 2: their names. */
-							_n( '%1$s application password is revoked: %2$s. Apps and scripts that use it stop working.', '%1$s application passwords are revoked: %2$s. Apps and scripts that use them stop working.', count( $apps ), 'user-session-manager' ),
+							_n( '%1$s application password is revoked: %2$s. Apps and scripts that use it stop working.', '%1$s application passwords are revoked: %2$s. Apps and scripts that use them stop working.', count( $apps ), 'axle-sessions' ),
 							number_format_i18n( count( $apps ) ),
 							implode(
 								', ',
 								array_map(
 									static function ( array $row ): string {
-										return '' !== $row['name'] ? $row['name'] : __( '(no name)', 'user-session-manager' ); },
+										return '' !== $row['name'] ? $row['name'] : __( '(no name)', 'axle-sessions' ); },
 									$apps 
 								) 
 							)
@@ -438,21 +438,21 @@ final class NotMe implements Service {
 					?>
 				</li>
 			<?php endif; ?>
-			<li><?php esc_html_e( 'A site administrator is told.', 'user-session-manager' ); ?></li>
+			<li><?php esc_html_e( 'A site administrator is told.', 'axle-sessions' ); ?></li>
 		</ul>
 		<form method="post" action="<?php echo esc_url( add_query_arg( 'action', self::ACTION, network_site_url( 'wp-login.php', 'login' ) ) ); ?>">
 			<input type="hidden" name="usm_key" value="<?php echo esc_attr( $key ); ?>">
 			<input type="hidden" name="usm_confirm" value="1">
-			<p class="submit"><button type="submit" class="button button-primary button-large"><?php esc_html_e( 'This wasn\'t me, secure the account', 'user-session-manager' ); ?></button></p>
+			<p class="submit"><button type="submit" class="button button-primary button-large"><?php esc_html_e( 'This wasn\'t me, secure the account', 'axle-sessions' ); ?></button></p>
 		</form>
 		<?php
 		AxleUi::guest_page(
 			array(
-				'title'   => __( 'Was this you?', 'user-session-manager' ),
+				'title'   => __( 'Was this you?', 'axle-sessions' ),
 				'message' => esc_html(
 					sprintf(
 						/* translators: 1: site name, 2: browser and system such as "Chrome on Windows", 3: time. */
-						__( 'Someone signed in to an account on %1$s from %2$s at %3$s. Was that you?', 'user-session-manager' ),
+						__( 'Someone signed in to an account on %1$s from %2$s at %3$s. Was that you?', 'axle-sessions' ),
 						$site,
 						(string) $link['device'],
 						wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $link['login'] )
@@ -474,7 +474,7 @@ final class NotMe implements Service {
 		 *
 		 * @param int $attempts Default 10. At least 3.
 		 */
-		$max = max( 3, (int) apply_filters( 'user_session_manager_not_me_attempts', 10 ) );
+		$max = max( 3, (int) apply_filters( 'axle_sessions_not_me_attempts', 10 ) );
 
 		return (int) get_transient( $this->limit_key() ) >= $max;
 	}
@@ -544,7 +544,7 @@ final class NotMe implements Service {
 		$email = array(
 			'to'      => $user->user_email,
 			/* translators: %s: site name. */
-			'subject' => sprintf( __( '[%s] Choose a new password', 'user-session-manager' ), $site ),
+			'subject' => sprintf( __( '[%s] Choose a new password', 'axle-sessions' ), $site ),
 			'message' => sprintf(
 				/* translators: 1: site name, 2: link to choose a new password. */
 				__(
@@ -554,7 +554,7 @@ Choose a new password here:
 %2$s
 
 If you did not report it, ask a site administrator for help.',
-					'user-session-manager'
+					'axle-sessions'
 				),
 				$site,
 				$url
@@ -568,7 +568,7 @@ If you did not report it, ask a site administrator for help.',
 		 * @param array|false $email to, subject, message and headers, as wp_mail() takes them.
 		 * @param \WP_User    $user  The account.
 		 */
-		$email = apply_filters( 'user_session_manager_not_me_reset_email', $email, $user );
+		$email = apply_filters( 'axle_sessions_not_me_reset_email', $email, $user );
 		if ( ! is_array( $email ) || empty( $email['to'] ) ) {
 			return false;
 		}
@@ -592,7 +592,7 @@ If you did not report it, ask a site administrator for help.',
 		 * @param \WP_User $user       The account.
 		 * @param array    $report     The report.
 		 */
-		$recipients = apply_filters( 'user_session_manager_not_me_recipients', $default, $user, $report );
+		$recipients = apply_filters( 'axle_sessions_not_me_recipients', $default, $user, $report );
 		$recipients = array_values( array_filter( array_map( 'sanitize_email', array_map( 'strval', (array) $recipients ) ) ) );
 		if ( ! $recipients ) {
 			return;
@@ -600,7 +600,7 @@ If you did not report it, ask a site administrator for help.',
 
 		$site       = wp_specialchars_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES );
 		$apps_names = self::app_password_names( $report );
-		$apps_line  = '' === $apps_names ? __( 'none', 'user-session-manager' ) : $apps_names;
+		$apps_line  = '' === $apps_names ? __( 'none', 'axle-sessions' ) : $apps_names;
 		$message    = sprintf(
 			/* translators: 1: user login, 2: site name, 3: browser and system, 4: IP address, 5: number of sessions signed out, 6: names of the application passwords revoked, 7: link to the sessions screen. */
 			__(
@@ -613,12 +613,12 @@ Application passwords revoked: %6$s
 
 The password of the account no longer works and a reset link was sent to its owner. You can see the report on the Sessions screen:
 %7$s',
-				'user-session-manager'
+				'axle-sessions'
 			),
 			$user->user_login,
 			$site,
-			'' !== $report['device'] ? $report['device'] : __( 'unknown', 'user-session-manager' ),
-			'' !== $report['ip'] ? $report['ip'] : __( 'unknown', 'user-session-manager' ),
+			'' !== $report['device'] ? $report['device'] : __( 'unknown', 'axle-sessions' ),
+			'' !== $report['ip'] ? $report['ip'] : __( 'unknown', 'axle-sessions' ),
 			$report['ended'],
 			$apps_line,
 			is_multisite() ? network_admin_url( 'users.php?page=user-sessions' ) : admin_url( 'users.php?page=user-sessions' )
@@ -626,7 +626,7 @@ The password of the account no longer works and a reset link was sent to its own
 		$email = array(
 			'to'      => $recipients,
 			/* translators: 1: site name, 2: user login. */
-			'subject' => sprintf( __( '[%1$s] "This wasn\'t me" report for %2$s', 'user-session-manager' ), $site, $user->user_login ),
+			'subject' => sprintf( __( '[%1$s] "This wasn\'t me" report for %2$s', 'axle-sessions' ), $site, $user->user_login ),
 			'message' => $message,
 			'headers' => array(),
 		);
@@ -638,7 +638,7 @@ The password of the account no longer works and a reset link was sent to its own
 		 * @param \WP_User    $user   The account.
 		 * @param array       $report The report.
 		 */
-		$email = apply_filters( 'user_session_manager_not_me_alert_email', $email, $user, $report );
+		$email = apply_filters( 'axle_sessions_not_me_alert_email', $email, $user, $report );
 		if ( ! is_array( $email ) || empty( $email['to'] ) ) {
 			return;
 		}
@@ -660,7 +660,7 @@ The password of the account no longer works and a reset link was sent to its own
 		 *
 		 * @param int $max Default 50. Kept between 5 and 500.
 		 */
-		$max = max( 5, min( 500, (int) apply_filters( 'user_session_manager_not_me_log_limit', self::MAX_EVENTS ) ) );
+		$max = max( 5, min( 500, (int) apply_filters( 'axle_sessions_not_me_log_limit', self::MAX_EVENTS ) ) );
 		$this->store_events( array_slice( $events, 0, $max ) );
 	}
 

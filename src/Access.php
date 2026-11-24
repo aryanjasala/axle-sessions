@@ -2,10 +2,10 @@
 /**
  * Who may see and end whose sessions.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -30,7 +30,7 @@ final class Access {
 		 *
 		 * @param string $capability Default edit_users. list_users is needed as well.
 		 */
-		$capability = (string) apply_filters( 'user_session_manager_capability', 'edit_users' );
+		$capability = (string) apply_filters( 'axle_sessions_capability', 'edit_users' );
 
 		return '' !== $capability ? $capability : 'edit_users';
 	}
@@ -48,7 +48,7 @@ final class Access {
 		 *
 		 * @param string $capability Default manage_options, or manage_network_options on multisite.
 		 */
-		$capability = (string) apply_filters( 'user_session_manager_settings_capability', $default );
+		$capability = (string) apply_filters( 'axle_sessions_settings_capability', $default );
 
 		return '' !== $capability ? $capability : $default;
 	}
@@ -75,7 +75,7 @@ final class Access {
 		 *
 		 * @param string $capability Default edit_users.
 		 */
-		$capability = (string) apply_filters( 'user_session_manager_incident_capability', 'edit_users' );
+		$capability = (string) apply_filters( 'axle_sessions_incident_capability', 'edit_users' );
 
 		return self::can_view_all() && current_user_can( '' !== $capability ? $capability : 'edit_users' );
 	}
