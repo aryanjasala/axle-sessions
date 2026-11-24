@@ -2,14 +2,14 @@
 /**
  * Tests for session limits and lifetimes at login.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\Limits;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
+use AryanX\Axle\Sessions\Limits;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
@@ -33,15 +33,15 @@ final class LimitsTest extends SessionTestCase {
 		$this->session( 7, 'one' );
 		$this->session( 7, 'two' );
 
-		Actions\expectDone( 'user_session_manager_login_blocked' )->once()->with( $user, 2, 2 );
-		Filters\expectApplied( 'user_session_manager_blocked_login_message' )->once()->with( \Mockery::type( 'string' ), $user, 2, 2 )->andReturn( 'Too many devices.' );
+		Actions\expectDone( 'axle_sessions_login_blocked' )->once()->with( $user, 2, 2 );
+		Filters\expectApplied( 'axle_sessions_blocked_login_message' )->once()->with( \Mockery::type( 'string' ), $user, 2, 2 )->andReturn( 'Too many devices.' );
 
 		$limits = $this->limits();
 		$limits->start_sign_on();
 		$result = $limits->block_over_limit( $user );
 
 		$this->assertInstanceOf( \WP_Error::class, $result );
-		$this->assertSame( 'user_session_manager_limit', $result->get_error_code() );
+		$this->assertSame( 'axle_sessions_limit', $result->get_error_code() );
 		$this->assertSame( 'Too many devices.', $result->get_error_message() );
 	}
 
@@ -58,7 +58,7 @@ final class LimitsTest extends SessionTestCase {
 		);
 		$this->session( 7, 'stale', array( 'last_seen' => time() - HOUR_IN_SECONDS ) );
 
-		Actions\expectDone( 'user_session_manager_idle_session_ended' )->once()->with( 7, \Mockery::type( 'array' ), 'login' );
+		Actions\expectDone( 'axle_sessions_idle_session_ended' )->once()->with( 7, \Mockery::type( 'array' ), 'login' );
 
 		$limits = $this->limits();
 		$limits->start_sign_on();
@@ -79,7 +79,7 @@ final class LimitsTest extends SessionTestCase {
 	}
 
 	public function test_an_empty_message_falls_back_to_the_default(): void {
-		Filters\expectApplied( 'user_session_manager_blocked_login_message' )->once()->andReturn( '  ' );
+		Filters\expectApplied( 'axle_sessions_blocked_login_message' )->once()->andReturn( '  ' );
 
 		$this->assertStringContainsString( 'signed in on 3 devices at a time', $this->limits()->blocked_message( $this->user( 7, 'alice' ), 3 ) );
 	}
@@ -91,7 +91,7 @@ final class LimitsTest extends SessionTestCase {
 			$this->session( 7, $token );
 		}
 
-		Actions\expectDone( 'user_session_manager_login_blocked' )->once()->with( $user, 1, 4 );
+		Actions\expectDone( 'axle_sessions_login_blocked' )->once()->with( $user, 1, 4 );
 
 		$limits = $this->limits();
 		$limits->start_sign_on();
@@ -109,7 +109,7 @@ final class LimitsTest extends SessionTestCase {
 		$middle = $this->session( 7, 'middle', array( 'login' => time() - 2000 ) );
 		$new    = $this->session( 7, 'new', array( 'login' => time() ) );
 
-		Actions\expectDone( 'user_session_manager_session_evicted' )
+		Actions\expectDone( 'axle_sessions_session_evicted' )
 			->once()
 			->with(
 				7,
@@ -124,7 +124,7 @@ final class LimitsTest extends SessionTestCase {
 					}
 				)
 			);
-		Actions\expectDone( 'user_session_manager_session_started' )->once()->with( $user, \Mockery::type( 'array' ) );
+		Actions\expectDone( 'axle_sessions_session_started' )->once()->with( $user, \Mockery::type( 'array' ) );
 
 		$this->limits()->after_login( 'cookie', 0, time() + 3600, 7, 'logged_in', 'new' );
 
@@ -138,8 +138,8 @@ final class LimitsTest extends SessionTestCase {
 		$old = $this->session( 7, 'old', array( 'login' => time() - 3000 ) );
 		$this->session( 7, 'social', array( 'login' => time() ) );
 
-		Actions\expectDone( 'user_session_manager_login_blocked' )->once()->with( $user, 1, 1 );
-		Actions\expectDone( 'user_session_manager_session_started' )->never();
+		Actions\expectDone( 'axle_sessions_login_blocked' )->once()->with( $user, 1, 1 );
+		Actions\expectDone( 'axle_sessions_session_started' )->never();
 
 		$this->limits()->after_login( 'cookie', 0, time() + 3600, 7, 'logged_in', 'social' );
 
@@ -152,8 +152,8 @@ final class LimitsTest extends SessionTestCase {
 		$this->session( 7, 'a', array( 'login' => time() - 3000 ) );
 		$this->session( 7, 'b', array( 'login' => time() - 2000 ) );
 
-		Actions\expectDone( 'user_session_manager_session_started' )->never();
-		Actions\expectDone( 'user_session_manager_session_evicted' )->never();
+		Actions\expectDone( 'axle_sessions_session_started' )->never();
+		Actions\expectDone( 'axle_sessions_session_evicted' )->never();
 
 		$this->limits()->after_login( 'cookie', 0, time() + 3600, 7, 'logged_in', 'b' );
 		$this->limits()->after_login( 'cookie', 0, time() + 3600, 7, 'logged_in', '' );

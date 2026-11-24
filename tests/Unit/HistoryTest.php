@@ -2,15 +2,15 @@
 /**
  * Tests for the sign-in history and the signed-out message.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\History;
-use AryanX\Axle\UserSessionManager\LoginNotice;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
+use AryanX\Axle\Sessions\History;
+use AryanX\Axle\Sessions\LoginNotice;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
@@ -89,7 +89,7 @@ final class HistoryTest extends SessionTestCase {
 		$history = $this->history();
 		$history->on_started( $user, $session );
 
-		Actions\expectDone( 'user_session_manager_history_session_ended' )->once()->with( 7, \Mockery::type( 'array' ), 'idle' );
+		Actions\expectDone( 'axle_sessions_history_session_ended' )->once()->with( 7, \Mockery::type( 'array' ), 'idle' );
 		$history->on_idle( 7, $session );
 
 		$entry = $history->entries( 7 )[0];
@@ -199,7 +199,7 @@ final class HistoryTest extends SessionTestCase {
 		$this->assertNotContains( '7-old', $handles );
 		$this->assertContains( '7-new', $handles );
 
-		Filters\expectApplied( 'user_session_manager_history_limit' )->andReturn( 10 );
+		Filters\expectApplied( 'axle_sessions_history_limit' )->andReturn( 10 );
 		$many = array();
 		for ( $i = 0; $i < 30; $i++ ) {
 			$many[] = array( 'handle' => "7-{$i}", 'start' => time() - $i, 'seen' => time(), 'end' => 0, 'expires' => time() + 3600, 'reason' => '' );
@@ -235,7 +235,7 @@ final class HistoryTest extends SessionTestCase {
 		$this->assertSame( 'Ended, reason not recorded', History::reason_label( 'nonsense' ) );
 		$this->assertSame( 'error', History::reason_tone( 'not_me' ) );
 
-		Filters\expectApplied( 'user_session_manager_history_reason_label' )->once()->andReturn( 'Timed out' );
+		Filters\expectApplied( 'axle_sessions_history_reason_label' )->once()->andReturn( 'Timed out' );
 		$this->assertSame( 'Timed out', History::reason_label( 'idle' ) );
 	}
 
@@ -251,7 +251,7 @@ final class HistoryTest extends SessionTestCase {
 		$this->assertSame( '', LoginNotice::message( 'idle', time() - 40 * DAY_IN_SECONDS ), 'Too old to mean anything.' );
 		$this->assertSame( '', LoginNotice::message( 'idle', time() + HOUR_IN_SECONDS ), 'A time in the future is not real.' );
 
-		Filters\expectApplied( 'user_session_manager_signed_out_message' )->once()->andReturn( 'Custom.' );
+		Filters\expectApplied( 'axle_sessions_signed_out_message' )->once()->andReturn( 'Custom.' );
 		$this->assertSame( 'Custom.', LoginNotice::message( 'idle', $when ) );
 	}
 
@@ -264,7 +264,7 @@ final class HistoryTest extends SessionTestCase {
 
 		$_COOKIE[ $name ] = 'limit.' . ( time() - 60 );
 		$errors           = \Mockery::mock( \WP_Error::class );
-		$errors->shouldReceive( 'add' )->once()->with( 'user_session_manager_ended', \Mockery::pattern( '/signed in on another device/' ), 'message' );
+		$errors->shouldReceive( 'add' )->once()->with( 'axle_sessions_ended', \Mockery::pattern( '/signed in on another device/' ), 'message' );
 		$this->assertSame( $errors, $notice->add_message( $errors ) );
 		$this->assertArrayNotHasKey( $name, $_COOKIE, 'The cookie is read once.' );
 

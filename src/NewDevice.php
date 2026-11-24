@@ -2,10 +2,10 @@
 /**
  * The new device email.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class NewDevice implements Service {
 
-	public const META = 'user_session_manager_devices';
+	public const META = 'axle_sessions_devices';
 
 	private const MAX_DEVICES = 50;
 
@@ -63,7 +63,7 @@ final class NewDevice implements Service {
 	 * Adds the hooks.
 	 */
 	public function register(): void {
-		add_action( 'user_session_manager_session_started', array( $this, 'check' ), 10, 2 );
+		add_action( 'axle_sessions_session_started', array( $this, 'check' ), 10, 2 );
 	}
 
 	/**
@@ -123,7 +123,7 @@ final class NewDevice implements Service {
 		 * @param \WP_User $user    The user.
 		 * @param array    $session The new session: expiration, ip, ua, login, last_seen and handle.
 		 */
-		do_action( 'user_session_manager_new_device_login', $user, $session );
+		do_action( 'axle_sessions_new_device_login', $user, $session );
 
 		$this->send( $user, $session );
 	}
@@ -161,7 +161,7 @@ final class NewDevice implements Service {
 	 */
 	private function send( \WP_User $user, array $session ): void {
 		$site = wp_specialchars_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES );
-		$ip   = isset( $session['ip'] ) && is_string( $session['ip'] ) && '' !== $session['ip'] ? $session['ip'] : __( 'unknown', 'user-session-manager' );
+		$ip   = isset( $session['ip'] ) && is_string( $session['ip'] ) && '' !== $session['ip'] ? $session['ip'] : __( 'unknown', 'axle-sessions' );
 
 		$link = null === $this->not_me ? '' : $this->not_me->create_link( $user, $session );
 		$note = '' === $link ? '' : "\n\n" . sprintf(
@@ -169,7 +169,7 @@ final class NewDevice implements Service {
 			__(
 				'If this was not you, open this link. It signs that device out, makes the account choose a new password and tells a site administrator. Nothing happens until you confirm on the page it opens. The link works for %2$d days:
 %1$s',
-				'user-session-manager'
+				'axle-sessions'
 			),
 			$link,
 			(int) round( $this->settings->not_me_lifetime() / DAY_IN_SECONDS )
@@ -178,7 +178,7 @@ final class NewDevice implements Service {
 		$email = array(
 			'to'      => $user->user_email,
 			/* translators: %s: site name. */
-			'subject' => sprintf( __( '[%s] New sign-in to your account', 'user-session-manager' ), $site ),
+			'subject' => sprintf( __( '[%s] New sign-in to your account', 'axle-sessions' ), $site ),
 			'message' => sprintf(
 				/* translators: 1: user's display name, 2: site name, 3: number of days, 4: browser and system, 5: IP address, 6: date and time, 7: profile URL. */
 				__(
@@ -192,7 +192,7 @@ Time: %6$s
 
 If this was you, there is nothing to do. If it was not, change your password and sign out the sessions you do not recognise on your profile:
 %7$s',
-					'user-session-manager'
+					'axle-sessions'
 				),
 				$user->display_name,
 				$site,
@@ -212,7 +212,7 @@ If this was you, there is nothing to do. If it was not, change your password and
 		 * @param \WP_User    $user    The user.
 		 * @param array       $session The new session.
 		 */
-		$email = apply_filters( 'user_session_manager_new_device_email', $email, $user, $session );
+		$email = apply_filters( 'axle_sessions_new_device_email', $email, $user, $session );
 		if ( ! is_array( $email ) || empty( $email['to'] ) ) {
 			return;
 		}
@@ -273,6 +273,6 @@ If this was you, there is nothing to do. If it was not, change your password and
 		 *
 		 * @param int $max Default 50.
 		 */
-		return max( 1, min( 500, (int) apply_filters( 'user_session_manager_device_limit', self::MAX_DEVICES ) ) );
+		return max( 1, min( 500, (int) apply_filters( 'axle_sessions_device_limit', self::MAX_DEVICES ) ) );
 	}
 }

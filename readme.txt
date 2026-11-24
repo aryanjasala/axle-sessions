@@ -1,4 +1,4 @@
-=== User Session Manager ===
+=== Axle Sessions ===
 Contributors: aryanjasala
 Tags: sessions, security, login, logout, devices
 Requires at least: 6.6
@@ -14,7 +14,7 @@ See every device signed in to WordPress, sign out one of them, and limit session
 
 WordPress already keeps a record of every login: which browser, which IP address, when it started and when it ends. It just never shows it. The only control is "Log Out Everywhere Else" on your own profile, so nobody can see which devices are signed in, sign out just the lost phone, or see who is signed in across the site.
 
-User Session Manager shows those sessions and lets you end them.
+Axle Sessions shows those sessions and lets you end them.
 
 **For everyone, on their profile:**
 
@@ -45,24 +45,24 @@ Free and open source under the GPL. No pro version, no upsells, no ads in wp-adm
 
 = Privacy =
 
-Sessions hold an IP address and a browser string. The plugin takes part in Tools > Export Personal Data (it lists a user's sessions) and Tools > Erase Personal Data (it lists sessions, sign-in history and reports, and signs the user out everywhere and forgets them), adds suggested text to Settings > Privacy, and can store shortened IP addresses. The new device email keeps only a scrambled fingerprint of each browser and network, never the address, and forgets it after 30 days. Shared login detection uses only what the sessions already hold and calls no outside service. Sign-in history keeps the device, the IP address as stored, the times and how each session ended for 90 days by default (you can change it, or set 0 to keep none). A "This wasn't me" report keeps the device, address and time. When an account looks shared, a copy of the sessions behind it is kept with the reasons for 7 days after the last sign, and the export and erase tools cover it.
+Sessions hold an IP address and a browser string. The plugin takes part in Tools > Export Personal Data (it lists a user's sessions) and Tools > Erase Personal Data (it lists sessions, sign-in history and reports, and signs the user out everywhere and forgets them), adds suggested text to Settings > Privacy, and can store shortened IP addresses. The new device email keeps only a scrambled fingerprint of each browser and network, never the address, and forgets it after 30 days. Shared login detection uses only what the sessions already hold and calls no outside service. Sign-in history keeps the device, the IP address as stored, the times and how each session ended for 90 days by default (you can change it, or set 0 to keep none). A "This wasn't me" report keeps the device, address and time for administrators, until the user's data is erased or newer reports push it out of the latest 50. The log of "Sign everyone out" keeps the time, which administrator did it and the counts, not who was signed out, for the latest 20 runs. A session's own record, with its IP address and browser string, is deleted when the session ends. Nothing is sent to any outside service, and the plugin loads no files from outside your site. Deleting the plugin removes its settings, history, reports and flags. When an account looks shared, a copy of the sessions behind it is kept with the reasons for 7 days after the last sign, and the export and erase tools cover it.
 
 = WP-CLI =
 
-* `wp user-session-manager list [--user=<user>]` lists active sessions with their handles.
-* `wp user-session-manager revoke <handle>` signs out one session.
-* `wp user-session-manager sign-out <user>` signs a user out everywhere.
-* `wp user-session-manager prune` removes expired sessions and signs out idle ones.
-* `wp user-session-manager history <user>` shows when an account signed in and how each session ended.
-* `wp user-session-manager reports` lists "This wasn't me" reports.
-* `wp user-session-manager sign-out-everyone` signs every user out, with exclusions.
-* `wp user-session-manager shared` lists accounts that look shared, with the reasons.
-* `wp user-session-manager policies` and `set-policy <role>` read and change the per-role policies.
-* `wp user-session-manager settings` reads and changes the other settings.
+* `wp axle-sessions list [--user=<user>]` lists active sessions with their handles.
+* `wp axle-sessions revoke <handle>` signs out one session.
+* `wp axle-sessions sign-out <user>` signs a user out everywhere.
+* `wp axle-sessions prune` removes expired sessions and signs out idle ones.
+* `wp axle-sessions history <user>` shows when an account signed in and how each session ended.
+* `wp axle-sessions reports` lists "This wasn't me" reports.
+* `wp axle-sessions sign-out-everyone` signs every user out, with exclusions.
+* `wp axle-sessions shared` lists accounts that look shared, with the reasons.
+* `wp axle-sessions policies` and `set-policy <role>` read and change the per-role policies.
+* `wp axle-sessions settings` reads and changes the other settings.
 
 = For developers =
 
-Every limit and default has a filter, and every sign out fires an action. On WordPress 6.9 and later, AI agents can list sessions, find accounts that look shared and sign sessions out through the Abilities API. The full list is in [the reference](https://github.com/aryanjasala/user-session-manager/blob/main/docs/REFERENCE.md).
+Every limit and default has a filter, and every sign out fires an action. On WordPress 6.9 and later, AI agents can list sessions, find accounts that look shared and sign sessions out through the Abilities API. The full list is in [the reference](https://github.com/aryanjasala/axle-sessions/blob/main/docs/REFERENCE.md).
 
 == Frequently Asked Questions ==
 
@@ -92,11 +92,11 @@ Yes, for plugins that sign people in through WordPress's own login functions. A 
 
 = How does it decide that an account looks shared? =
 
-From the sessions it already has: the network of each IP address, the browser and device, and when each session was last used. By default it flags more than two networks at the same time, two computers (or two phones, or two tablets) on different networks at the same time, or more than four different devices in a day. A laptop on Wi-Fi and a phone on mobile data are one person, so they are not flagged. Developers can change every limit with the `user_session_manager_shared_login_rules` filter, and add countries from their own lookup.
+From the sessions it already has: the network of each IP address, the browser and device, and when each session was last used. By default it flags more than two networks at the same time, two computers (or two phones, or two tablets) on different networks at the same time, or more than four different devices in a day. A laptop on Wi-Fi and a phone on mobile data are one person, so they are not flagged. Developers can change every limit with the `axle_sessions_shared_login_rules` filter, and add countries from their own lookup.
 
 = Will it lock out people who share an account on purpose? =
 
-No. By default it only shows a badge. Signing out every session but the newest is a choice per role, and a login is never refused. For accounts meant to be shared, such as a kiosk, set the role to "Do not check" or use the `user_session_manager_shared_login_exempt` filter.
+No. By default it only shows a badge. Signing out every session but the newest is a choice per role, and a login is never refused. For accounts meant to be shared, such as a kiosk, set the role to "Do not check" or use the `axle_sessions_shared_login_exempt` filter.
 
 = Is the "This wasn't me" link safe? =
 
@@ -108,7 +108,7 @@ An incident is a bad time for a mass email. People who are signed out see a mess
 
 = Does it work on multisite? =
 
-Yes. Users and their sessions are shared by the network, so the all-sessions screen and the settings live in Network Admin. Policies follow the roles a user has on the site they are using.
+Yes. Users and their sessions are shared by the network, so the all-sessions screen and the settings live in Network Admin, and only network administrators change the settings. Device memory, sign-in history and reports are kept per user for the whole network. The hourly clean-up runs from the main site. Policies follow the roles a user has on the site they are using. People who may not edit other users see only their own sessions, on their profile.
 
 = My host or another plugin stores sessions in Redis. Will this work? =
 

@@ -2,10 +2,10 @@
 /**
  * The message on the login screen that says why you were signed out.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -130,7 +130,7 @@ final class LoginNotice implements Service {
 
 		$text = self::message( $match[1], (int) $match[2] );
 		if ( '' !== $text ) {
-			$errors->add( 'user_session_manager_ended', $text, 'message' );
+			$errors->add( 'axle_sessions_ended', $text, 'message' );
 		}
 
 		return $errors;
@@ -155,21 +155,21 @@ final class LoginNotice implements Service {
 
 		$texts = array(
 			/* translators: %s: time, such as 14:02. */
-			'expired'      => __( 'Your session ended because it reached its time limit, at %s. Sign in again to carry on.', 'user-session-manager' ),
+			'expired'      => __( 'Your session ended because it reached its time limit, at %s. Sign in again to carry on.', 'axle-sessions' ),
 			/* translators: %s: time, such as 14:02. */
-			'idle'         => __( 'You were signed out because you were inactive for a while, at %s. Sign in again to carry on.', 'user-session-manager' ),
+			'idle'         => __( 'You were signed out because you were inactive for a while, at %s. Sign in again to carry on.', 'axle-sessions' ),
 			/* translators: %s: time, such as 14:02. */
-			'other_device' => __( 'You were signed out because you signed out this device from another device, at %s.', 'user-session-manager' ),
+			'other_device' => __( 'You were signed out because you signed out this device from another device, at %s.', 'axle-sessions' ),
 			/* translators: %s: time, such as 14:02. */
-			'admin'        => __( 'You were signed out by a site administrator, at %s.', 'user-session-manager' ),
+			'admin'        => __( 'You were signed out by a site administrator, at %s.', 'axle-sessions' ),
 			/* translators: %s: time, such as 14:02. */
-			'limit'        => __( 'You were signed out because this account signed in on another device, at %s. The account can only be signed in on a limited number of devices.', 'user-session-manager' ),
+			'limit'        => __( 'You were signed out because this account signed in on another device, at %s. The account can only be signed in on a limited number of devices.', 'axle-sessions' ),
 			/* translators: %s: time, such as 14:02. */
-			'not_me'       => __( 'You were signed out because a sign-in to this account was reported as "This wasn\'t me", at %s. Use "Lost your password?" to choose a new password.', 'user-session-manager' ),
+			'not_me'       => __( 'You were signed out because a sign-in to this account was reported as "This wasn\'t me", at %s. Use "Lost your password?" to choose a new password.', 'axle-sessions' ),
 			/* translators: %s: time, such as 14:02. */
-			'password'     => __( 'You were signed out because the password of this account changed, at %s. Sign in with the new password.', 'user-session-manager' ),
+			'password'     => __( 'You were signed out because the password of this account changed, at %s. Sign in with the new password.', 'axle-sessions' ),
 			/* translators: %s: time, such as 14:02. */
-			'shared'       => __( 'You were signed out because this account looked like it was used on more than one device at once, at %s.', 'user-session-manager' ),
+			'shared'       => __( 'You were signed out because this account looked like it was used on more than one device at once, at %s.', 'axle-sessions' ),
 		);
 		$text  = sprintf( $texts[ $reason ], $time );
 
@@ -180,7 +180,7 @@ final class LoginNotice implements Service {
 		 * @param string $reason expired, idle, other_device, admin, limit, not_me, password or shared.
 		 * @param int    $when   When the session ended.
 		 */
-		$filtered = (string) apply_filters( 'user_session_manager_signed_out_message', $text, $reason, $when );
+		$filtered = (string) apply_filters( 'axle_sessions_signed_out_message', $text, $reason, $when );
 
 		return '' !== trim( $filtered ) ? $filtered : $text;
 	}

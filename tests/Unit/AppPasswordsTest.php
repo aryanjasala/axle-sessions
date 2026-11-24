@@ -2,15 +2,15 @@
 /**
  * Tests for revoking application passwords after an incident.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\AppPasswords;
-use AryanX\Axle\UserSessionManager\Incident;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
+use AryanX\Axle\Sessions\AppPasswords;
+use AryanX\Axle\Sessions\Incident;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
 use Brain\Monkey\Actions;
 
 require_once dirname( __DIR__ ) . '/Stubs/app-passwords.php';
@@ -52,7 +52,7 @@ final class AppPasswordsTest extends SessionTestCase {
 	}
 
 	public function test_revoking_removes_each_key_and_announces_it_once(): void {
-		Actions\expectDone( 'user_session_manager_app_passwords_revoked' )->once()->with(
+		Actions\expectDone( 'axle_sessions_app_passwords_revoked' )->once()->with(
 			7,
 			\Mockery::on(
 				static function ( array $rows ): bool {
@@ -69,7 +69,7 @@ final class AppPasswordsTest extends SessionTestCase {
 	}
 
 	public function test_nothing_is_announced_when_there_was_nothing_to_revoke(): void {
-		Actions\expectDone( 'user_session_manager_app_passwords_revoked' )->never();
+		Actions\expectDone( 'axle_sessions_app_passwords_revoked' )->never();
 
 		$this->assertSame( array(), AppPasswords::revoke_for_user( 8, 'incident' ) );
 	}

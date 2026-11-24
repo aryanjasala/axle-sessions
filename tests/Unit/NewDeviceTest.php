@@ -2,16 +2,16 @@
 /**
  * Tests for the new device email and the privacy tools.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\NewDevice;
-use AryanX\Axle\UserSessionManager\Privacy;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
-use AryanX\Axle\UserSessionManager\SharedLogins;
+use AryanX\Axle\Sessions\NewDevice;
+use AryanX\Axle\Sessions\Privacy;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
+use AryanX\Axle\Sessions\SharedLogins;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
@@ -77,7 +77,7 @@ final class NewDeviceTest extends SessionTestCase {
 		$this->policies( array(), array( 'new_device_email' => true ) );
 		$this->session( 7, 'laptop' );
 
-		Actions\expectDone( 'user_session_manager_new_device_login' )->never();
+		Actions\expectDone( 'axle_sessions_new_device_login' )->never();
 		$this->devices()->check( $this->user( 7, 'alice' ), $this->login( self::IPHONE ) );
 
 		$this->assertSame( array(), $this->sent );
@@ -93,7 +93,7 @@ final class NewDeviceTest extends SessionTestCase {
 		$this->devices()->check( $user, $this->login( self::IPHONE ) );
 		$this->assertSame( array(), $this->sent );
 
-		Actions\expectDone( 'user_session_manager_new_device_login' )->once()->with( $user, \Mockery::type( 'array' ) );
+		Actions\expectDone( 'axle_sessions_new_device_login' )->once()->with( $user, \Mockery::type( 'array' ) );
 		$this->devices()->check( $user, $this->login( 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0' ) );
 
 		$this->assertCount( 1, $this->sent );
@@ -118,7 +118,7 @@ final class NewDeviceTest extends SessionTestCase {
 		$user = $this->user( 7, 'alice' );
 		$this->devices()->check( $user, $this->login( self::IPHONE ) );
 
-		Filters\expectApplied( 'user_session_manager_new_device_email' )->twice()->andReturnUsing(
+		Filters\expectApplied( 'axle_sessions_new_device_email' )->twice()->andReturnUsing(
 			static function ( $email ) {
 				static $calls = 0;
 				++$calls;
@@ -155,7 +155,7 @@ final class NewDeviceTest extends SessionTestCase {
 			),
 		);
 
-		Filters\expectApplied( 'user_session_manager_device_limit' )->once()->andReturn( 1 );
+		Filters\expectApplied( 'axle_sessions_device_limit' )->once()->andReturn( 1 );
 		$this->devices()->check( $this->user( 7, 'alice' ), $this->login( self::IPHONE ) );
 
 		$this->assertCount( 1, $this->sent );
@@ -182,10 +182,10 @@ final class NewDeviceTest extends SessionTestCase {
 		$export = $privacy->export( 'alice@example.com' );
 		$this->assertTrue( $export['done'] );
 		$this->assertCount( 3, $export['data'] );
-		$this->assertSame( array( 'user-session-manager-sessions', 'user-session-manager-sessions', 'user-session-manager-devices' ), array_column( $export['data'], 'group_id' ) );
+		$this->assertSame( array( 'axle-sessions-sessions', 'axle-sessions-sessions', 'axle-sessions-devices' ), array_column( $export['data'], 'group_id' ) );
 		$this->assertSame( array(), $privacy->export( 'nobody@example.com' )['data'] );
 
-		Actions\expectDone( 'user_session_manager_user_signed_out_everywhere' )->once()->with( 7, 2, 'privacy' );
+		Actions\expectDone( 'axle_sessions_user_signed_out_everywhere' )->once()->with( 7, 2, 'privacy' );
 		$erased = $privacy->erase( 'alice@example.com' );
 
 		$this->assertTrue( $erased['items_removed'] );

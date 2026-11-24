@@ -2,22 +2,22 @@
 /**
  * Base class for tests that work on users and their sessions.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\Abilities;
-use AryanX\Axle\UserSessionManager\Admin\ProfileSessions;
-use AryanX\Axle\UserSessionManager\Admin\SessionsPage;
-use AryanX\Axle\UserSessionManager\Cli\Command;
-use AryanX\Axle\UserSessionManager\History;
-use AryanX\Axle\UserSessionManager\Incident;
-use AryanX\Axle\UserSessionManager\NotMe;
-use AryanX\Axle\UserSessionManager\Pruner;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
-use AryanX\Axle\UserSessionManager\SharedLogins;
+use AryanX\Axle\Sessions\Abilities;
+use AryanX\Axle\Sessions\Admin\ProfileSessions;
+use AryanX\Axle\Sessions\Admin\SessionsPage;
+use AryanX\Axle\Sessions\Cli\Command;
+use AryanX\Axle\Sessions\History;
+use AryanX\Axle\Sessions\Incident;
+use AryanX\Axle\Sessions\NotMe;
+use AryanX\Axle\Sessions\Pruner;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
+use AryanX\Axle\Sessions\SharedLogins;
 use Brain\Monkey\Functions;
 
 require_once dirname( __DIR__ ) . '/Stubs/sessions.php';

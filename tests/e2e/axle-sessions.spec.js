@@ -7,7 +7,7 @@ const CHROME = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.
 const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36';
 
 const SESSIONS = '/wp-admin/users.php?page=user-sessions';
-const SETTINGS = '/wp-admin/options-general.php?page=user-session-manager';
+const SETTINGS = '/wp-admin/options-general.php?page=axle-sessions';
 const PASSWORD = 'e2e-password-123';
 
 // A must-use plugin for the suite: captures email, lets a test force the idle timeout,
@@ -24,7 +24,7 @@ add_filter( 'pre_wp_mail', function ( $short, $atts ) {
 	update_option( 'usm_e2e_mail', $log, false );
 	return true;
 }, 10, 2 );
-add_filter( 'user_session_manager_idle_timeout', function ( $minutes, $user ) {
+add_filter( 'axle_sessions_idle_timeout', function ( $minutes, $user ) {
 	$forced = get_option( 'usm_e2e_idle', '' );
 	// Never the admin: every test shares its session.
 	return '' === $forced || 'admin' === $user->user_login ? $minutes : (int) $forced;
@@ -32,11 +32,11 @@ add_filter( 'user_session_manager_idle_timeout', function ( $minutes, $user ) {
 `;
 
 const id = ( login ) => Number( wp( 'user', 'get', login, '--field=ID' ) );
-const sessions = ( login ) => JSON.parse( wp( 'user-session-manager', 'list', `--user=${ login }`, '--fields=handle,device,ip,ua,signed_in,last_active,expires', '--format=json' ) );
+const sessions = ( login ) => JSON.parse( wp( 'axle-sessions', 'list', `--user=${ login }`, '--fields=handle,device,ip,ua,signed_in,last_active,expires', '--format=json' ) );
 const raw = ( login ) => JSON.parse( wpEval( `echo wp_json_encode( get_user_meta( ${ id( login ) }, 'session_tokens', true ) ?: new stdClass() );` ) );
 const mail = () => JSON.parse( wpEval( `echo wp_json_encode( get_option( 'usm_e2e_mail', array() ) );` ) );
-const shared = () => JSON.parse( wp( 'user-session-manager', 'shared', '--fields=user,action,sessions,evidence,signed_out', '--format=json' ) );
-const flag = ( login ) => JSON.parse( wpEval( `echo wp_json_encode( get_user_meta( ${ id( login ) }, 'user_session_manager_shared', true ) ?: null );` ) );
+const shared = () => JSON.parse( wp( 'axle-sessions', 'shared', '--fields=user,action,sessions,evidence,signed_out', '--format=json' ) );
+const flag = ( login ) => JSON.parse( wpEval( `echo wp_json_encode( get_user_meta( ${ id( login ) }, 'axle_sessions_shared', true ) ?: null );` ) );
 
 /**
  * Signs a user in through wp-login.php in a fresh browser context.
@@ -73,7 +73,7 @@ async function signedIn( page ) {
 	return ! page.url().includes( 'wp-login.php' );
 }
 
-test.describe( 'User Session Manager', () => {
+test.describe( 'Axle Sessions', () => {
 	const contexts = [];
 	const open = async ( ...args ) => {
 		const opened = await signIn( ...args );
@@ -94,20 +94,20 @@ test.describe( 'User Session Manager', () => {
 	} );
 
 	test.beforeEach( () => {
-		wp( 'option', 'delete', 'user_session_manager_settings' );
+		wp( 'option', 'delete', 'axle_sessions_settings' );
 		wpEval( `delete_option( 'usm_e2e_mail' ); delete_option( 'usm_e2e_idle' );
 			foreach ( array( 'alice', 'bob', 'sam', 'carol' ) as $login ) {
 				$user = get_user_by( 'login', $login );
 				delete_user_meta( $user->ID, 'session_tokens' );
-				delete_user_meta( $user->ID, 'user_session_manager_devices' );
-				delete_user_meta( $user->ID, 'user_session_manager_shared' );
-				delete_user_meta( $user->ID, 'user_session_manager_history' );
-				delete_user_meta( $user->ID, 'user_session_manager_not_me' );
-				delete_user_meta( $user->ID, 'user_session_manager_swap' );
+				delete_user_meta( $user->ID, 'axle_sessions_devices' );
+				delete_user_meta( $user->ID, 'axle_sessions_shared' );
+				delete_user_meta( $user->ID, 'axle_sessions_history' );
+				delete_user_meta( $user->ID, 'axle_sessions_not_me' );
+				delete_user_meta( $user->ID, 'axle_sessions_swap' );
 				delete_user_meta( $user->ID, '_application_passwords' );
 			}
-			delete_option( 'user_session_manager_not_me_events' ); delete_option( 'user_session_manager_incidents' );
-			delete_user_meta( 1, 'user_session_manager_hide_steps' );
+			delete_option( 'axle_sessions_not_me_events' ); delete_option( 'axle_sessions_incidents' );
+			delete_user_meta( 1, 'axle_sessions_hide_steps' );
 			foreach ( array( 'alice', 'bob', 'sam', 'carol' ) as $login ) { wp_set_password( 'e2e-password-123', get_user_by( 'login', $login )->ID ); }
 			global $wpdb; $wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%usm_nm_%' OR option_name LIKE '%usm_sw_%'" );` );
 	} );
@@ -119,7 +119,7 @@ test.describe( 'User Session Manager', () => {
 	} );
 
 	test.afterAll( () => {
-		wp( 'option', 'delete', 'user_session_manager_settings' );
+		wp( 'option', 'delete', 'axle_sessions_settings' );
 		wpEval( `@unlink( WPMU_PLUGIN_DIR . '/usm-e2e.php' ); delete_option( 'usm_e2e_mail' ); delete_option( 'usm_e2e_idle' );` );
 		for ( const login of [ 'alice', 'bob', 'sam', 'carol' ] ) {
 			wp( 'user', 'delete', login, '--yes' );
@@ -338,7 +338,7 @@ test.describe( 'User Session Manager', () => {
 		await page.locator( '#usm-author-max_sessions' ).fill( '1' );
 		await page.getByRole( 'button', { name: 'Save settings' } ).click();
 		await expect( page.locator( '.notice-success' ) ).toContainText( 'Settings saved.' );
-		expect( JSON.parse( wp( 'option', 'get', 'user_session_manager_settings', '--format=json' ) ).policies.author.max_sessions ).toBe( 1 );
+		expect( JSON.parse( wp( 'option', 'get', 'axle_sessions_settings', '--format=json' ) ).policies.author.max_sessions ).toBe( 1 );
 
 		const first = await open( browser, 'alice', IPHONE );
 		const second = await open( browser, 'alice', FIREFOX );
@@ -354,8 +354,8 @@ test.describe( 'User Session Manager', () => {
 	} );
 
 	test( 'block mode refuses the new login with a clear message', async ( { browser } ) => {
-		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
-		wp( 'user-session-manager', 'settings', '--limit-mode=block', '--device-swap=off' );
+		wp( 'axle-sessions', 'set-policy', 'author', '--max-sessions=1' );
+		wp( 'axle-sessions', 'settings', '--limit-mode=block', '--device-swap=off' );
 
 		const first = await open( browser, 'alice', IPHONE );
 		const second = await open( browser, 'alice', FIREFOX );
@@ -377,7 +377,7 @@ test.describe( 'User Session Manager', () => {
 		expect( await signedIn( phone.page ) ).toBe( false );
 		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ FIREFOX ] );
 
-		expect( wp( 'user-session-manager', 'prune' ) ).toContain( 'Removed 0 expired and 1 idle sessions' );
+		expect( wp( 'axle-sessions', 'prune' ) ).toContain( 'Removed 0 expired and 1 idle sessions' );
 		expect( sessions( 'alice' ) ).toHaveLength( 0 );
 	} );
 
@@ -419,7 +419,7 @@ test.describe( 'User Session Manager', () => {
 		await open( browser, 'alice', CHROME );
 		expect( mail() ).toHaveLength( 1 );
 
-		const remembered = JSON.parse( wpEval( `echo wp_json_encode( get_user_meta( get_user_by( 'login', 'alice' )->ID, 'user_session_manager_devices', true ) );` ) );
+		const remembered = JSON.parse( wpEval( `echo wp_json_encode( get_user_meta( get_user_by( 'login', 'alice' )->ID, 'axle_sessions_devices', true ) );` ) );
 		expect( Object.keys( remembered.devices ) ).toHaveLength( 2 );
 		expect( JSON.stringify( remembered ) ).not.toContain( sessions( 'alice' )[ 0 ].ip );
 
@@ -436,12 +436,12 @@ test.describe( 'User Session Manager', () => {
 			JSON.parse(
 				wpEval( `
 					$tools = apply_filters( 'wp_privacy_personal_data_${ tool }s', array() );
-					echo wp_json_encode( call_user_func( $tools['user-session-manager']['callback'], 'alice@example.com', 1 ) );
+					echo wp_json_encode( call_user_func( $tools['axle-sessions']['callback'], 'alice@example.com', 1 ) );
 				` )
 			);
 
 		const exported = privacy( 'exporter' );
-		const sessionItems = exported.data.filter( ( item ) => item.group_id === 'user-session-manager-sessions' );
+		const sessionItems = exported.data.filter( ( item ) => item.group_id === 'axle-sessions-sessions' );
 		expect( sessionItems ).toHaveLength( 2 );
 		const devices = sessionItems.map( ( item ) => item.data.find( ( field ) => field.name === 'Device' ).value ).sort();
 		expect( devices ).toEqual( [ 'Firefox on Windows', 'Safari on iOS' ] );
@@ -455,7 +455,7 @@ test.describe( 'User Session Manager', () => {
 		await page.goto( '/wp-admin/site-health.php' );
 		await expect( page.getByText( 'Administrator sessions have no idle timeout or session limit' ) ).toBeVisible( { timeout: 30_000 } );
 
-		wp( 'user-session-manager', 'set-policy', 'administrator', '--idle-minutes=600' );
+		wp( 'axle-sessions', 'set-policy', 'administrator', '--idle-minutes=600' );
 		await page.goto( '/wp-admin/site-health.php' );
 		await page.getByRole( 'button', { name: 'Passed tests' } ).click();
 		await expect( page.getByText( 'Login sessions are managed' ) ).toBeVisible( { timeout: 30_000 } );
@@ -470,19 +470,19 @@ test.describe( 'User Session Manager', () => {
 		expect( listed.map( ( s ) => s.device ).sort() ).toEqual( [ 'Firefox on Windows', 'Safari on iOS' ] );
 		expect( listed[ 0 ].handle ).toMatch( /^\d+-[0-9a-f]{24}$/ );
 
-		expect( wp( 'user-session-manager', 'revoke', listed[ 0 ].handle ) ).toContain( 'Signed out 1 session.' );
+		expect( wp( 'axle-sessions', 'revoke', listed[ 0 ].handle ) ).toContain( 'Signed out 1 session.' );
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
-		expect( () => wp( 'user-session-manager', 'revoke', listed[ 0 ].handle ) ).toThrow( /No session was signed out/ );
+		expect( () => wp( 'axle-sessions', 'revoke', listed[ 0 ].handle ) ).toThrow( /No session was signed out/ );
 
-		expect( wp( 'user-session-manager', 'sign-out', 'bob@example.com' ) ).toContain( 'out of 1 session.' );
+		expect( wp( 'axle-sessions', 'sign-out', 'bob@example.com' ) ).toContain( 'out of 1 session.' );
 		expect( sessions( 'bob' ) ).toHaveLength( 0 );
 
-		wp( 'user-session-manager', 'set-policy', 'editor', '--max-sessions=3', '--idle-minutes=45', '--lifetime-hours=8', '--remember-hours=72' );
-		const editor = JSON.parse( wp( 'user-session-manager', 'policies', '--format=json' ) ).find( ( row ) => row.role === 'editor' );
+		wp( 'axle-sessions', 'set-policy', 'editor', '--max-sessions=3', '--idle-minutes=45', '--lifetime-hours=8', '--remember-hours=72' );
+		const editor = JSON.parse( wp( 'axle-sessions', 'policies', '--format=json' ) ).find( ( row ) => row.role === 'editor' );
 		expect( editor ).toEqual( { role: 'editor', max_sessions: 3, idle_minutes: 45, lifetime_hours: 8, remember_hours: 72, shared: 'flag' } );
 
-		wp( 'user-session-manager', 'settings', '--limit-mode=block', '--mask-ip=on' );
-		expect( JSON.parse( wp( 'user-session-manager', 'settings', '--format=json' ) ) ).toMatchObject( { limit_mode: 'block', mask_ip: true, new_device_email: false } );
+		wp( 'axle-sessions', 'settings', '--limit-mode=block', '--mask-ip=on' );
+		expect( JSON.parse( wp( 'axle-sessions', 'settings', '--format=json' ) ) ).toMatchObject( { limit_mode: 'block', mask_ip: true, new_device_email: false } );
 	} );
 
 	test( 'abilities: list, sign out a session and sign a user out, with permissions', async ( { rest, browser } ) => {
@@ -490,20 +490,20 @@ test.describe( 'User Session Manager', () => {
 		await open( browser, 'alice', IPHONE );
 		await open( browser, 'alice', FIREFOX );
 		await open( browser, 'bob', CHROME );
-		const path = ( name ) => `/wp-abilities/v1/abilities/user-session-manager/${ name }/run`;
+		const path = ( name ) => `/wp-abilities/v1/abilities/axle-sessions/${ name }/run`;
 
-		const listed = await rest( 'GET', '/wp-abilities/v1/abilities?category=user-session-manager' );
+		const listed = await rest( 'GET', '/wp-abilities/v1/abilities?category=axle-sessions' );
 		expect( listed.body.map( ( ability ) => ability.name ).sort() ).toEqual( [
-			'user-session-manager/list-not-me-reports',
-			'user-session-manager/list-sessions',
-			'user-session-manager/list-shared-logins',
-			'user-session-manager/list-sign-in-history',
-			'user-session-manager/revoke-session',
-			'user-session-manager/sign-out-everyone',
-			'user-session-manager/sign-out-user',
+			'axle-sessions/list-not-me-reports',
+			'axle-sessions/list-sessions',
+			'axle-sessions/list-shared-logins',
+			'axle-sessions/list-sign-in-history',
+			'axle-sessions/revoke-session',
+			'axle-sessions/sign-out-everyone',
+			'axle-sessions/sign-out-user',
 		] );
 		// MCP clients only list abilities marked public.
-		expect( JSON.parse( wpEval( `echo wp_json_encode( array_values( array_filter( array_map( function ( $ability ) { $meta = $ability->get_meta(); return ( ! empty( $meta['public'] ) && ! empty( $meta['mcp']['public'] ) ) ? '' : $ability->get_name(); }, wp_get_abilities() ), function ( $name ) { return 0 === strpos( $name, 'user-session-manager/' ); } ) ) );` ) ) ).toEqual( [] );
+		expect( JSON.parse( wpEval( `echo wp_json_encode( array_values( array_filter( array_map( function ( $ability ) { $meta = $ability->get_meta(); return ( ! empty( $meta['public'] ) && ! empty( $meta['mcp']['public'] ) ) ? '' : $ability->get_name(); }, wp_get_abilities() ), function ( $name ) { return 0 === strpos( $name, 'axle-sessions/' ); } ) ) );` ) ) ).toEqual( [] );
 
 		// Without input: the caller's own sessions, the current one marked.
 		const own = await rest( 'GET', path( 'list-sessions' ) );
@@ -531,9 +531,9 @@ test.describe( 'User Session Manager', () => {
 
 		// A subscriber may list and end their own sessions, nobody else's.
 		const asSam = ( php ) => wpEval( `wp_set_current_user( get_user_by( 'login', 'sam' )->ID ); ${ php }` );
-		expect( asSam( `$r = wp_get_ability( 'user-session-manager/list-sessions' )->execute( array( 'user' => 'alice' ) ); echo is_wp_error( $r ) ? $r->get_error_code() : 'ran';` ) ).toBe( 'ability_invalid_permissions' );
-		expect( asSam( `$r = wp_get_ability( 'user-session-manager/sign-out-user' )->execute( array( 'user' => 'alice' ) ); echo is_wp_error( $r ) ? $r->get_error_code() : 'ran';` ) ).toBe( 'ability_invalid_permissions' );
-		expect( asSam( `$r = wp_get_ability( 'user-session-manager/list-sessions' )->execute( array() ); echo is_wp_error( $r ) ? $r->get_error_code() : $r['total'];` ) ).toBe( '0' );
+		expect( asSam( `$r = wp_get_ability( 'axle-sessions/list-sessions' )->execute( array( 'user' => 'alice' ) ); echo is_wp_error( $r ) ? $r->get_error_code() : 'ran';` ) ).toBe( 'ability_invalid_permissions' );
+		expect( asSam( `$r = wp_get_ability( 'axle-sessions/sign-out-user' )->execute( array( 'user' => 'alice' ) ); echo is_wp_error( $r ) ? $r->get_error_code() : 'ran';` ) ).toBe( 'ability_invalid_permissions' );
+		expect( asSam( `$r = wp_get_ability( 'axle-sessions/list-sessions' )->execute( array() ); echo is_wp_error( $r ) ? $r->get_error_code() : $r['total'];` ) ).toBe( '0' );
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
 	} );
 
@@ -588,7 +588,7 @@ test.describe( 'User Session Manager', () => {
 		await page.getByLabel( 'Author: Account looks shared' ).selectOption( 'notify' );
 		await page.getByRole( 'button', { name: 'Save settings' } ).click();
 		await expect( page.locator( '.notice-success' ) ).toBeVisible();
-		expect( JSON.parse( wp( 'option', 'get', 'user_session_manager_settings', '--format=json' ) ).shared.author ).toBe( 'notify' );
+		expect( JSON.parse( wp( 'option', 'get', 'axle_sessions_settings', '--format=json' ) ).shared.author ).toBe( 'notify' );
 		await expect( page.getByLabel( 'Author: Account looks shared' ) ).toHaveValue( 'notify' );
 
 		const windows = await open( browser, 'alice', FIREFOX, '192.0.2.10' );
@@ -611,9 +611,9 @@ test.describe( 'User Session Manager', () => {
 	} );
 
 	test( '"Keep only the newest session" signs out the rest, and "Do not check" leaves an account alone', async ( { browser } ) => {
-		wp( 'user-session-manager', 'set-policy', 'author', '--shared=sign_out_others' );
-		wp( 'user-session-manager', 'set-policy', 'editor', '--shared=off' );
-		expect( JSON.parse( wp( 'user-session-manager', 'policies', '--format=json' ) ).find( ( r ) => r.role === 'author' ).shared ).toBe( 'sign_out_others' );
+		wp( 'axle-sessions', 'set-policy', 'author', '--shared=sign_out_others' );
+		wp( 'axle-sessions', 'set-policy', 'editor', '--shared=off' );
+		expect( JSON.parse( wp( 'axle-sessions', 'policies', '--format=json' ) ).find( ( r ) => r.role === 'author' ).shared ).toBe( 'sign_out_others' );
 
 		const first = await open( browser, 'alice', FIREFOX, '192.0.2.10' );
 		const second = await open( browser, 'alice', CHROME, '198.51.100.20' );
@@ -636,9 +636,9 @@ test.describe( 'User Session Manager', () => {
 		test.skip( 'yes' !== wpEval( "echo function_exists( 'wp_register_ability' ) ? 'yes' : 'no';" ), 'The Abilities API needs WordPress 6.9.' );
 		await open( browser, 'alice', FIREFOX, '192.0.2.10' );
 		await open( browser, 'alice', CHROME, '198.51.100.20' );
-		const path = '/wp-abilities/v1/abilities/user-session-manager/list-shared-logins/run';
+		const path = '/wp-abilities/v1/abilities/axle-sessions/list-shared-logins/run';
 
-		const ability = await rest( 'GET', '/wp-abilities/v1/abilities/user-session-manager/list-shared-logins' );
+		const ability = await rest( 'GET', '/wp-abilities/v1/abilities/axle-sessions/list-shared-logins' );
 		expect( ability.body.meta.annotations ).toMatchObject( { readonly: true } );
 
 		const listed = await rest( 'GET', path );
@@ -655,8 +655,8 @@ test.describe( 'User Session Manager', () => {
 
 		// A subscriber may ask about their own account, not about everyone.
 		const asSam = ( php ) => wpEval( `wp_set_current_user( get_user_by( 'login', 'sam' )->ID ); ${ php }` );
-		expect( asSam( `$r = wp_get_ability( 'user-session-manager/list-shared-logins' )->execute( array() ); echo is_wp_error( $r ) ? $r->get_error_code() : 'ran';` ) ).toBe( 'ability_invalid_permissions' );
-		expect( asSam( `$r = wp_get_ability( 'user-session-manager/list-shared-logins' )->execute( array( 'user' => 'sam' ) ); echo is_wp_error( $r ) ? $r->get_error_code() : $r['total'];` ) ).toBe( '0' );
+		expect( asSam( `$r = wp_get_ability( 'axle-sessions/list-shared-logins' )->execute( array() ); echo is_wp_error( $r ) ? $r->get_error_code() : 'ran';` ) ).toBe( 'ability_invalid_permissions' );
+		expect( asSam( `$r = wp_get_ability( 'axle-sessions/list-shared-logins' )->execute( array( 'user' => 'sam' ) ); echo is_wp_error( $r ) ? $r->get_error_code() : $r['total'];` ) ).toBe( '0' );
 	} );
 
 	test( 'erasing personal data drops the flag too', async ( { browser } ) => {
@@ -666,23 +666,23 @@ test.describe( 'User Session Manager', () => {
 
 		const exported = JSON.parse(
 			wpEval( `$tools = apply_filters( 'wp_privacy_personal_data_exporters', array() );
-				echo wp_json_encode( call_user_func( $tools['user-session-manager']['callback'], 'alice@example.com', 1 ) );` )
+				echo wp_json_encode( call_user_func( $tools['axle-sessions']['callback'], 'alice@example.com', 1 ) );` )
 		);
-		expect( exported.data.filter( ( item ) => item.group_id === 'user-session-manager-shared' ) ).toHaveLength( 2 );
+		expect( exported.data.filter( ( item ) => item.group_id === 'axle-sessions-shared' ) ).toHaveLength( 2 );
 
 		wpEval( `$tools = apply_filters( 'wp_privacy_personal_data_erasers', array() );
-			call_user_func( $tools['user-session-manager']['callback'], 'alice@example.com', 1 );` );
+			call_user_func( $tools['axle-sessions']['callback'], 'alice@example.com', 1 );` );
 		expect( flag( 'alice' ) ).toBeNull();
 		expect( shared() ).toEqual( [] );
 	} );
 	test( '"This wasn\'t me": the email link signs the account out, retires the password and tells the administrator', async ( { page, browser } ) => {
-		wp( 'user-session-manager', 'settings', '--new-device-email=on' );
+		wp( 'axle-sessions', 'settings', '--new-device-email=on' );
 		await open( browser, 'alice', CHROME );
 		await open( browser, 'alice', IPHONE, '198.51.100.20' );
 		const sent = mail();
 		expect( sent ).toHaveLength( 1 );
 		expect( sent[ 0 ].message ).toContain( 'Nothing happens until you confirm' );
-		const link = sent[ 0 ].message.match( /http\S*user_session_manager_not_me\S*/ )[ 0 ];
+		const link = sent[ 0 ].message.match( /http\S*axle_sessions_not_me\S*/ )[ 0 ];
 
 		// Opening the link, as a mail scanner does, shows a page and changes nothing. No login is needed.
 		const visitor = await browser.newContext( { storageState: { cookies: [], origins: [] } } );
@@ -695,6 +695,11 @@ test.describe( 'User Session Manager', () => {
 		await expect( tab.locator( 'body' ) ).not.toContainText( 'alice' );
 		expect( sessions( 'alice' ) ).toHaveLength( 2 );
 		expect( mail() ).toHaveLength( 1 );
+
+		// The right key without the page's WordPress nonce changes nothing and shows the page again.
+		const noNonce = await tab.context().request.post( link, { form: { usm_key: new URL( link ).searchParams.get( 'usm_key' ), usm_confirm: '1' } } );
+		expect( await noNonce.text() ).toContain( 'open for too long' );
+		expect( sessions( 'alice' ) ).toHaveLength( 2 );
 
 		await tab.getByRole( 'button', { name: 'This wasn\'t me, secure the account' } ).click();
 		await expect( tab.locator( 'body' ) ).toContainText( 'Done. We signed the account out' );
@@ -729,18 +734,18 @@ test.describe( 'User Session Manager', () => {
 		await expect( page.locator( '.usm-history-row' ).first() ).toContainText( 'Reported as "This wasn\'t me"' );
 		await page.goto( SESSIONS );
 		await expect( page.locator( '.usm-reports' ) ).toContainText( 'alice' );
-		const reports = JSON.parse( wp( 'user-session-manager', 'reports', '--format=json' ) );
+		const reports = JSON.parse( wp( 'axle-sessions', 'reports', '--format=json' ) );
 		expect( reports ).toHaveLength( 1 );
 		expect( reports[ 0 ] ).toMatchObject( { user: 'alice', device: 'Safari on iOS', scope: 'all', ended: 2 } );
-		const history = JSON.parse( wp( 'user-session-manager', 'history', 'alice', '--format=json' ) );
+		const history = JSON.parse( wp( 'axle-sessions', 'history', 'alice', '--format=json' ) );
 		expect( history.map( ( row ) => row.reason ) ).toEqual( [ 'not_me', 'not_me' ] );
 	} );
 
 	test( '"This wasn\'t me" can be limited to one session, turned off, and rate limited', async ( { request, browser } ) => {
-		wp( 'user-session-manager', 'settings', '--new-device-email=on', '--not-me-scope=session' );
+		wp( 'axle-sessions', 'settings', '--new-device-email=on', '--not-me-scope=session' );
 		await open( browser, 'alice', CHROME );
 		await open( browser, 'alice', IPHONE, '198.51.100.20' );
-		const link = mail()[ 0 ].message.match( /http\S*user_session_manager_not_me\S*/ )[ 0 ];
+		const link = mail()[ 0 ].message.match( /http\S*axle_sessions_not_me\S*/ )[ 0 ];
 		const visitor = await browser.newContext( { storageState: { cookies: [], origins: [] } } );
 		contexts.push( visitor );
 		const tab = await visitor.newPage();
@@ -749,12 +754,12 @@ test.describe( 'User Session Manager', () => {
 		expect( sessions( 'alice' ).map( ( s ) => s.device ) ).toEqual( [ 'Chrome on macOS' ] );
 
 		// Off: no link in new emails, and a link already sent stops working.
-		wp( 'user-session-manager', 'settings', '--not-me=off', '--not-me-scope=all' );
+		wp( 'axle-sessions', 'settings', '--not-me=off', '--not-me-scope=all' );
 		await open( browser, 'alice', FIREFOX, '198.51.100.30' );
-		expect( mail().pop().message ).not.toContain( 'user_session_manager_not_me' );
+		expect( mail().pop().message ).not.toContain( 'axle_sessions_not_me' );
 
 		// Too many wrong keys from one address slow down.
-		const bad = '/wp-login.php?action=user_session_manager_not_me&usm_key=3.' + 'b'.repeat( 48 );
+		const bad = '/wp-login.php?action=axle_sessions_not_me&usm_key=3.' + 'b'.repeat( 48 );
 		for ( let i = 0; i < 10; i++ ) {
 			expect( ( await request.get( bad ) ).status() ).toBe( 404 );
 		}
@@ -762,7 +767,7 @@ test.describe( 'User Session Manager', () => {
 	} );
 
 	test( 'sign-in history shows how sessions ended, and the login screen says why you were signed out', async ( { page, browser } ) => {
-		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
+		wp( 'axle-sessions', 'set-policy', 'author', '--max-sessions=1' );
 		const phone = await open( browser, 'alice', IPHONE );
 		const laptop = await open( browser, 'alice', FIREFOX );
 
@@ -786,7 +791,7 @@ test.describe( 'User Session Manager', () => {
 		await expect( rows.first().locator( 'time.axle-time' ).first() ).toHaveAttribute( 'datetime', /\d{4}-\d\d-\d\dT/ );
 
 		// An administrator signs the laptop out.
-		wp( 'user-session-manager', 'revoke', sessions( 'alice' )[ 0 ].handle );
+		wp( 'axle-sessions', 'revoke', sessions( 'alice' )[ 0 ].handle );
 		await laptop.page.goto( '/wp-admin/profile.php' );
 		await expect( laptop.page.locator( '.message' ) ).toContainText( 'You were signed out by a site administrator, at' );
 
@@ -801,7 +806,7 @@ test.describe( 'User Session Manager', () => {
 		const expired = await open( browser, 'alice', CHROME );
 		wpEval( `$id = get_user_by( 'login', 'alice' )->ID; $all = get_user_meta( $id, 'session_tokens', true );
 			foreach ( $all as $k => $s ) { $all[ $k ]['expiration'] = time() - 5; } update_user_meta( $id, 'session_tokens', $all );
-			$h = get_user_meta( $id, 'user_session_manager_history', true ); $h[0]['expires'] = time() - 5; update_user_meta( $id, 'user_session_manager_history', $h );` );
+			$h = get_user_meta( $id, 'axle_sessions_history', true ); $h[0]['expires'] = time() - 5; update_user_meta( $id, 'axle_sessions_history', $h );` );
 		await expired.page.goto( '/wp-admin/profile.php' );
 		await expect( expired.page.locator( '.message' ) ).toContainText( 'Your session ended because it reached its time limit' );
 
@@ -811,7 +816,7 @@ test.describe( 'User Session Manager', () => {
 		await own.page.getByRole( 'link', { name: 'log out' } ).click();
 		await expect( own.page.locator( '.message' ) ).toContainText( 'You are now logged out' );
 		await expect( own.page.locator( '.message' ) ).not.toContainText( 'You were signed out because' );
-		const history = JSON.parse( wp( 'user-session-manager', 'history', 'alice', '--format=json' ) );
+		const history = JSON.parse( wp( 'axle-sessions', 'history', 'alice', '--format=json' ) );
 		expect( history.map( ( row ) => row.reason ) ).toEqual( expect.arrayContaining( [ 'limit', 'admin', 'idle', 'expired', 'signed_out' ] ) );
 		expect( history[ 0 ].reason ).toBe( 'signed_out' );
 	} );
@@ -819,34 +824,34 @@ test.describe( 'User Session Manager', () => {
 	test( 'history follows the retention setting, the privacy tools and the clean-up', async ( { browser } ) => {
 		await open( browser, 'alice', IPHONE );
 		await open( browser, 'alice', FIREFOX );
-		const keep = () => JSON.parse( wpEval( `echo wp_json_encode( get_user_meta( get_user_by( 'login', 'alice' )->ID, 'user_session_manager_history', true ) ?: array() );` ) );
+		const keep = () => JSON.parse( wpEval( `echo wp_json_encode( get_user_meta( get_user_by( 'login', 'alice' )->ID, 'axle_sessions_history', true ) ?: array() );` ) );
 		expect( keep() ).toHaveLength( 2 );
 
 		const exported = JSON.parse(
 			wpEval( `$tools = apply_filters( 'wp_privacy_personal_data_exporters', array() );
-				echo wp_json_encode( call_user_func( $tools['user-session-manager']['callback'], 'alice@example.com', 1 ) );` )
+				echo wp_json_encode( call_user_func( $tools['axle-sessions']['callback'], 'alice@example.com', 1 ) );` )
 		);
-		expect( exported.data.filter( ( item ) => item.group_id === 'user-session-manager-history' ) ).toHaveLength( 2 );
+		expect( exported.data.filter( ( item ) => item.group_id === 'axle-sessions-history' ) ).toHaveLength( 2 );
 
 		// An entry past the retention time goes with the clean-up, even for someone who never comes back.
-		wpEval( `$id = get_user_by( 'login', 'alice' )->ID; $h = get_user_meta( $id, 'user_session_manager_history', true );
+		wpEval( `$id = get_user_by( 'login', 'alice' )->ID; $h = get_user_meta( $id, 'axle_sessions_history', true );
 			$h[1]['start'] = time() - 200 * DAY_IN_SECONDS; $h[1]['seen'] = $h[1]['start']; $h[1]['end'] = $h[1]['start'] + 60; $h[1]['expires'] = $h[1]['end']; $h[1]['reason'] = 'idle';
-			update_user_meta( $id, 'user_session_manager_history', $h );` );
-		expect( wp( 'user-session-manager', 'prune' ) ).toContain( '1 old sign-in history entries' );
+			update_user_meta( $id, 'axle_sessions_history', $h );` );
+		expect( wp( 'axle-sessions', 'prune' ) ).toContain( '1 old sign-in history entries' );
 		expect( keep() ).toHaveLength( 1 );
 
 		// Retention 0 keeps none, and the clean-up empties what was there.
-		wp( 'user-session-manager', 'settings', '--history-days=0' );
-		wp( 'user-session-manager', 'prune' );
+		wp( 'axle-sessions', 'settings', '--history-days=0' );
+		wp( 'axle-sessions', 'prune' );
 		expect( keep() ).toHaveLength( 0 );
 		await open( browser, 'alice', CHROME );
 		expect( keep() ).toHaveLength( 0 );
 
-		wp( 'user-session-manager', 'settings', '--history-days=90' );
+		wp( 'axle-sessions', 'settings', '--history-days=90' );
 		await open( browser, 'alice', ANDROID );
 		expect( keep() ).toHaveLength( 1 );
 		wpEval( `$tools = apply_filters( 'wp_privacy_personal_data_erasers', array() );
-			call_user_func( $tools['user-session-manager']['callback'], 'alice@example.com', 1 );` );
+			call_user_func( $tools['axle-sessions']['callback'], 'alice@example.com', 1 );` );
 		expect( keep() ).toHaveLength( 0 );
 	} );
 
@@ -908,7 +913,7 @@ test.describe( 'User Session Manager', () => {
 		await expect( page.locator( '.usm-incident-log' ) ).toContainText( '3 sessions signed out' );
 
 		// It is in each person's history, and the login screen says why.
-		const history = JSON.parse( wp( 'user-session-manager', 'history', 'alice', '--format=json' ) );
+		const history = JSON.parse( wp( 'axle-sessions', 'history', 'alice', '--format=json' ) );
 		expect( history[ 0 ].reason ).toBe( 'admin' );
 	} );
 
@@ -917,7 +922,7 @@ test.describe( 'User Session Manager', () => {
 		await open( browser, 'alice', IPHONE );
 		await open( browser, 'bob', CHROME );
 		await open( browser, 'sam', FIREFOX );
-		const path = '/wp-abilities/v1/abilities/user-session-manager/sign-out-everyone/run';
+		const path = '/wp-abilities/v1/abilities/axle-sessions/sign-out-everyone/run';
 
 		// An explicit yes is required, and nobody is signed out without it.
 		const refused = await rest( 'POST', path, { input: { confirm: false } } );
@@ -930,13 +935,13 @@ test.describe( 'User Session Manager', () => {
 		expect( sessions( 'bob' ) ).toHaveLength( 1 );
 
 		// A subscriber has no permission.
-		expect( wpEval( `wp_set_current_user( get_user_by( 'login', 'sam' )->ID ); $r = wp_get_ability( 'user-session-manager/sign-out-everyone' )->execute( array( 'confirm' => true ) ); echo is_wp_error( $r ) ? $r->get_error_code() : 'ran';` ) ).toBe( 'ability_invalid_permissions' );
+		expect( wpEval( `wp_set_current_user( get_user_by( 'login', 'sam' )->ID ); $r = wp_get_ability( 'axle-sessions/sign-out-everyone' )->execute( array( 'confirm' => true ) ); echo is_wp_error( $r ) ? $r->get_error_code() : 'ran';` ) ).toBe( 'ability_invalid_permissions' );
 
 		await open( browser, 'alice', IPHONE );
-		expect( wp( 'user-session-manager', 'sign-out-everyone', '--keep-user=admin', '--exclude-roles=editor', '--yes' ) ).toContain( 'Signed' );
+		expect( wp( 'axle-sessions', 'sign-out-everyone', '--keep-user=admin', '--exclude-roles=editor', '--yes' ) ).toContain( 'Signed' );
 		expect( sessions( 'alice' ) ).toHaveLength( 0 );
 		expect( sessions( 'bob' ) ).toHaveLength( 1 );
-		const log = JSON.parse( wpEval( `echo wp_json_encode( get_option( 'user_session_manager_incidents' ) );` ) );
+		const log = JSON.parse( wpEval( `echo wp_json_encode( get_option( 'axle_sessions_incidents' ) );` ) );
 		expect( log.map( ( entry ) => entry.via ) ).toEqual( [ 'cli', 'ability' ] );
 	} );
 
@@ -946,12 +951,12 @@ test.describe( 'User Session Manager', () => {
 		await page.getByLabel( 'Keep sign-in history for' ).fill( '30' );
 		await page.getByRole( 'button', { name: 'Save settings' } ).click();
 		await expect( page.locator( '.usm-notice' ) ).toContainText( 'Settings saved.' );
-		const saved = JSON.parse( wp( 'user-session-manager', 'settings', '--format=json' ) );
+		const saved = JSON.parse( wp( 'axle-sessions', 'settings', '--format=json' ) );
 		expect( saved ).toMatchObject( { not_me: true, not_me_scope: 'session', history_days: 30 } );
 
 		await page.getByRole( 'button', { name: 'Help' } ).click();
-		await page.locator( '#tab-link-user-session-manager-history a' ).click();
-		await expect( page.locator( '#tab-panel-user-session-manager-history' ) ).toContainText( 'kept for the number of days you set' );
+		await page.locator( '#tab-link-axle-sessions-history a' ).click();
+		await expect( page.locator( '#tab-panel-axle-sessions-history' ) ).toContainText( 'kept for the number of days you set' );
 
 		await page.goto( SESSIONS );
 		await expect( page.locator( '.usm-steps' ) ).toContainText( 'Limit administrator sessions' );
@@ -964,7 +969,7 @@ test.describe( 'User Session Manager', () => {
 	test( 'other scripts can change the confirm step through wp.hooks', async ( { page, browser } ) => {
 		await open( browser, 'alice', IPHONE );
 		await page.goto( `/wp-admin/user-edit.php?user_id=${ id( 'alice' ) }` );
-		await page.evaluate( () => wp.hooks.addFilter( 'user_session_manager.confirm_message', 'e2e', ( message ) => message + ' Hooked.' ) );
+		await page.evaluate( () => wp.hooks.addFilter( 'axle_sessions.confirm_message', 'e2e', ( message ) => message + ' Hooked.' ) );
 		await page.locator( '.usm-sessions' ).getByRole( 'link', { name: 'Sign out' } ).click();
 		await expect( page.locator( '.usm-confirm-box' ) ).toContainText( 'Hooked.' );
 		// Escape cancels and gives focus back to the link.
@@ -974,7 +979,7 @@ test.describe( 'User Session Manager', () => {
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
 	} );
 	test( 'This wasn\'t me also revokes application passwords: a real key works before and is refused after', async ( { browser } ) => {
-		wp( 'user-session-manager', 'settings', '--new-device-email=on' );
+		wp( 'axle-sessions', 'settings', '--new-device-email=on' );
 		const key = await appPasswordClient( 'alice', 'Deploy script' );
 		const other = await appPasswordClient( 'alice', 'Backup job' );
 		try {
@@ -985,7 +990,7 @@ test.describe( 'User Session Manager', () => {
 
 			await open( browser, 'alice', CHROME );
 			await open( browser, 'alice', IPHONE, '198.51.100.20' );
-			const link = mail()[ 0 ].message.match( /http\S*user_session_manager_not_me\S*/ )[ 0 ];
+			const link = mail()[ 0 ].message.match( /http\S*axle_sessions_not_me\S*/ )[ 0 ];
 			const visitor = await browser.newContext( { storageState: { cookies: [], origins: [] } } );
 			contexts.push( visitor );
 			const tab = await visitor.newPage();
@@ -1005,7 +1010,7 @@ test.describe( 'User Session Manager', () => {
 			expect( wp( 'user', 'application-password', 'list', 'alice', '--format=count' ) ).toBe( '0' );
 
 			// The report lists them, in the email to the administrators too.
-			const reports = JSON.parse( wp( 'user-session-manager', 'reports', '--format=json' ) );
+			const reports = JSON.parse( wp( 'axle-sessions', 'reports', '--format=json' ) );
 			expect( reports[ 0 ].app_passwords ).toContain( 'Deploy script' );
 			expect( reports[ 0 ].app_passwords ).toContain( 'Backup job' );
 			expect( mail().pop().message ).toContain( 'Application passwords revoked: Deploy script, Backup job' );
@@ -1015,16 +1020,16 @@ test.describe( 'User Session Manager', () => {
 		}
 	} );
 
-	test( 'the This wasn\'t me report fires user_session_manager_app_passwords_revoked and not_me_reported with the revoked keys', async ( { browser } ) => {
-		wp( 'user-session-manager', 'settings', '--new-device-email=on' );
-		wpEval( `add_action( 'user_session_manager_not_me_reported', function ( $user, $report ) { update_option( 'usm_e2e_seen', array( 'reported', $user->ID, wp_list_pluck( $report['app_passwords'], 'name' ) ), false ); }, 10, 2 );` );
+	test( 'the This wasn\'t me report fires axle_sessions_app_passwords_revoked and not_me_reported with the revoked keys', async ( { browser } ) => {
+		wp( 'axle-sessions', 'settings', '--new-device-email=on' );
+		wpEval( `add_action( 'axle_sessions_not_me_reported', function ( $user, $report ) { update_option( 'usm_e2e_seen', array( 'reported', $user->ID, wp_list_pluck( $report['app_passwords'], 'name' ) ), false ); }, 10, 2 );` );
 		// The hook above lives only for that eval, so register through a must-use file for the real request.
-		wpEval( `file_put_contents( WPMU_PLUGIN_DIR . '/usm-e2e-listen.php', '<?php add_action( "user_session_manager_not_me_reported", function ( $u, $r ) { update_option( "usm_e2e_seen", array( "reported" => wp_list_pluck( $r["app_passwords"], "name" ) ), false ); }, 10, 2 ); add_action( "user_session_manager_app_passwords_revoked", function ( $id, $rows, $ctx ) { update_option( "usm_e2e_seen_apps", array( "ctx" => $ctx, "names" => wp_list_pluck( $rows, "name" ), "has_uuid" => isset( $rows[0]["uuid"] ), "has_secret" => isset( $rows[0]["password"] ) ), false ); }, 10, 3 );' );` );
+		wpEval( `file_put_contents( WPMU_PLUGIN_DIR . '/usm-e2e-listen.php', '<?php add_action( "axle_sessions_not_me_reported", function ( $u, $r ) { update_option( "usm_e2e_seen", array( "reported" => wp_list_pluck( $r["app_passwords"], "name" ) ), false ); }, 10, 2 ); add_action( "axle_sessions_app_passwords_revoked", function ( $id, $rows, $ctx ) { update_option( "usm_e2e_seen_apps", array( "ctx" => $ctx, "names" => wp_list_pluck( $rows, "name" ), "has_uuid" => isset( $rows[0]["uuid"] ), "has_secret" => isset( $rows[0]["password"] ) ), false ); }, 10, 3 );' );` );
 		const key = await appPasswordClient( 'alice', 'Agent key' );
 		try {
 			await open( browser, 'alice', CHROME );
 			await open( browser, 'alice', IPHONE, '198.51.100.20' );
-			const link = mail()[ 0 ].message.match( /http\S*user_session_manager_not_me\S*/ )[ 0 ];
+			const link = mail()[ 0 ].message.match( /http\S*axle_sessions_not_me\S*/ )[ 0 ];
 			const visitor = await browser.newContext( { storageState: { cookies: [], origins: [] } } );
 			contexts.push( visitor );
 			const tab = await visitor.newPage();
@@ -1071,7 +1076,7 @@ test.describe( 'User Session Manager', () => {
 			expect( ( await mine.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
 			await page.goto( SESSIONS );
 			await expect( page.locator( '.usm-incident-log' ) ).toContainText( '2 application passwords revoked' );
-			const log = JSON.parse( wpEval( `echo wp_json_encode( get_option( 'user_session_manager_incidents' ) );` ) );
+			const log = JSON.parse( wpEval( `echo wp_json_encode( get_option( 'axle_sessions_incidents' ) );` ) );
 			expect( log[ 0 ] ).toMatchObject( { app_passwords: 2 } );
 			expect( log[ 1 ] ).toMatchObject( { app_passwords: 0 } );
 		} finally {
@@ -1086,10 +1091,10 @@ test.describe( 'User Session Manager', () => {
 		const bob = await appPasswordClient( 'bob', 'Bob key' );
 		const carol = await appPasswordClient( 'carol', 'Carol key' );
 		try {
-			expect( wp( 'user-session-manager', 'sign-out-everyone', '--keep-user=admin', '--keep-app-passwords', '--yes' ) ).toContain( '0 application passwords revoked' );
+			expect( wp( 'axle-sessions', 'sign-out-everyone', '--keep-user=admin', '--keep-app-passwords', '--yes' ) ).toContain( '0 application passwords revoked' );
 			expect( ( await bob.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
 
-			const path = '/wp-abilities/v1/abilities/user-session-manager/sign-out-everyone/run';
+			const path = '/wp-abilities/v1/abilities/axle-sessions/sign-out-everyone/run';
 			const kept = await rest( 'POST', path, { input: { confirm: true, revoke_app_passwords: false } } );
 			expect( kept.body ).toMatchObject( { app_passwords_revoked: 0 } );
 			expect( ( await bob.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
@@ -1100,7 +1105,7 @@ test.describe( 'User Session Manager', () => {
 			expect( ( await bob.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
 			expect( ( await carol.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
 
-			expect( wp( 'user-session-manager', 'sign-out-everyone', '--keep-user=admin', '--yes' ) ).toContain( '1 application passwords revoked' );
+			expect( wp( 'axle-sessions', 'sign-out-everyone', '--keep-user=admin', '--yes' ) ).toContain( '1 application passwords revoked' );
 			expect( ( await carol.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
 		} finally {
 			await bob.dispose();
@@ -1109,8 +1114,8 @@ test.describe( 'User Session Manager', () => {
 	} );
 
 	test( 'a refused login shows the other devices after the password, and ending one signs the person in', async ( { browser } ) => {
-		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
-		wp( 'user-session-manager', 'settings', '--limit-mode=block' );
+		wp( 'axle-sessions', 'set-policy', 'author', '--max-sessions=1' );
+		wp( 'axle-sessions', 'settings', '--limit-mode=block' );
 		const first = await open( browser, 'alice', IPHONE );
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
 
@@ -1118,12 +1123,12 @@ test.describe( 'User Session Manager', () => {
 		const wrong = await logInAs( browser, 'alice', 'not-the-password', { userAgent: FIREFOX } );
 		contexts.push( wrong.context );
 		await expect( wrong.page.locator( '#login_error' ) ).toBeVisible();
-		expect( wrong.page.url() ).not.toContain( 'user_session_manager_devices' );
+		expect( wrong.page.url() ).not.toContain( 'axle_sessions_devices' );
 		expect( ( await wrong.context.cookies() ).some( ( c ) => c.name.startsWith( 'usm_swap_' ) ) ).toBe( false );
 
 		// The right password lands on the list. Nothing is signed in yet, and the old device stays.
 		const second = await open( browser, 'alice', FIREFOX );
-		await expect( second.page ).toHaveURL( /action=user_session_manager_devices/ );
+		await expect( second.page ).toHaveURL( /action=axle_sessions_devices/ );
 		await expect( second.page.locator( '#login' ) ).toContainText( 'Safari on iOS' );
 		await expect( second.page.locator( '#login' ) ).toContainText( 'without typing your password again' );
 		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ IPHONE ] );
@@ -1133,7 +1138,7 @@ test.describe( 'User Session Manager', () => {
 		expect( await signedIn( second.page ) ).toBe( false );
 		await second.page.goBack();
 		await second.page.goBack().catch( () => null );
-		await second.page.goto( '/wp-login.php?action=user_session_manager_devices' );
+		await second.page.goto( '/wp-login.php?action=axle_sessions_devices' );
 		await expect( second.page.locator( '#login' ) ).toContainText( 'Safari on iOS' );
 
 		await second.page.getByRole( 'button', { name: 'Sign out this device and sign in here' } ).click();
@@ -1143,47 +1148,47 @@ test.describe( 'User Session Manager', () => {
 		expect( await signedIn( first.page ) ).toBe( false );
 
 		// The ended device is told why, the history says so, and no token is left.
-		const history = JSON.parse( wp( 'user-session-manager', 'history', 'alice', '--format=json' ) );
+		const history = JSON.parse( wp( 'axle-sessions', 'history', 'alice', '--format=json' ) );
 		expect( history.map( ( row ) => row.reason ) ).toContain( 'other_device' );
-		expect( wpEval( `echo (int) is_array( get_user_meta( ${ id( 'alice' ) }, 'user_session_manager_swap', true ) );` ) ).toBe( '0' );
+		expect( wpEval( `echo (int) is_array( get_user_meta( ${ id( 'alice' ) }, 'axle_sessions_swap', true ) );` ) ).toBe( '0' );
 	} );
 
 	test( 'an administrator without Two Factor is refused for good: a stolen password alone cannot push out their session', async ( { browser } ) => {
-		wp( 'user-session-manager', 'set-policy', 'administrator', '--max-sessions=1' );
-		wp( 'user-session-manager', 'settings', '--limit-mode=block' );
+		wp( 'axle-sessions', 'set-policy', 'administrator', '--max-sessions=1' );
+		wp( 'axle-sessions', 'settings', '--limit-mode=block' );
 		await open( browser, 'carol', IPHONE );
 		const second = await open( browser, 'carol', FIREFOX );
 		await expect( second.page.locator( '#login_error' ) ).toContainText( 'This account can be signed in on 1 device at a time.' );
-		expect( second.page.url() ).not.toContain( 'user_session_manager_devices' );
+		expect( second.page.url() ).not.toContain( 'axle_sessions_devices' );
 		expect( ( await second.context.cookies() ).some( ( c ) => c.name.startsWith( 'usm_swap_' ) ) ).toBe( false );
 		expect( sessions( 'carol' ).map( ( s ) => s.ua ) ).toEqual( [ IPHONE ] );
 		// A site can widen the rule with the filter.
-		wpEval( `file_put_contents( WPMU_PLUGIN_DIR . '/usm-e2e-widen.php', '<?php add_filter( "user_session_manager_device_swap_enabled", "__return_true" );' );` );
+		wpEval( `file_put_contents( WPMU_PLUGIN_DIR . '/usm-e2e-widen.php', '<?php add_filter( "axle_sessions_device_swap_enabled", "__return_true" );' );` );
 		try {
 			const third = await open( browser, 'carol', CHROME );
-			await expect( third.page ).toHaveURL( /user_session_manager_devices/ );
+			await expect( third.page ).toHaveURL( /axle_sessions_devices/ );
 		} finally {
 			wpEval( `@unlink( WPMU_PLUGIN_DIR . '/usm-e2e-widen.php' );` );
 		}
 	} );
 
 	test( 'the device list works once, only in the browser that signed in, and only for a few minutes', async ( { browser } ) => {
-		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
-		wp( 'user-session-manager', 'settings', '--limit-mode=block' );
+		wp( 'axle-sessions', 'set-policy', 'author', '--max-sessions=1' );
+		wp( 'axle-sessions', 'settings', '--limit-mode=block' );
 		await open( browser, 'alice', IPHONE );
 		const second = await open( browser, 'alice', FIREFOX );
-		await expect( second.page ).toHaveURL( /action=user_session_manager_devices/ );
+		await expect( second.page ).toHaveURL( /action=axle_sessions_devices/ );
 		const cookie = ( await second.context.cookies() ).find( ( c ) => c.name.startsWith( 'usm_swap_' ) );
 		const html = await second.page.content();
 		const handle = html.match( /name="usm_handle" value="([^"]+)"/ )[ 1 ];
 		const formToken = html.match( /name="usm_form" value="([^"]+)"/ )[ 1 ];
-		const post = ( context, data ) => context.request.post( '/wp-login.php?action=user_session_manager_devices', { form: data, maxRedirects: 0 } );
+		const post = ( context, data ) => context.request.post( '/wp-login.php?action=axle_sessions_devices', { form: data, maxRedirects: 0 } );
 
 		// Another browser with the same cookie value but another user agent gets nothing.
 		const thief = await browser.newContext( { storageState: { cookies: [], origins: [] }, userAgent: CHROME } );
 		contexts.push( thief );
 		await thief.addCookies( [ { name: cookie.name, value: cookie.value, url: 'http://localhost:8901' } ] );
-		const stolen = await thief.request.get( '/wp-login.php?action=user_session_manager_devices' );
+		const stolen = await thief.request.get( '/wp-login.php?action=axle_sessions_devices' );
 		expect( stolen.status() ).toBe( 403 );
 		expect( await stolen.text() ).not.toContain( 'Safari on iOS' );
 		const stolenPost = await post( thief, { usm_form: formToken, usm_handle: handle } );
@@ -1193,7 +1198,7 @@ test.describe( 'User Session Manager', () => {
 		// No cookie at all: the same page for a wrong, missing or expired token.
 		const bare = await browser.newContext( { storageState: { cookies: [], origins: [] }, userAgent: FIREFOX } );
 		contexts.push( bare );
-		expect( ( await bare.request.get( '/wp-login.php?action=user_session_manager_devices' ) ).status() ).toBe( 403 );
+		expect( ( await bare.request.get( '/wp-login.php?action=axle_sessions_devices' ) ).status() ).toBe( 403 );
 
 		// A wrong form token ends nothing and uses nothing up.
 		const bad = await post( second.context, { usm_form: 'a'.repeat( 64 ), usm_handle: handle } );
@@ -1201,8 +1206,8 @@ test.describe( 'User Session Manager', () => {
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
 
 		// Expired: the same page, nothing signed out.
-		wpEval( `$m = get_user_meta( ${ id( 'alice' ) }, 'user_session_manager_swap', true ); $m['expires'] = time() - 5; update_user_meta( ${ id( 'alice' ) }, 'user_session_manager_swap', $m );` );
-		const late = await second.page.goto( '/wp-login.php?action=user_session_manager_devices' );
+		wpEval( `$m = get_user_meta( ${ id( 'alice' ) }, 'axle_sessions_swap', true ); $m['expires'] = time() - 5; update_user_meta( ${ id( 'alice' ) }, 'axle_sessions_swap', $m );` );
+		const late = await second.page.goto( '/wp-login.php?action=axle_sessions_devices' );
 		expect( late.status() ).toBe( 403 );
 		await expect( second.page.locator( '#login' ) ).toContainText( 'expired or was already used' );
 		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ IPHONE ] );
@@ -1224,9 +1229,9 @@ test.describe( 'User Session Manager', () => {
 	} );
 
 	test( 'you cannot use the device list to end someone else\'s device, cancel keeps everything, and an old handle starts again', async ( { browser } ) => {
-		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
-		wp( 'user-session-manager', 'set-policy', 'editor', '--max-sessions=1' );
-		wp( 'user-session-manager', 'settings', '--limit-mode=block' );
+		wp( 'axle-sessions', 'set-policy', 'author', '--max-sessions=1' );
+		wp( 'axle-sessions', 'set-policy', 'editor', '--max-sessions=1' );
+		wp( 'axle-sessions', 'settings', '--limit-mode=block' );
 		await open( browser, 'alice', IPHONE );
 		await open( browser, 'bob', CHROME );
 		const bobHandle = sessions( 'bob' )[ 0 ].handle;
@@ -1235,17 +1240,24 @@ test.describe( 'User Session Manager', () => {
 		const second = await open( browser, 'alice', FIREFOX );
 		const html = await second.page.content();
 		const formToken = html.match( /name="usm_form" value="([^"]+)"/ )[ 1 ];
-		const post = ( data ) => second.context.request.post( '/wp-login.php?action=user_session_manager_devices', { form: data, maxRedirects: 0 } );
+		const nonce = html.match( /name="usm_nonce" value="([^"]+)"/ )[ 1 ];
+		const post = ( data ) => second.context.request.post( '/wp-login.php?action=axle_sessions_devices', { form: data, maxRedirects: 0 } );
+
+		// Without the WordPress nonce, even a right token and a right handle change nothing, and the step stays open.
+		const noNonce = await post( { usm_form: formToken, usm_handle: aliceHandle } );
+		expect( noNonce.status() ).toBe( 200 );
+		expect( await noNonce.text() ).toContain( 'open for too long' );
+		expect( sessions( 'alice' ).map( ( s ) => s.handle ) ).toEqual( [ aliceHandle ] );
 
 		// Bob's handle in Alice's step: nothing of Bob's ends, and Alice gets a new step.
-		const sneaky = await post( { usm_form: formToken, usm_handle: bobHandle } );
+		const sneaky = await post( { usm_form: formToken, usm_handle: bobHandle, usm_nonce: nonce } );
 		expect( sneaky.status() ).toBe( 302 );
 		expect( sneaky.headers().location ).toContain( 'usm_gone=1' );
 		expect( sessions( 'bob' ) ).toHaveLength( 1 );
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
 		expect( await signedIn( second.page ) ).toBe( false );
 
-		await second.page.goto( '/wp-login.php?action=user_session_manager_devices&usm_gone=1' );
+		await second.page.goto( '/wp-login.php?action=axle_sessions_devices&usm_gone=1' );
 		await expect( second.page.locator( '#login_error' ) ).toContainText( 'had already signed out' );
 		await second.page.getByRole( 'button', { name: 'Cancel, I will sign in later' } ).click();
 		await expect( second.page.locator( '#login' ) ).toContainText( 'Nothing was signed out' );
@@ -1254,10 +1266,10 @@ test.describe( 'User Session Manager', () => {
 	} );
 
 	test( 'a lowered limit asks for one more device, and the signed-in person returns to the page they asked for', async ( { browser } ) => {
-		wp( 'user-session-manager', 'settings', '--limit-mode=block' );
+		wp( 'axle-sessions', 'settings', '--limit-mode=block' );
 		await open( browser, 'alice', IPHONE );
 		await open( browser, 'alice', CHROME );
-		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
+		wp( 'axle-sessions', 'set-policy', 'author', '--max-sessions=1' );
 
 		const context = await browser.newContext( { baseURL: 'http://localhost:8901', storageState: { cookies: [], origins: [] }, userAgent: FIREFOX } );
 		contexts.push( context );
@@ -1267,11 +1279,11 @@ test.describe( 'User Session Manager', () => {
 		await page.locator( '#user_login' ).fill( 'alice' );
 		await page.locator( '#user_pass' ).fill( PASSWORD );
 		await page.locator( '#wp-submit' ).click();
-		await expect( page ).toHaveURL( /user_session_manager_devices/ );
+		await expect( page ).toHaveURL( /axle_sessions_devices/ );
 		await expect( page.locator( '#login' ) ).toContainText( 'it is signed in on 2 now' );
 
 		await page.getByRole( 'button', { name: 'Sign out this device and sign in here' } ).first().click();
-		await expect( page ).toHaveURL( /user_session_manager_devices/ );
+		await expect( page ).toHaveURL( /axle_sessions_devices/ );
 		await expect( page.locator( '#login_error' ) ).toContainText( 'still over its limit' );
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
 
@@ -1291,16 +1303,16 @@ test.describe( 'User Session Manager', () => {
 		await page.getByLabel( 'Let a refused person sign out one of their other devices to get in' ).uncheck();
 		await page.getByRole( 'button', { name: 'Save settings' } ).click();
 		await expect( page.locator( '.usm-notice' ) ).toContainText( 'Settings saved.' );
-		expect( JSON.parse( wp( 'user-session-manager', 'settings', '--format=json' ) ) ).toMatchObject( { limit_mode: 'block', device_swap: false } );
+		expect( JSON.parse( wp( 'axle-sessions', 'settings', '--format=json' ) ) ).toMatchObject( { limit_mode: 'block', device_swap: false } );
 		await expect( page ).toHaveURL( /tab=policies/ );
 
-		wp( 'user-session-manager', 'set-policy', 'author', '--max-sessions=1' );
+		wp( 'axle-sessions', 'set-policy', 'author', '--max-sessions=1' );
 		await open( browser, 'alice', IPHONE );
 		const refused = await open( browser, 'alice', FIREFOX );
 		await expect( refused.page.locator( '#login_error' ) ).toContainText( 'This account can be signed in on 1 device at a time.' );
-		expect( refused.page.url() ).not.toContain( 'user_session_manager_devices' );
+		expect( refused.page.url() ).not.toContain( 'axle_sessions_devices' );
 		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ IPHONE ] );
-		await refused.page.goto( '/wp-login.php?action=user_session_manager_devices' );
+		await refused.page.goto( '/wp-login.php?action=axle_sessions_devices' );
 		await expect( refused.page.locator( '#login' ) ).toContainText( 'expired or was already used' );
 
 		await page.goto( SESSIONS );
@@ -1308,10 +1320,10 @@ test.describe( 'User Session Manager', () => {
 	} );
 
 	test( 'the This wasn\'t me pages use the login screen\'s own look', async ( { browser } ) => {
-		wp( 'user-session-manager', 'settings', '--new-device-email=on' );
+		wp( 'axle-sessions', 'settings', '--new-device-email=on' );
 		await open( browser, 'alice', CHROME );
 		await open( browser, 'alice', IPHONE, '198.51.100.20' );
-		const link = mail()[ 0 ].message.match( /http\S*user_session_manager_not_me\S*/ )[ 0 ];
+		const link = mail()[ 0 ].message.match( /http\S*axle_sessions_not_me\S*/ )[ 0 ];
 		const visitor = await browser.newContext( { storageState: { cookies: [], origins: [] } } );
 		contexts.push( visitor );
 		const tab = await visitor.newPage();

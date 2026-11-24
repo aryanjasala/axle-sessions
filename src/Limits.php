@@ -2,10 +2,10 @@
 /**
  * Session limits and lifetimes at login.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -115,9 +115,9 @@ final class Limits implements Service {
 		 * @param int      $max    Sessions allowed.
 		 * @param int      $active Sessions the user has.
 		 */
-		do_action( 'user_session_manager_login_blocked', $user, $max, $active );
+		do_action( 'axle_sessions_login_blocked', $user, $max, $active );
 
-		return new \WP_Error( 'user_session_manager_limit', $this->blocked_message( $user, $max, $active ) );
+		return new \WP_Error( 'axle_sessions_limit', $this->blocked_message( $user, $max, $active ) );
 	}
 
 	/**
@@ -135,17 +135,17 @@ final class Limits implements Service {
 		$active  = max( $max, $active );
 		$default = sprintf(
 			/* translators: %s: number of devices allowed. */
-			_n( 'This account can be signed in on %s device at a time.', 'This account can be signed in on %s devices at a time.', $max, 'user-session-manager' ),
+			_n( 'This account can be signed in on %s device at a time.', 'This account can be signed in on %s devices at a time.', $max, 'axle-sessions' ),
 			number_format_i18n( $max )
 		) . ' ' . sprintf(
 			/* translators: %s: number of sessions the account has now. */
-			_n( 'It already has %s active session.', 'It already has %s active sessions.', $active, 'user-session-manager' ),
+			_n( 'It already has %s active session.', 'It already has %s active sessions.', $active, 'axle-sessions' ),
 			number_format_i18n( $active )
 		) . ' ' . _n(
 			'Sign out there first, or ask a site administrator to end that session.',
 			'Sign out on another device first, or ask a site administrator to end a session.',
 			$active,
-			'user-session-manager'
+			'axle-sessions'
 		);
 
 		/**
@@ -156,7 +156,7 @@ final class Limits implements Service {
 		 * @param int      $max     Sessions allowed.
 		 * @param int      $active  Sessions the user has now.
 		 */
-		$message = (string) apply_filters( 'user_session_manager_blocked_login_message', $default, $user, $max, $active );
+		$message = (string) apply_filters( 'axle_sessions_blocked_login_message', $default, $user, $max, $active );
 
 		return '' !== trim( $message ) ? wp_kses_post( $message ) : $default;
 	}
@@ -201,7 +201,7 @@ final class Limits implements Service {
 		 * @param \WP_User $user    The user.
 		 * @param array    $session Session data: expiration, ip, ua, login, last_seen and handle.
 		 */
-		do_action( 'user_session_manager_session_started', $user, $session + array( 'handle' => $this->sessions->handle( $user->ID, $verifier ) ) );
+		do_action( 'axle_sessions_session_started', $user, $session + array( 'handle' => $this->sessions->handle( $user->ID, $verifier ) ) );
 	}
 
 	/**
@@ -240,7 +240,7 @@ final class Limits implements Service {
 
 			$this->sessions->forget( $user->ID, $verifier );
 			/** This action is documented in src/Limits.php */
-			do_action( 'user_session_manager_login_blocked', $user, $max, count( $others ) );
+			do_action( 'axle_sessions_login_blocked', $user, $max, count( $others ) );
 			return false;
 		}
 
@@ -262,7 +262,7 @@ final class Limits implements Service {
 			 * @param array $evicted The signed-out session: expiration, ip, ua, login, last_seen and handle.
 			 * @param array $new     The new session.
 			 */
-			do_action( 'user_session_manager_session_evicted', $user->ID, $old + array( 'handle' => $this->sessions->handle( $user->ID, (string) $old_verifier ) ), $new );
+			do_action( 'axle_sessions_session_evicted', $user->ID, $old + array( 'handle' => $this->sessions->handle( $user->ID, (string) $old_verifier ) ), $new );
 		}
 
 		return true;

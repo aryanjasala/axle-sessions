@@ -1,20 +1,20 @@
 <?php
 /**
- * `wp user-session-manager` commands.
+ * `wp axle-sessions` commands.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Cli;
+namespace AryanX\Axle\Sessions\Cli;
 
-use AryanX\Axle\UserSessionManager\Abilities;
-use AryanX\Axle\UserSessionManager\History;
-use AryanX\Axle\UserSessionManager\Incident;
-use AryanX\Axle\UserSessionManager\NotMe;
-use AryanX\Axle\UserSessionManager\Pruner;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
-use AryanX\Axle\UserSessionManager\SharedLogins;
+use AryanX\Axle\Sessions\Abilities;
+use AryanX\Axle\Sessions\History;
+use AryanX\Axle\Sessions\Incident;
+use AryanX\Axle\Sessions\NotMe;
+use AryanX\Axle\Sessions\Pruner;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
+use AryanX\Axle\Sessions\SharedLogins;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -115,8 +115,8 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp user-session-manager list --user=admin
-	 *     wp user-session-manager list --format=count
+	 *     wp axle-sessions list --user=admin
+	 *     wp axle-sessions list --format=count
 	 *
 	 * @subcommand list
 	 *
@@ -165,11 +165,11 @@ final class Command {
 	 * ## OPTIONS
 	 *
 	 * <handle>...
-	 * : Handles from `wp user-session-manager list`.
+	 * : Handles from `wp axle-sessions list`.
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp user-session-manager revoke 3-9f86d081884c7d659a2feaa0
+	 *     wp axle-sessions revoke 3-9f86d081884c7d659a2feaa0
 	 *
 	 * @param array $args Positional arguments.
 	 */
@@ -200,7 +200,7 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp user-session-manager sign-out editor
+	 *     wp axle-sessions sign-out editor
 	 *
 	 * @subcommand sign-out
 	 *
@@ -220,7 +220,7 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp user-session-manager prune
+	 *     wp axle-sessions prune
 	 */
 	public function prune(): void {
 		$result = $this->pruner->prune_all();
@@ -249,8 +249,8 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp user-session-manager history editor
-	 *     wp user-session-manager history 7 --format=json
+	 *     wp axle-sessions history editor
+	 *     wp axle-sessions history 7 --format=json
 	 *
 	 * @param array $args       Positional arguments.
 	 * @param array $assoc_args Named arguments.
@@ -293,7 +293,7 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp user-session-manager reports --days=7
+	 *     wp axle-sessions reports --days=7
 	 *
 	 * @param array $args       Positional arguments.
 	 * @param array $assoc_args Named arguments.
@@ -341,8 +341,8 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp user-session-manager sign-out-everyone --keep-user=admin
-	 *     wp user-session-manager sign-out-everyone --exclude-roles=administrator --require-new-passwords --yes
+	 *     wp axle-sessions sign-out-everyone --keep-user=admin
+	 *     wp axle-sessions sign-out-everyone --exclude-roles=administrator --require-new-passwords --yes
 	 *
 	 * @subcommand sign-out-everyone
 	 *
@@ -395,8 +395,8 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp user-session-manager shared
-	 *     wp user-session-manager shared --format=json
+	 *     wp axle-sessions shared
+	 *     wp axle-sessions shared --format=json
 	 *
 	 * @param array $args       Positional arguments.
 	 * @param array $assoc_args Named arguments.
@@ -475,8 +475,8 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp user-session-manager set-policy administrator --max-sessions=2 --idle-minutes=30
-	 *     wp user-session-manager set-policy subscriber --shared=notify
+	 *     wp axle-sessions set-policy administrator --max-sessions=2 --idle-minutes=30
+	 *     wp axle-sessions set-policy subscriber --shared=notify
 	 *
 	 * @subcommand set-policy
 	 *
@@ -552,7 +552,7 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp user-session-manager settings --limit-mode=block --mask-ip=on
+	 *     wp axle-sessions settings --limit-mode=block --mask-ip=on
 	 *
 	 * @param array $args       Positional arguments.
 	 * @param array $assoc_args Named arguments.

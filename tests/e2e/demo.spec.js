@@ -6,7 +6,7 @@ const { UA, createPeople, removePeople, addSessions, clearSessions } = require( 
 test( 'demo: sign out a lost phone, then a whole user', async ( { browser } ) => {
 	test.setTimeout( 180_000 );
 	prepareSite( 'Example Shop' );
-	wp( 'option', 'delete', 'user_session_manager_settings' );
+	wp( 'option', 'delete', 'axle_sessions_settings' );
 	createPeople();
 	// Keep only the session the recording is signed in with.
 	clearSessions( true );
@@ -50,7 +50,7 @@ test( 'demo: sign out a lost phone, then a whole user', async ( { browser } ) =>
 			await demo.pause( 2000 );
 		} );
 	} finally {
-		wp( 'option', 'delete', 'user_session_manager_settings' );
+		wp( 'option', 'delete', 'axle_sessions_settings' );
 		removePeople();
 	}
 } );

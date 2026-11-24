@@ -2,12 +2,12 @@
 /**
  * Shared login detection.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
-use AryanX\Axle\UserSessionManager\Admin\SessionsPage;
+use AryanX\Axle\Sessions\Admin\SessionsPage;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
  * The check runs when someone signs in and each time "last active" is saved
  * for a session (at most every 5 minutes), on that user's sessions only. When
  * SharedLoginDetector finds something, the account is flagged in the
- * `user_session_manager_shared` user meta with the evidence and a copy of the
+ * `axle_sessions_shared` user meta with the evidence and a copy of the
  * sessions behind it, so the screens can still say which sessions, when and
  * where after those sessions end. The flag is dropped after 7 days without new
  * evidence.
@@ -30,7 +30,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class SharedLogins implements Service {
 
-	public const META    = 'user_session_manager_shared';
+	public const META    = 'axle_sessions_shared';
 	public const ACTIONS = array( 'flag', 'notify', 'sign_out_others' );
 
 	private const MAX_HANDLES = 50;
@@ -71,8 +71,8 @@ final class SharedLogins implements Service {
 	 * Adds the hooks.
 	 */
 	public function register(): void {
-		add_action( 'user_session_manager_session_started', array( $this, 'on_login' ), 20, 2 );
-		add_action( 'user_session_manager_session_active', array( $this, 'on_activity' ) );
+		add_action( 'axle_sessions_session_started', array( $this, 'on_login' ), 20, 2 );
+		add_action( 'axle_sessions_session_active', array( $this, 'on_activity' ) );
 	}
 
 	/**
@@ -174,7 +174,7 @@ final class SharedLogins implements Service {
 		 * @param array[]  $sessions The sessions behind it: handle, device, device_type, ip, country, login and last_seen.
 		 * @param array[]  $evidence What was found: type (networks, countries, same_type or devices), count, limit, handles and time.
 		 */
-		do_action( 'user_session_manager_shared_login_detected', $user, $sessions, $evidence );
+		do_action( 'axle_sessions_shared_login_detected', $user, $sessions, $evidence );
 
 		if ( 'notify' === $action ) {
 			$this->notify( $user, $flag );
@@ -312,7 +312,7 @@ final class SharedLogins implements Service {
 		 * }
 		 * @param \WP_User $user  The user.
 		 */
-		return SharedLoginDetector::sanitize_rules( apply_filters( 'user_session_manager_shared_login_rules', SharedLoginDetector::RULES, $user ) );
+		return SharedLoginDetector::sanitize_rules( apply_filters( 'axle_sessions_shared_login_rules', SharedLoginDetector::RULES, $user ) );
 	}
 
 	/**
@@ -328,7 +328,7 @@ final class SharedLogins implements Service {
 		 * @param bool     $exempt True when one of the user's roles is set to "Do not check".
 		 * @param \WP_User $user   The user.
 		 */
-		return (bool) apply_filters( 'user_session_manager_shared_login_exempt', 'off' === $this->settings->shared_mode_for( $user ), $user );
+		return (bool) apply_filters( 'axle_sessions_shared_login_exempt', 'off' === $this->settings->shared_mode_for( $user ), $user );
 	}
 
 	/**
@@ -348,7 +348,7 @@ final class SharedLogins implements Service {
 		 * @param \WP_User $user     The user.
 		 * @param array[]  $evidence What was found.
 		 */
-		$action = apply_filters( 'user_session_manager_shared_login_action', in_array( $mode, self::ACTIONS, true ) ? $mode : 'flag', $user, $evidence );
+		$action = apply_filters( 'axle_sessions_shared_login_action', in_array( $mode, self::ACTIONS, true ) ? $mode : 'flag', $user, $evidence );
 
 		return in_array( $action, self::ACTIONS, true ) ? (string) $action : 'flag';
 	}
@@ -372,7 +372,7 @@ final class SharedLogins implements Service {
 		 * @param string $ip      The address as stored, shortened when the site stores shortened addresses.
 		 * @param int    $user_id The user.
 		 */
-		return sanitize_text_field( (string) apply_filters( 'user_session_manager_shared_login_country', '', $ip, $user_id ) );
+		return sanitize_text_field( (string) apply_filters( 'axle_sessions_shared_login_country', '', $ip, $user_id ) );
 	}
 
 	/**
@@ -387,12 +387,12 @@ final class SharedLogins implements Service {
 		switch ( $evidence['type'] ?? '' ) {
 			case 'networks':
 				/* translators: 1: number of networks, 2: number allowed. */
-				$text = sprintf( _n( 'Used from %1$s network at the same time, more than the %2$s allowed.', 'Used from %1$s different networks at the same time, more than the %2$s allowed.', $count, 'user-session-manager' ), number_format_i18n( $count ), number_format_i18n( $limit ) );
+				$text = sprintf( _n( 'Used from %1$s network at the same time, more than the %2$s allowed.', 'Used from %1$s different networks at the same time, more than the %2$s allowed.', $count, 'axle-sessions' ), number_format_i18n( $count ), number_format_i18n( $limit ) );
 				break;
 			case 'countries':
 				$text = sprintf(
 					/* translators: 1: number of countries, 2: list of countries. */
-					_n( 'Used from %1$s country at the same time: %2$s.', 'Used from %1$s countries at the same time: %2$s.', $count, 'user-session-manager' ),
+					_n( 'Used from %1$s country at the same time: %2$s.', 'Used from %1$s countries at the same time: %2$s.', $count, 'axle-sessions' ),
 					number_format_i18n( $count ),
 					implode( ', ', array_map( 'strval', (array) ( $evidence['countries'] ?? array() ) ) )
 				);
@@ -401,26 +401,26 @@ final class SharedLogins implements Service {
 				$type = (string) ( $evidence['device_type'] ?? '' );
 				if ( 'mobile' === $type ) {
 					/* translators: %s: number of phones. */
-					$text = sprintf( _n( '%s phone on a different network was used at the same time.', '%s phones on different networks were used at the same time.', $count, 'user-session-manager' ), number_format_i18n( $count ) );
+					$text = sprintf( _n( '%s phone on a different network was used at the same time.', '%s phones on different networks were used at the same time.', $count, 'axle-sessions' ), number_format_i18n( $count ) );
 				} elseif ( 'tablet' === $type ) {
 					/* translators: %s: number of tablets. */
-					$text = sprintf( _n( '%s tablet on a different network was used at the same time.', '%s tablets on different networks were used at the same time.', $count, 'user-session-manager' ), number_format_i18n( $count ) );
+					$text = sprintf( _n( '%s tablet on a different network was used at the same time.', '%s tablets on different networks were used at the same time.', $count, 'axle-sessions' ), number_format_i18n( $count ) );
 				} else {
 					/* translators: %s: number of computers. */
-					$text = sprintf( _n( '%s computer on a different network was used at the same time.', '%s computers on different networks were used at the same time.', $count, 'user-session-manager' ), number_format_i18n( $count ) );
+					$text = sprintf( _n( '%s computer on a different network was used at the same time.', '%s computers on different networks were used at the same time.', $count, 'axle-sessions' ), number_format_i18n( $count ) );
 				}
 				break;
 			case 'devices':
 				$text = sprintf(
 					/* translators: 1: number of devices, 2: time span such as "1 day", 3: number allowed. */
-					_n( '%1$s different device was used within %2$s, more than the %3$s allowed.', '%1$s different devices were used within %2$s, more than the %3$s allowed.', $count, 'user-session-manager' ),
+					_n( '%1$s different device was used within %2$s, more than the %3$s allowed.', '%1$s different devices were used within %2$s, more than the %3$s allowed.', $count, 'axle-sessions' ),
 					number_format_i18n( $count ),
 					human_time_diff( 0, max( 1, (int) ( $evidence['window'] ?? DAY_IN_SECONDS ) ) ),
 					number_format_i18n( $limit )
 				);
 				break;
 			default:
-				$text = __( 'The sessions look like more than one person.', 'user-session-manager' );
+				$text = __( 'The sessions look like more than one person.', 'axle-sessions' );
 		}
 
 		/**
@@ -429,7 +429,7 @@ final class SharedLogins implements Service {
 		 * @param string $text     The sentence.
 		 * @param array  $evidence type, count, limit, handles and time, plus device_type, countries or window.
 		 */
-		$filtered = (string) apply_filters( 'user_session_manager_shared_login_evidence_text', $text, $evidence );
+		$filtered = (string) apply_filters( 'axle_sessions_shared_login_evidence_text', $text, $evidence );
 
 		return '' !== trim( $filtered ) ? $filtered : $text;
 	}
@@ -457,7 +457,7 @@ final class SharedLogins implements Service {
 			'user'  => array(
 				'to'      => $user->user_email,
 				/* translators: %s: site name. */
-				'subject' => sprintf( __( '[%s] Your account was used from several places at once', 'user-session-manager' ), $site ),
+				'subject' => sprintf( __( '[%s] Your account was used from several places at once', 'axle-sessions' ), $site ),
 				'message' => sprintf(
 					/* translators: 1: user's display name, 2: site name, 3: what was found, one per line, 4: profile URL. */
 					__(
@@ -469,7 +469,7 @@ Your account on %2$s was just used in a way that suggests more than one person s
 
 If this was all you, there is nothing to do. If you shared your password, or you do not recognise a device, change your password and sign out the sessions you do not know on your profile:
 %4$s',
-						'user-session-manager'
+						'axle-sessions'
 					),
 					$user->display_name,
 					$site,
@@ -481,7 +481,7 @@ If this was all you, there is nothing to do. If you shared your password, or you
 			'admin' => array(
 				'to'      => $admin !== $user->user_email ? $admin : '',
 				/* translators: 1: site name, 2: user login. */
-				'subject' => sprintf( __( '[%1$s] The account %2$s may be shared', 'user-session-manager' ), $site, $user->user_login ),
+				'subject' => sprintf( __( '[%1$s] The account %2$s may be shared', 'axle-sessions' ), $site, $user->user_login ),
 				'message' => sprintf(
 					/* translators: 1: user login, 2: user's email address, 3: site name, 4: what was found, one per line, 5: URL of the user's sessions. */
 					__(
@@ -491,7 +491,7 @@ If this was all you, there is nothing to do. If you shared your password, or you
 
 Nothing was blocked. See the sessions and sign them out here:
 %5$s',
-						'user-session-manager'
+						'axle-sessions'
 					),
 					$user->user_login,
 					$user->user_email,
@@ -512,7 +512,7 @@ Nothing was blocked. See the sessions and sign them out here:
 			 * @param array       $flag     The flag: detected, updated, action, evidence and sessions.
 			 * @param string      $audience user (the account's owner) or admin (the site administrator).
 			 */
-			$email = apply_filters( 'user_session_manager_shared_login_email', $email, $user, $flag, $audience );
+			$email = apply_filters( 'axle_sessions_shared_login_email', $email, $user, $flag, $audience );
 			if ( ! is_array( $email ) || empty( $email['to'] ) ) {
 				continue;
 			}

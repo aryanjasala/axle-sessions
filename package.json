@@ -1,5 +1,5 @@
 {
-  "name": "user-session-manager",
+  "name": "axle-sessions",
   "private": true,
   "description": "See every device signed in to WordPress, revoke one, and limit sessions per role.",
   "license": "GPL-2.0-or-later",

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
-<ruleset name="User Session Manager">
-	<description>WordPress coding standards for User Session Manager.</description>
+<ruleset name="Axle Sessions">
+	<description>WordPress coding standards for Axle Sessions.</description>
 
 	<file>.</file>
 	<exclude-pattern>/vendor/*</exclude-pattern>
@@ -24,7 +24,7 @@
 	<rule ref="WordPress.WP.I18n">
 		<properties>
 			<property name="text_domain" type="array">
-				<element value="user-session-manager"/>
+				<element value="axle-sessions"/>
 			</property>
 		</properties>
 	</rule>
@@ -32,8 +32,8 @@
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
 		<properties>
 			<property name="prefixes" type="array">
-				<element value="AryanX\Axle\UserSessionManager"/>
-				<element value="user_session_manager"/>
+				<element value="AryanX\Axle\Sessions"/>
+				<element value="axle_sessions"/>
 			</property>
 		</properties>
 	</rule>

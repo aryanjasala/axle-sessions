@@ -5,13 +5,13 @@
  * Generated from _dev/repo-template by apply-template.py. Do not edit it in a
  * plugin; change the template and re-apply. See _dev/DESIGN.md.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Admin;
+namespace AryanX\Axle\Sessions\Admin;
 
-use const AryanX\Axle\UserSessionManager\PLUGIN_FILE;
-use const AryanX\Axle\UserSessionManager\VERSION;
+use const AryanX\Axle\Sessions\PLUGIN_FILE;
+use const AryanX\Axle\Sessions\VERSION;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class AxleUi {
 
-	public const HANDLE = 'user-session-manager-axle-ui';
+	public const HANDLE = 'axle-sessions-axle-ui';
 
 	/**
 	 * Registers and enqueues the shared stylesheet. Call it from the
@@ -31,7 +31,7 @@ final class AxleUi {
 		wp_enqueue_script( self::HANDLE, plugins_url( 'assets/axle-ui.js', PLUGIN_FILE ), array( 'wp-a11y' ), VERSION, true );
 		wp_add_inline_script(
 			self::HANDLE,
-			'window.axleUiL10n = window.axleUiL10n || ' . wp_json_encode( array( 'justNow' => __( 'just now', 'user-session-manager' ) ) ) . ';',
+			'window.axleUiL10n = window.axleUiL10n || ' . wp_json_encode( array( 'justNow' => __( 'just now', 'axle-sessions' ) ) ) . ';',
 			'before'
 		);
 	}
@@ -215,7 +215,7 @@ final class AxleUi {
 <p id="backtoblog"><a href="<?php echo esc_url( home_url( '/' ) ); ?>">
 		<?php
 		/* translators: %s: Site title. */
-		echo wp_kses_post( sprintf( _x( '&larr; Go to %s', 'site', 'user-session-manager' ), esc_html( $site ) ) );
+		echo wp_kses_post( sprintf( _x( '&larr; Go to %s', 'site', 'axle-sessions' ), esc_html( $site ) ) );
 		?>
 </a></p>
 </div>
@@ -318,7 +318,7 @@ final class AxleUi {
 		$wall = wp_parse_args(
 			$wall,
 			array(
-				'plugin'        => 'user-session-manager',
+				'plugin'        => 'axle-sessions',
 				'capability'    => '',
 				'message'       => '',
 				'action_label'  => '',
@@ -366,8 +366,8 @@ final class AxleUi {
 			'axle-wall',
 			'window.axleWallL10n = window.axleWallL10n || ' . wp_json_encode(
 				array(
-					'sent'   => __( 'Request sent.', 'user-session-manager' ),
-					'failed' => __( 'The request could not be sent. Try again.', 'user-session-manager' ),
+					'sent'   => __( 'Request sent.', 'axle-sessions' ),
+					'failed' => __( 'The request could not be sent. Try again.', 'axle-sessions' ),
 				)
 			) . ';',
 			'before'
@@ -380,11 +380,11 @@ final class AxleUi {
 	public static function footer(): void {
 		printf(
 			'<p class="axle-footer">%1$s &middot; <a href="%2$s">%3$s</a> &middot; <a href="%4$s">%5$s</a></p>',
-			esc_html__( 'Part of Axle by AryanX', 'user-session-manager' ),
-			esc_url( 'https://axlewp.com/plugins/user-session-manager/' ),
-			esc_html__( 'Documentation', 'user-session-manager' ),
-			esc_url( 'https://wordpress.org/support/plugin/user-session-manager/' ),
-			esc_html__( 'Support', 'user-session-manager' )
+			esc_html__( 'Part of Axle by AryanX', 'axle-sessions' ),
+			esc_url( 'https://axlewp.com/plugins/axle-sessions/' ),
+			esc_html__( 'Documentation', 'axle-sessions' ),
+			esc_url( 'https://wordpress.org/support/plugin/axle-sessions/' ),
+			esc_html__( 'Support', 'axle-sessions' )
 		);
 	}
 
@@ -397,20 +397,20 @@ final class AxleUi {
 	 */
 	public static function relative_time( int $timestamp, string $fallback = '' ): string {
 		if ( $timestamp <= 0 ) {
-			return '<span class="axle-muted">' . esc_html( '' !== $fallback ? $fallback : __( 'Never', 'user-session-manager' ) ) . '</span>';
+			return '<span class="axle-muted">' . esc_html( '' !== $fallback ? $fallback : __( 'Never', 'axle-sessions' ) ) . '</span>';
 		}
 
 		$now  = time();
 		$span = human_time_diff( $timestamp, $now );
 
 		if ( abs( $now - $timestamp ) < MINUTE_IN_SECONDS ) {
-			$text = __( 'just now', 'user-session-manager' );
+			$text = __( 'just now', 'axle-sessions' );
 		} elseif ( $timestamp > $now ) {
 			/* translators: %s: a time span such as "5 minutes". */
-			$text = sprintf( __( 'in %s', 'user-session-manager' ), $span );
+			$text = sprintf( __( 'in %s', 'axle-sessions' ), $span );
 		} else {
 			/* translators: %s: a time span such as "5 minutes". */
-			$text = sprintf( __( '%s ago', 'user-session-manager' ), $span );
+			$text = sprintf( __( '%s ago', 'axle-sessions' ), $span );
 		}
 
 		$exact = wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp );
@@ -439,7 +439,7 @@ final class AxleUi {
 		foreach ( $tabs as $tab ) {
 			$screen->add_help_tab(
 				array(
-					'id'      => 'user-session-manager-' . $tab['id'],
+					'id'      => 'axle-sessions-' . $tab['id'],
 					'title'   => $tab['title'],
 					'content' => wp_kses_post( $tab['content'] ),
 				)
@@ -449,11 +449,11 @@ final class AxleUi {
 		$screen->set_help_sidebar(
 			sprintf(
 				'<p><strong>%1$s</strong></p><p><a href="%2$s">%3$s</a></p><p><a href="%4$s">%5$s</a></p>',
-				esc_html__( 'For more information:', 'user-session-manager' ),
-				esc_url( 'https://axlewp.com/plugins/user-session-manager/' ),
-				esc_html__( 'Documentation', 'user-session-manager' ),
-				esc_url( 'https://wordpress.org/support/plugin/user-session-manager/' ),
-				esc_html__( 'Support', 'user-session-manager' )
+				esc_html__( 'For more information:', 'axle-sessions' ),
+				esc_url( 'https://axlewp.com/plugins/axle-sessions/' ),
+				esc_html__( 'Documentation', 'axle-sessions' ),
+				esc_url( 'https://wordpress.org/support/plugin/axle-sessions/' ),
+				esc_html__( 'Support', 'axle-sessions' )
 			)
 		);
 	}

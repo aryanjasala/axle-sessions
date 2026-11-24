@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in User Session Manager does not work the way the docs say.
+description: Something in Axle Sessions does not work the way the docs say.
 labels: [bug]
 body:
   - type: textarea
@@ -22,7 +22,7 @@ body:
   - type: input
     id: plugin
     attributes:
-      label: User Session Manager version
+      label: Axle Sessions version
       placeholder: "1.1.0"
     validations:
       required: true

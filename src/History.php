@@ -2,10 +2,10 @@
 /**
  * Sign-in history: when and where an account signed in, and how each session ended.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,8 +28,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class History implements Service {
 
-	public const META   = 'user_session_manager_history';
-	public const CURSOR = 'user_session_manager_history_cursor';
+	public const META   = 'axle_sessions_history';
+	public const CURSOR = 'axle_sessions_history_cursor';
 
 	/**
 	 * Why a session ended. `signed_out` is the person's own sign out.
@@ -74,11 +74,11 @@ final class History implements Service {
 	 * Adds the hooks.
 	 */
 	public function register(): void {
-		add_action( 'user_session_manager_session_started', array( $this, 'on_started' ), 5, 2 );
-		add_action( 'user_session_manager_session_revoked', array( $this, 'on_revoked' ), 10, 3 );
-		add_action( 'user_session_manager_idle_session_ended', array( $this, 'on_idle' ), 10, 2 );
-		add_action( 'user_session_manager_session_evicted', array( $this, 'on_evicted' ), 10, 2 );
-		add_action( 'user_session_manager_user_signed_out_everywhere', array( $this, 'on_signed_out_everywhere' ), 10, 3 );
+		add_action( 'axle_sessions_session_started', array( $this, 'on_started' ), 5, 2 );
+		add_action( 'axle_sessions_session_revoked', array( $this, 'on_revoked' ), 10, 3 );
+		add_action( 'axle_sessions_idle_session_ended', array( $this, 'on_idle' ), 10, 2 );
+		add_action( 'axle_sessions_session_evicted', array( $this, 'on_evicted' ), 10, 2 );
+		add_action( 'axle_sessions_user_signed_out_everywhere', array( $this, 'on_signed_out_everywhere' ), 10, 3 );
 		// Core destroys the session before it fires wp_logout, so the token is read first.
 		add_action( 'clear_auth_cookie', array( $this, 'remember_logout' ) );
 		add_action( 'wp_logout', array( $this, 'on_logout' ) );
@@ -115,7 +115,7 @@ final class History implements Service {
 		 *
 		 * @param int $limit Default 100. Kept between 10 and 500.
 		 */
-		return max( 10, min( 500, (int) apply_filters( 'user_session_manager_history_limit', self::MAX_ENTRIES ) ) );
+		return max( 10, min( 500, (int) apply_filters( 'axle_sessions_history_limit', self::MAX_ENTRIES ) ) );
 	}
 
 	/**
@@ -305,7 +305,7 @@ final class History implements Service {
 		 * @param array  $entry   The entry: handle, start, seen, end, expires, reason, by, ip, device and type.
 		 * @param string $reason  signed_out, expired, idle, other_device, admin, limit, not_me, password or shared.
 		 */
-		do_action( 'user_session_manager_history_session_ended', $user_id, $entries[ $index ], $reason );
+		do_action( 'axle_sessions_history_session_ended', $user_id, $entries[ $index ], $reason );
 	}
 
 	/**
@@ -444,16 +444,16 @@ final class History implements Service {
 	 */
 	public static function reason_label( string $reason ): string {
 		$labels = array(
-			'signed_out'   => __( 'Signed out', 'user-session-manager' ),
-			'expired'      => __( 'Expired', 'user-session-manager' ),
-			'idle'         => __( 'Idle timeout', 'user-session-manager' ),
-			'other_device' => __( 'Signed out from another device', 'user-session-manager' ),
-			'admin'        => __( 'Signed out by an administrator', 'user-session-manager' ),
-			'limit'        => __( 'Device limit reached', 'user-session-manager' ),
-			'not_me'       => __( 'Reported as "This wasn\'t me"', 'user-session-manager' ),
-			'password'     => __( 'Password changed', 'user-session-manager' ),
-			'shared'       => __( 'Account looked shared', 'user-session-manager' ),
-			'unknown'      => __( 'Ended, reason not recorded', 'user-session-manager' ),
+			'signed_out'   => __( 'Signed out', 'axle-sessions' ),
+			'expired'      => __( 'Expired', 'axle-sessions' ),
+			'idle'         => __( 'Idle timeout', 'axle-sessions' ),
+			'other_device' => __( 'Signed out from another device', 'axle-sessions' ),
+			'admin'        => __( 'Signed out by an administrator', 'axle-sessions' ),
+			'limit'        => __( 'Device limit reached', 'axle-sessions' ),
+			'not_me'       => __( 'Reported as "This wasn\'t me"', 'axle-sessions' ),
+			'password'     => __( 'Password changed', 'axle-sessions' ),
+			'shared'       => __( 'Account looked shared', 'axle-sessions' ),
+			'unknown'      => __( 'Ended, reason not recorded', 'axle-sessions' ),
 		);
 		$label  = $labels[ $reason ] ?? $labels['unknown'];
 
@@ -463,7 +463,7 @@ final class History implements Service {
 		 * @param string $label  The label.
 		 * @param string $reason signed_out, expired, idle, other_device, admin, limit, not_me, password, shared or unknown.
 		 */
-		$filtered = (string) apply_filters( 'user_session_manager_history_reason_label', $label, $reason );
+		$filtered = (string) apply_filters( 'axle_sessions_history_reason_label', $label, $reason );
 
 		return '' !== trim( $filtered ) ? $filtered : $label;
 	}

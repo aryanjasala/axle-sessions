@@ -2,10 +2,10 @@
 /**
  * Saved settings and the policy that applies to each user.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Settings {
 
-	public const OPTION      = 'user_session_manager_settings';
+	public const OPTION      = 'axle_sessions_settings';
 	public const LIMIT_MODES = array( 'evict_oldest', 'block' );
 
 	/**
@@ -140,7 +140,7 @@ final class Settings {
 		 * @param array $settings The settings now.
 		 * @param array $old      The settings before.
 		 */
-		do_action( 'user_session_manager_settings_saved', $this->all(), $old );
+		do_action( 'axle_sessions_settings_saved', $this->all(), $old );
 	}
 
 	/**
@@ -210,7 +210,7 @@ final class Settings {
 		 * @param int      $max  From the user's roles. 0 means no limit.
 		 * @param \WP_User $user The user.
 		 */
-		return max( 0, (int) apply_filters( 'user_session_manager_max_sessions', $this->most_generous( $user, 'max_sessions' ), $user ) );
+		return max( 0, (int) apply_filters( 'axle_sessions_max_sessions', $this->most_generous( $user, 'max_sessions' ), $user ) );
 	}
 
 	/**
@@ -226,7 +226,7 @@ final class Settings {
 		 * @param string   $mode evict_oldest signs out the oldest session, block refuses the new login.
 		 * @param \WP_User $user The user.
 		 */
-		$mode = apply_filters( 'user_session_manager_limit_mode', $this->get( 'limit_mode' ), $user );
+		$mode = apply_filters( 'axle_sessions_limit_mode', $this->get( 'limit_mode' ), $user );
 
 		return in_array( $mode, self::LIMIT_MODES, true ) ? (string) $mode : 'evict_oldest';
 	}
@@ -251,7 +251,7 @@ final class Settings {
 		 * @param bool     $enabled The setting and the rule above.
 		 * @param \WP_User $user    The user who was refused.
 		 */
-		return (bool) apply_filters( 'user_session_manager_device_swap_enabled', $allowed, $user );
+		return (bool) apply_filters( 'axle_sessions_device_swap_enabled', $allowed, $user );
 	}
 
 	/**
@@ -282,7 +282,7 @@ final class Settings {
 		 *
 		 * @param int $seconds Default 600 (10 minutes). Kept between 1 and 30 minutes.
 		 */
-		return max( MINUTE_IN_SECONDS, min( 30 * MINUTE_IN_SECONDS, (int) apply_filters( 'user_session_manager_device_swap_lifetime', 10 * MINUTE_IN_SECONDS ) ) );
+		return max( MINUTE_IN_SECONDS, min( 30 * MINUTE_IN_SECONDS, (int) apply_filters( 'axle_sessions_device_swap_lifetime', 10 * MINUTE_IN_SECONDS ) ) );
 	}
 
 	/**
@@ -298,7 +298,7 @@ final class Settings {
 		 * @param int      $minutes From the user's roles. 0 turns the idle timeout off.
 		 * @param \WP_User $user    The user.
 		 */
-		return max( 0, (int) apply_filters( 'user_session_manager_idle_timeout', $this->most_generous( $user, 'idle_minutes' ), $user ) );
+		return max( 0, (int) apply_filters( 'axle_sessions_idle_timeout', $this->most_generous( $user, 'idle_minutes' ), $user ) );
 	}
 
 	/**
@@ -320,7 +320,7 @@ final class Settings {
 		 * @param \WP_User $user     The user.
 		 * @param bool     $remember Whether "Remember Me" was ticked.
 		 */
-		$seconds = (int) apply_filters( 'user_session_manager_session_lifetime', $seconds, $user, $remember );
+		$seconds = (int) apply_filters( 'axle_sessions_session_lifetime', $seconds, $user, $remember );
 
 		return $seconds > 0 ? $seconds : $fallback;
 	}
@@ -336,7 +336,7 @@ final class Settings {
 		 *
 		 * @param int $seconds Default 300 (5 minutes). 0 saves it on every request.
 		 */
-		return max( 0, min( DAY_IN_SECONDS, (int) apply_filters( 'user_session_manager_last_seen_interval', self::LAST_SEEN_INTERVAL ) ) );
+		return max( 0, min( DAY_IN_SECONDS, (int) apply_filters( 'axle_sessions_last_seen_interval', self::LAST_SEEN_INTERVAL ) ) );
 	}
 
 	/**
@@ -354,7 +354,7 @@ final class Settings {
 		 * @param string $ip      The full address.
 		 * @param int    $user_id The user.
 		 */
-		return (bool) apply_filters( 'user_session_manager_mask_ip', $this->get( 'mask_ip' ), $ip, $user_id );
+		return (bool) apply_filters( 'axle_sessions_mask_ip', $this->get( 'mask_ip' ), $ip, $user_id );
 	}
 
 	/**
@@ -368,7 +368,7 @@ final class Settings {
 		 *
 		 * @param int $days From the setting. Default 30.
 		 */
-		return max( 1, min( 365, (int) apply_filters( 'user_session_manager_device_memory_days', $this->get( 'device_days' ) ) ) );
+		return max( 1, min( 365, (int) apply_filters( 'axle_sessions_device_memory_days', $this->get( 'device_days' ) ) ) );
 	}
 
 	/**
@@ -382,7 +382,7 @@ final class Settings {
 		 *
 		 * @param bool $enabled From the setting. Default true.
 		 */
-		return (bool) apply_filters( 'user_session_manager_not_me_enabled', $this->get( 'not_me' ) );
+		return (bool) apply_filters( 'axle_sessions_not_me_enabled', $this->get( 'not_me' ) );
 	}
 
 	/**
@@ -398,7 +398,7 @@ final class Settings {
 		 * @param string   $scope all signs the account out everywhere, session only the reported session.
 		 * @param \WP_User $user  The account that was reported.
 		 */
-		$scope = apply_filters( 'user_session_manager_not_me_scope', $this->get( 'not_me_scope' ), $user );
+		$scope = apply_filters( 'axle_sessions_not_me_scope', $this->get( 'not_me_scope' ), $user );
 
 		return in_array( $scope, self::NOT_ME_SCOPES, true ) ? (string) $scope : 'all';
 	}
@@ -414,7 +414,7 @@ final class Settings {
 		 *
 		 * @param int $seconds Default 7 days. Kept between 1 hour and 30 days.
 		 */
-		return max( HOUR_IN_SECONDS, min( 30 * DAY_IN_SECONDS, (int) apply_filters( 'user_session_manager_not_me_lifetime', 7 * DAY_IN_SECONDS ) ) );
+		return max( HOUR_IN_SECONDS, min( 30 * DAY_IN_SECONDS, (int) apply_filters( 'axle_sessions_not_me_lifetime', 7 * DAY_IN_SECONDS ) ) );
 	}
 
 	/**
@@ -428,7 +428,7 @@ final class Settings {
 		 *
 		 * @param int $days From the setting. Default 90. 0 turns history off.
 		 */
-		return max( 0, min( 365, (int) apply_filters( 'user_session_manager_history_days', $this->get( 'history_days' ) ) ) );
+		return max( 0, min( 365, (int) apply_filters( 'axle_sessions_history_days', $this->get( 'history_days' ) ) ) );
 	}
 
 	/**

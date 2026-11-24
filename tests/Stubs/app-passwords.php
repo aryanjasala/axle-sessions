@@ -2,7 +2,7 @@
 /**
  * A stand-in for core's application passwords, keeping them in an array.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
 if ( ! class_exists( 'WP_Application_Passwords' ) ) {

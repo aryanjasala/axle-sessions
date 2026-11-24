@@ -10,7 +10,7 @@ test.describe( 'Screenshots', () => {
 
 	test.beforeAll( async ( { browser } ) => {
 		prepareSite( 'Example Shop' );
-		wp( 'option', 'delete', 'user_session_manager_settings' );
+		wp( 'option', 'delete', 'axle_sessions_settings' );
 		createPeople();
 		clearSessions();
 
@@ -32,7 +32,7 @@ test.describe( 'Screenshots', () => {
 
 	test.afterAll( async () => {
 		await context.close();
-		wp( 'option', 'delete', 'user_session_manager_settings' );
+		wp( 'option', 'delete', 'axle_sessions_settings' );
 		removePeople();
 	} );
 
@@ -52,18 +52,18 @@ test.describe( 'Screenshots', () => {
 	} );
 
 	test( '3: Users > Sessions > Policies with policies per role', async () => {
-		wp( 'user-session-manager', 'set-policy', 'administrator', '--max-sessions=3', '--idle-minutes=60', '--lifetime-hours=12' );
-		wp( 'user-session-manager', 'set-policy', 'editor', '--max-sessions=2', '--idle-minutes=120' );
-		wp( 'user-session-manager', 'set-policy', 'subscriber', '--max-sessions=1', '--remember-hours=720' );
-		wp( 'user-session-manager', 'settings', '--new-device-email=on' );
+		wp( 'axle-sessions', 'set-policy', 'administrator', '--max-sessions=3', '--idle-minutes=60', '--lifetime-hours=12' );
+		wp( 'axle-sessions', 'set-policy', 'editor', '--max-sessions=2', '--idle-minutes=120' );
+		wp( 'axle-sessions', 'set-policy', 'subscriber', '--max-sessions=1', '--remember-hours=720' );
+		wp( 'axle-sessions', 'settings', '--new-device-email=on' );
 		await page.goto( '/wp-admin/users.php?page=user-sessions&tab=policies' );
 		await expect( page.locator( '#usm-administrator-idle_minutes' ) ).toHaveValue( '60' );
 		await shot( page, 3, { fullPage: true } );
 	} );
 
 	test( '4: a login refused over the limit', async ( { browser } ) => {
-		wp( 'user-session-manager', 'set-policy', 'editor', '--max-sessions=2' );
-		wp( 'user-session-manager', 'settings', '--limit-mode=block' );
+		wp( 'axle-sessions', 'set-policy', 'editor', '--max-sessions=2' );
+		wp( 'axle-sessions', 'settings', '--limit-mode=block' );
 		const other = await browser.newContext( { storageState: { cookies: [], origins: [] }, userAgent: UA.ipad, viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 } );
 		const login = await other.newPage();
 		await logIn( login, 'maria', 'demo-password-123' );

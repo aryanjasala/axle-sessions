@@ -2,22 +2,22 @@
 /**
  * Abilities: sessions for AI agents and other Abilities API clients.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers User Session Manager's abilities on WordPress 6.9 and later.
+ * Registers the abilities of Axle Sessions on WordPress 6.9 and later.
  *
  * Useful for an agent handling "I lost my phone" or a suspected break-in:
  * list where the account is signed in, then sign out one device or all of them.
  */
 final class Abilities implements Service {
 
-	public const CATEGORY = 'user-session-manager';
+	public const CATEGORY = 'axle-sessions';
 
 	private const LIMIT = 50;
 
@@ -96,8 +96,8 @@ final class Abilities implements Service {
 		wp_register_ability_category(
 			self::CATEGORY,
 			array(
-				'label'       => __( 'User Session Manager', 'user-session-manager' ),
-				'description' => __( 'Where users are signed in, which accounts look shared, and signing out one device or all of them.', 'user-session-manager' ),
+				'label'       => __( 'Axle Sessions', 'axle-sessions' ),
+				'description' => __( 'Where users are signed in, which accounts look shared, and signing out one device or all of them.', 'axle-sessions' ),
 			)
 		);
 	}
@@ -143,8 +143,8 @@ final class Abilities implements Service {
 
 		$this->ability(
 			'list-sessions',
-			__( 'List sessions', 'user-session-manager' ),
-			__( 'Where a user is signed in: device, IP address, when each session started, was last active and expires. Without input, the current user\'s own sessions. With user, that user\'s; with all, everyone\'s. Both need permission to manage users.', 'user-session-manager' ),
+			__( 'List sessions', 'axle-sessions' ),
+			__( 'Where a user is signed in: device, IP address, when each session started, was last active and expires. Without input, the current user\'s own sessions. With user, that user\'s; with all, everyone\'s. Both need permission to manage users.', 'axle-sessions' ),
 			array(
 				'type'                 => 'object',
 				'properties'           => array(
@@ -183,8 +183,8 @@ final class Abilities implements Service {
 
 		$this->ability(
 			'revoke-session',
-			__( 'Sign out a session', 'user-session-manager' ),
-			__( 'Signs out one session by its handle from list-sessions. That browser is logged out the next time it loads a page. Signing out a session that already ended does nothing.', 'user-session-manager' ),
+			__( 'Sign out a session', 'axle-sessions' ),
+			__( 'Signs out one session by its handle from list-sessions. That browser is logged out the next time it loads a page. Signing out a session that already ended does nothing.', 'axle-sessions' ),
 			array(
 				'type'                 => 'object',
 				'properties'           => array(
@@ -216,8 +216,8 @@ final class Abilities implements Service {
 
 		$this->ability(
 			'sign-out-user',
-			__( 'Sign a user out everywhere', 'user-session-manager' ),
-			__( 'Ends every session of a user, on every device. Use it after a lost device or a suspected break-in, together with a password change.', 'user-session-manager' ),
+			__( 'Sign a user out everywhere', 'axle-sessions' ),
+			__( 'Ends every session of a user, on every device. Use it after a lost device or a suspected break-in, together with a password change.', 'axle-sessions' ),
 			array(
 				'type'                 => 'object',
 				'properties'           => array(
@@ -243,8 +243,8 @@ final class Abilities implements Service {
 
 		$this->ability(
 			'list-shared-logins',
-			__( 'List accounts that look shared', 'user-session-manager' ),
-			__( 'Accounts whose sessions look like more than one person, such as two computers on different networks at the same time, with the reasons and the sessions behind them. Without input, every flagged account, which needs permission to manage users. With user, only that user, which also works for your own account. A guess, not proof.', 'user-session-manager' ),
+			__( 'List accounts that look shared', 'axle-sessions' ),
+			__( 'Accounts whose sessions look like more than one person, such as two computers on different networks at the same time, with the reasons and the sessions behind them. Without input, every flagged account, which needs permission to manage users. With user, only that user, which also works for your own account. A guess, not proof.', 'axle-sessions' ),
 			array(
 				'type'                 => 'object',
 				'properties'           => array(
@@ -328,8 +328,8 @@ final class Abilities implements Service {
 
 		$this->ability(
 			'list-sign-in-history',
-			__( 'List sign-in history', 'user-session-manager' ),
-			__( 'When and where an account signed in over the retention time (90 days by default), and how each session ended: signed out, expired, idle, signed out from another device, signed out by an administrator, device limit reached, reported as "This wasn\'t me", or password changed. Without input, the current user. With user, that user, which needs permission to edit them.', 'user-session-manager' ),
+			__( 'List sign-in history', 'axle-sessions' ),
+			__( 'When and where an account signed in over the retention time (90 days by default), and how each session ended: signed out, expired, idle, signed out from another device, signed out by an administrator, device limit reached, reported as "This wasn\'t me", or password changed. Without input, the current user. With user, that user, which needs permission to edit them.', 'axle-sessions' ),
 			array(
 				'type'                 => 'object',
 				'properties'           => array(
@@ -385,8 +385,8 @@ final class Abilities implements Service {
 
 		$this->ability(
 			'list-not-me-reports',
-			__( 'List "This wasn\'t me" reports', 'user-session-manager' ),
-			__( 'Sign-ins that the owner of an account reported as not them, newest first: who, which device and IP address, when, and how many sessions were signed out. Needs permission to manage users. Only people you may edit are listed.', 'user-session-manager' ),
+			__( 'List "This wasn\'t me" reports', 'axle-sessions' ),
+			__( 'Sign-ins that the owner of an account reported as not them, newest first: who, which device and IP address, when, and how many sessions were signed out. Needs permission to manage users. Only people you may edit are listed.', 'axle-sessions' ),
 			array(
 				'type'                 => 'object',
 				'properties'           => array(
@@ -431,8 +431,8 @@ final class Abilities implements Service {
 
 		$this->ability(
 			'sign-out-everyone',
-			__( 'Sign everyone out', 'user-session-manager' ),
-			__( 'For an incident. Ends every session of every user you may edit, except your own when keep_current is true and the roles in exclude_roles. With require_new_passwords, every affected password also stops working, so each person has to use "Lost your password?" to choose a new one. Every application password of those users is revoked too, unless revoke_app_passwords is false, so nobody keeps REST access from before. Nobody is emailed. Your own password and application passwords are never changed. It cannot be undone, and confirm must be true.', 'user-session-manager' ),
+			__( 'Sign everyone out', 'axle-sessions' ),
+			__( 'For an incident. Ends every session of every user you may edit, except your own when keep_current is true and the roles in exclude_roles. With require_new_passwords, every affected password also stops working, so each person has to use "Lost your password?" to choose a new one. Every application password of those users is revoked too, unless revoke_app_passwords is false, so nobody keeps REST access from before. Nobody is emailed. Your own password and application passwords are never changed. It cannot be undone, and confirm must be true.', 'axle-sessions' ),
 			array(
 				'type'                 => 'object',
 				'properties'           => array(
@@ -642,7 +642,7 @@ final class Abilities implements Service {
 	public function sign_out_everyone( $input = null ) {
 		$input = (array) $input;
 		if ( true !== ( $input['confirm'] ?? false ) ) {
-			return new \WP_Error( 'user_session_manager_not_confirmed', __( 'Set confirm to true to sign everyone out.', 'user-session-manager' ) );
+			return new \WP_Error( 'axle_sessions_not_confirmed', __( 'Set confirm to true to sign everyone out.', 'axle-sessions' ) );
 		}
 
 		$job = $this->incident->run_all(
@@ -748,7 +748,7 @@ final class Abilities implements Service {
 	public function sign_out_user( $input = null ) {
 		$user_id = self::user_id( ( (array) $input )['user'] ?? 0 );
 		if ( $user_id < 1 ) {
-			return new \WP_Error( 'user_session_manager_no_user', __( 'There is no such user.', 'user-session-manager' ) );
+			return new \WP_Error( 'axle_sessions_no_user', __( 'There is no such user.', 'axle-sessions' ) );
 		}
 
 		return array( 'sessions_ended' => $this->sessions->sign_out_everywhere( $user_id, 'ability' ) );

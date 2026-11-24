@@ -2,12 +2,12 @@
 /**
  * "Let me in by ending the other device": the way out of a refused login.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
-use AryanX\Axle\UserSessionManager\Admin\AxleUi;
+use AryanX\Axle\Sessions\Admin\AxleUi;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -39,8 +39,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class DeviceSwap implements Service {
 
-	public const ACTION = 'user_session_manager_devices';
-	public const META   = 'user_session_manager_swap';
+	public const ACTION = 'axle_sessions_devices';
+	public const META   = 'axle_sessions_swap';
 
 	private const TOKEN_BYTES = 24;
 
@@ -168,7 +168,7 @@ final class DeviceSwap implements Service {
 		$this->undecided = null;
 		$this->sessions->forget( $held['user']->ID, $held['verifier'] );
 		/** This action is documented in src/Limits.php */
-		do_action( 'user_session_manager_login_blocked', $held['user'], $this->settings->max_sessions( $held['user'] ), count( $this->sessions->for_user( $held['user']->ID ) ) );
+		do_action( 'axle_sessions_login_blocked', $held['user'], $this->settings->max_sessions( $held['user'] ), count( $this->sessions->for_user( $held['user']->ID ) ) );
 	}
 
 	/**
@@ -190,7 +190,7 @@ final class DeviceSwap implements Service {
 		 * @param bool     $uses True when the user has a second step. Default: Two Factor says so.
 		 * @param \WP_User $user The user.
 		 */
-		return (bool) apply_filters( 'user_session_manager_uses_two_factor', $uses, $user );
+		return (bool) apply_filters( 'axle_sessions_uses_two_factor', $uses, $user );
 	}
 
 	/**
@@ -220,9 +220,9 @@ final class DeviceSwap implements Service {
 		 * @param int      $max    Sessions allowed.
 		 * @param int      $active Sessions the user has.
 		 */
-		do_action( 'user_session_manager_device_swap_offered', $user, $max, $active );
+		do_action( 'axle_sessions_device_swap_offered', $user, $max, $active );
 		/** This action is documented in src/Limits.php */
-		do_action( 'user_session_manager_login_blocked', $user, $max, $active );
+		do_action( 'axle_sessions_login_blocked', $user, $max, $active );
 
 		// phpcs:disable WordPress.Security.NonceVerification -- The login form was verified by WordPress; these are read only to come back to the same place.
 		$redirect = isset( $_REQUEST['redirect_to'] ) ? wp_validate_redirect( esc_url_raw( wp_unslash( $_REQUEST['redirect_to'] ) ), '' ) : '';
@@ -332,7 +332,7 @@ final class DeviceSwap implements Service {
 	}
 
 	/**
-	 * Handles wp-login.php?action=user_session_manager_devices.
+	 * Handles wp-login.php?action=axle_sessions_devices.
 	 */
 	public function page(): void {
 		nocache_headers();
@@ -346,6 +346,7 @@ final class DeviceSwap implements Service {
 		$form   = isset( $_POST['usm_form'] ) ? sanitize_text_field( wp_unslash( $_POST['usm_form'] ) ) : '';
 		$handle = isset( $_POST['usm_handle'] ) ? sanitize_text_field( wp_unslash( $_POST['usm_handle'] ) ) : '';
 		$cancel = $post && ! empty( $_POST['usm_cancel'] );
+		$nonce  = isset( $_POST['usm_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['usm_nonce'] ) ) : '';
 		// phpcs:enable WordPress.Security.NonceVerification
 
 		if ( $this->is_limited() ) {
@@ -369,14 +370,20 @@ final class DeviceSwap implements Service {
 			$this->count_failure();
 			$this->expired( 403 );
 		}
+
+		// A WordPress nonce for this account, on top of the cookie and form tokens. A stale page gets the list again and the token is kept.
+		if ( ! wp_verify_nonce( $nonce, self::nonce_action( $user->ID ) ) ) {
+			$this->render_list( $user, $found['token'], esc_html__( 'This page was open for too long, so nothing was changed. Choose again.', 'axle-sessions' ) );
+			exit;
+		}
 		$this->consume( $user->ID );
 
 		if ( $cancel ) {
 			AxleUi::guest_page(
 				array(
-					'title'   => __( 'Sign in cancelled', 'user-session-manager' ),
-					'message' => esc_html__( 'Nothing was signed out and you are not signed in.', 'user-session-manager' ),
-					'links'   => array( array( wp_login_url(), __( 'Back to the sign-in page', 'user-session-manager' ) ) ),
+					'title'   => __( 'Sign in cancelled', 'axle-sessions' ),
+					'message' => esc_html__( 'Nothing was signed out and you are not signed in.', 'axle-sessions' ),
+					'links'   => array( array( wp_login_url(), __( 'Back to the sign-in page', 'axle-sessions' ) ) ),
 				)
 			);
 			exit;
@@ -432,13 +439,13 @@ final class DeviceSwap implements Service {
 		/**
 		 * Fires when a person ended one of their other devices to finish signing in.
 		 *
-		 * The new session was created, and `user_session_manager_session_started` fired for it. The
-		 * ended session also fired `user_session_manager_session_revoked` with the context "swap".
+		 * The new session was created, and `axle_sessions_session_started` fired for it. The
+		 * ended session also fired `axle_sessions_session_revoked` with the context "swap".
 		 *
 		 * @param \WP_User $user  The user, now signed in.
 		 * @param array    $ended The session that was ended: expiration, ip, ua, login, last_seen and handle.
 		 */
-		do_action( 'user_session_manager_device_swapped', $user, $ended );
+		do_action( 'axle_sessions_device_swapped', $user, $ended );
 
 		// A second step was already done, and firing wp_login would ask for it again.
 		if ( ! self::uses_two_factor( $user ) ) {
@@ -476,6 +483,7 @@ final class DeviceSwap implements Service {
 		$max     = $this->settings->max_sessions( $user );
 		$action  = add_query_arg( 'action', self::ACTION, network_site_url( 'wp-login.php', 'login' ) );
 		$form    = $this->form_token( $token );
+		$nonce   = wp_create_nonce( self::nonce_action( $user->ID ) );
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Display-only flags from our own redirect.
 		$gone = isset( $_GET['usm_gone'] );
@@ -484,48 +492,60 @@ final class DeviceSwap implements Service {
 
 		$intro = sprintf(
 			/* translators: 1: number of devices allowed, 2: number of devices signed in now. */
-			_n( 'This account can be signed in on %1$s device at a time, and it is signed in on %2$s now.', 'This account can be signed in on %1$s devices at a time, and it is signed in on %2$s now.', max( 1, $max ), 'user-session-manager' ),
+			_n( 'This account can be signed in on %1$s device at a time, and it is signed in on %2$s now.', 'This account can be signed in on %1$s devices at a time, and it is signed in on %2$s now.', max( 1, $max ), 'axle-sessions' ),
 			number_format_i18n( $max ),
 			number_format_i18n( count( $rows ) )
 		);
 
 		ob_start();
 		?>
-		<p><?php esc_html_e( 'Choose a device to sign out. You will be signed in here at once, without typing your password again.', 'user-session-manager' ); ?></p>
+		<p><?php esc_html_e( 'Choose a device to sign out. You will be signed in here at once, without typing your password again.', 'axle-sessions' ); ?></p>
 		<?php foreach ( $rows as $row ) : ?>
 			<form method="post" action="<?php echo esc_url( $action ); ?>" class="usm-swap-device">
 				<p>
-					<strong><?php echo esc_html( '' !== $row['device'] ? $row['device'] : __( 'Unknown device', 'user-session-manager' ) ); ?></strong><br>
+					<strong><?php echo esc_html( '' !== $row['device'] ? $row['device'] : __( 'Unknown device', 'axle-sessions' ) ); ?></strong><br>
 					<?php
 					echo esc_html(
 						sprintf(
 							/* translators: 1: IP address or "unknown address", 2: time since the device was last active, such as "5 minutes ago". */
-							__( '%1$s. Last active %2$s.', 'user-session-manager' ),
-							'' !== $row['ip'] ? $row['ip'] : __( 'Unknown address', 'user-session-manager' ),
-							$row['last_seen'] > 0 ? sprintf( /* translators: %s: time span, such as "5 minutes". */ __( '%s ago', 'user-session-manager' ), human_time_diff( $row['last_seen'], $now ) ) : __( 'a while ago', 'user-session-manager' )
+							__( '%1$s. Last active %2$s.', 'axle-sessions' ),
+							'' !== $row['ip'] ? $row['ip'] : __( 'Unknown address', 'axle-sessions' ),
+							$row['last_seen'] > 0 ? sprintf( /* translators: %s: time span, such as "5 minutes". */ __( '%s ago', 'axle-sessions' ), human_time_diff( $row['last_seen'], $now ) ) : __( 'a while ago', 'axle-sessions' )
 						)
 					);
 					?>
 				</p>
 				<input type="hidden" name="usm_form" value="<?php echo esc_attr( $form ); ?>">
+				<input type="hidden" name="usm_nonce" value="<?php echo esc_attr( $nonce ); ?>">
 				<input type="hidden" name="usm_handle" value="<?php echo esc_attr( $row['handle'] ); ?>">
-				<p class="submit"><button type="submit" class="button button-primary"><?php esc_html_e( 'Sign out this device and sign in here', 'user-session-manager' ); ?></button></p>
+				<p class="submit"><button type="submit" class="button button-primary"><?php esc_html_e( 'Sign out this device and sign in here', 'axle-sessions' ); ?></button></p>
 			</form>
 		<?php endforeach; ?>
 		<form method="post" action="<?php echo esc_url( $action ); ?>" class="usm-swap-cancel">
 			<input type="hidden" name="usm_form" value="<?php echo esc_attr( $form ); ?>">
+			<input type="hidden" name="usm_nonce" value="<?php echo esc_attr( $nonce ); ?>">
 			<input type="hidden" name="usm_cancel" value="1">
-			<p class="submit"><button type="submit" class="button"><?php esc_html_e( 'Cancel, I will sign in later', 'user-session-manager' ); ?></button></p>
+			<p class="submit"><button type="submit" class="button"><?php esc_html_e( 'Cancel, I will sign in later', 'axle-sessions' ); ?></button></p>
 		</form>
 		<?php
 		AxleUi::guest_page(
 			array(
-				'title'   => __( 'Sign out another device', 'user-session-manager' ),
+				'title'   => __( 'Sign out another device', 'axle-sessions' ),
 				'message' => esc_html( $intro ),
-				'error'   => $gone ? esc_html__( 'That device had already signed out. Choose again.', 'user-session-manager' ) : ( $more ? esc_html__( 'Signed out. This account is still over its limit, so choose one more device.', 'user-session-manager' ) : $error ),
+				'error'   => $gone ? esc_html__( 'That device had already signed out. Choose again.', 'axle-sessions' ) : ( $more ? esc_html__( 'Signed out. This account is still over its limit, so choose one more device.', 'axle-sessions' ) : $error ),
 				'body'    => (string) ob_get_clean(),
 			)
 		);
+	}
+
+	/**
+	 * Nonce action for the device list forms, bound to the account.
+	 *
+	 * @param int $user_id The account being signed in.
+	 * @return string
+	 */
+	private static function nonce_action( int $user_id ): string {
+		return self::ACTION . '_' . $user_id;
 	}
 
 	/**
@@ -537,11 +557,11 @@ final class DeviceSwap implements Service {
 		$this->set_cookie( '', time() - YEAR_IN_SECONDS );
 		AxleUi::guest_page(
 			array(
-				'title'  => __( 'This step has expired', 'user-session-manager' ),
-				'error'  => esc_html( 429 === $status ? __( 'Too many attempts from this network. Wait a few minutes and sign in again.', 'user-session-manager' ) : __( 'This step has expired or was already used. Nothing was signed out.', 'user-session-manager' ) ),
-				'body'   => '<p>' . esc_html__( 'Sign in again to see your devices.', 'user-session-manager' ) . '</p>',
+				'title'  => __( 'This step has expired', 'axle-sessions' ),
+				'error'  => esc_html( 429 === $status ? __( 'Too many attempts from this network. Wait a few minutes and sign in again.', 'axle-sessions' ) : __( 'This step has expired or was already used. Nothing was signed out.', 'axle-sessions' ) ),
+				'body'   => '<p>' . esc_html__( 'Sign in again to see your devices.', 'axle-sessions' ) . '</p>',
 				'status' => $status,
-				'links'  => array( array( wp_login_url(), __( 'Back to the sign-in page', 'user-session-manager' ) ) ),
+				'links'  => array( array( wp_login_url(), __( 'Back to the sign-in page', 'axle-sessions' ) ) ),
 			)
 		);
 		exit;
@@ -587,7 +607,7 @@ final class DeviceSwap implements Service {
 		 *
 		 * @param int $attempts Default 10. At least 3.
 		 */
-		$max = max( 3, (int) apply_filters( 'user_session_manager_device_swap_attempts', 10 ) );
+		$max = max( 3, (int) apply_filters( 'axle_sessions_device_swap_attempts', 10 ) );
 
 		return (int) get_transient( $this->limit_key() ) >= $max;
 	}

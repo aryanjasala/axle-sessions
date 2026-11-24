@@ -3,17 +3,17 @@
  * Tests for the wording and choices on the screens: sign out notices, the
  * question before a sign out everywhere, core's sessions row and Site Health.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\Admin\ProfileSessions;
-use AryanX\Axle\UserSessionManager\Admin\SessionsPage;
-use AryanX\Axle\UserSessionManager\Health\SiteHealth;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
-use AryanX\Axle\UserSessionManager\SharedLogins;
+use AryanX\Axle\Sessions\Admin\ProfileSessions;
+use AryanX\Axle\Sessions\Admin\SessionsPage;
+use AryanX\Axle\Sessions\Health\SiteHealth;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
+use AryanX\Axle\Sessions\SharedLogins;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
 
@@ -25,7 +25,7 @@ final class ScreensTest extends SessionTestCase {
 	}
 
 	public function test_signing_one_user_out_names_them_in_the_notice(): void {
-		Filters\expectApplied( 'user_session_manager_notice' )->once()->with( 'alice was signed out of 6 sessions.', 'signed_out_user', 6, 'alice' )->andReturnFirstArg();
+		Filters\expectApplied( 'axle_sessions_notice' )->once()->with( 'alice was signed out of 6 sessions.', 'signed_out_user', 6, 'alice' )->andReturnFirstArg();
 
 		$this->assertSame( 'alice was signed out of 6 sessions.', ProfileSessions::message( 'signed_out_user', 6, 'alice' ) );
 	}
@@ -34,13 +34,71 @@ final class ScreensTest extends SessionTestCase {
 		$this->assertSame( '2,002 sessions signed out.', ProfileSessions::message( 'bulk', 2002 ) );
 		$this->assertSame( '', ProfileSessions::message( 'unknown', 1 ) );
 
-		Filters\expectApplied( 'user_session_manager_notice' )->once()->andReturn( 'Done.' );
+		Filters\expectApplied( 'axle_sessions_notice' )->once()->andReturn( 'Done.' );
 		$this->assertSame( 'Done.', ProfileSessions::message( 'revoked', 1 ) );
+	}
+
+	/**
+	 * Prints the result notice for a query string, on a screen.
+	 *
+	 * @param string $screen Screen ID, or empty for none.
+	 * @param array  $query  $_GET values.
+	 * @return string
+	 */
+	private function notice_on( string $screen, array $query ): string {
+		Functions\when( 'get_current_screen' )->justReturn( '' === $screen ? null : new \WP_Screen( $screen ) );
+		Functions\when( 'number_format_i18n' )->returnArg();
+		Functions\when( 'wp_unslash' )->returnArg();
+		Functions\when( 'sanitize_key' )->alias( 'strtolower' );
+		Functions\when( 'absint' )->alias( 'intval' );
+		$_GET = $query;
+		$settings = new Settings();
+		$sessions = new Sessions( $settings );
+		$page     = $this->profile( $settings, $sessions, new SharedLogins( $settings, $sessions ) );
+
+		ob_start();
+		$page->notice();
+		$html = (string) ob_get_clean();
+		$_GET = array();
+
+		return $html;
+	}
+
+	public function test_the_result_notice_only_shows_on_the_plugins_own_screens(): void {
+		$query = array(
+			'usm_message' => 'bulk',
+			'usm_count'   => '3',
+		);
+
+		foreach ( array( 'profile', 'user-edit', 'users_page_user-sessions', 'users_page_user-sessions-network', 'profile-network' ) as $id ) {
+			$this->assertStringContainsString( '3 sessions signed out.', $this->notice_on( $id, $query ), $id );
+		}
+		foreach ( array( 'dashboard', 'plugins', 'users', 'options-general', '' ) as $id ) {
+			$this->assertSame( '', $this->notice_on( $id, $query ), $id );
+		}
+		$this->assertStringContainsString( 'is-dismissible', $this->notice_on( 'profile', $query ) );
+	}
+
+	public function test_a_made_up_address_does_not_reveal_a_user_name(): void {
+		$this->user( 1, 'admin' );
+		$this->user( 7, 'alice' );
+		$this->current_user = 1;
+		$query              = array(
+			'usm_message' => 'signed_out_user',
+			'usm_count'   => '2',
+			'usm_user'    => '7',
+		);
+
+		Functions\when( 'current_user_can' )->justReturn( false );
+		$this->assertStringNotContainsString( 'alice', $this->notice_on( 'profile', $query ) );
+
+		Functions\when( 'current_user_can' )->justReturn( true );
+		$this->assertStringContainsString( 'alice was signed out of 2 sessions.', $this->notice_on( 'profile', $query ) );
 	}
 
 	public function test_the_question_says_this_browser_stays_unless_you_choose_otherwise(): void {
 		$this->user( 1, 'admin', array( 'administrator' ) );
-		Filters\expectApplied( 'user_session_manager_confirm_message' )->once()->with( \Mockery::type( 'string' ), array( 1 ), 3, true )->andReturnFirstArg();
+		Filters\expectApplied( 'axle_sessions_confirm_message' )->once()->with( \Mockery::type( 'string' ), array( 1 ), 3, true )->andReturnFirstArg();
 
 		$message = SessionsPage::confirm_message( array( 1 ), 3, true );
 
@@ -55,7 +113,7 @@ final class ScreensTest extends SessionTestCase {
 		$this->assertSame( 'alice is signed in on 2 devices. Each one is signed out the next time it loads a page.', SessionsPage::confirm_message( array( 7 ), 2, false ) );
 		$this->assertStringContainsString( 'You are one of them', SessionsPage::confirm_message( array( 1, 7 ), 5, true ) );
 
-		Filters\expectApplied( 'user_session_manager_confirm_message' )->once()->andReturn( ' ' );
+		Filters\expectApplied( 'axle_sessions_confirm_message' )->once()->andReturn( ' ' );
 		$this->assertStringStartsWith( 'alice is signed in', SessionsPage::confirm_message( array( 7 ), 2, false ) );
 	}
 
@@ -70,7 +128,7 @@ final class ScreensTest extends SessionTestCase {
 		$sessions = new Sessions( $settings );
 		$profile  = $this->profile( $settings, $sessions, new SharedLogins( $settings, $sessions ) );
 
-		Filters\expectApplied( 'user_session_manager_hide_core_sessions' )->once()->with( true, 1 )->andReturn( true );
+		Filters\expectApplied( 'axle_sessions_hide_core_sessions' )->once()->with( true, 1 )->andReturn( true );
 		$this->assertTrue( $profile->hides_core_row( 1 ) );
 		$this->assertFalse( $profile->hides_core_row( 0 ) );
 
@@ -85,7 +143,7 @@ final class ScreensTest extends SessionTestCase {
 				return 'http://example.org/wp-admin/' . $path;
 			}
 		);
-		Functions\when( 'add_query_arg' )->justReturn( 'http://example.org/wp-admin/options-general.php?page=user-session-manager' );
+		Functions\when( 'add_query_arg' )->justReturn( 'http://example.org/wp-admin/options-general.php?page=axle-sessions' );
 		$settings = new Settings();
 		$result   = ( new SiteHealth( $settings, new Sessions( $settings ) ) )->run();
 

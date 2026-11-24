@@ -2,10 +2,10 @@
 /**
  * "Sign everyone out": the one action for an incident.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Incident {
 
-	public const LOG = 'user_session_manager_incidents';
+	public const LOG = 'axle_sessions_incidents';
 
 	private const MAX_LOG = 20;
 	private const SLICE   = 100;
@@ -55,7 +55,7 @@ final class Incident {
 		 *
 		 * @param string $word Default SIGN OUT.
 		 */
-		$word = trim( (string) apply_filters( 'user_session_manager_incident_confirm_word', 'SIGN OUT' ) );
+		$word = trim( (string) apply_filters( 'axle_sessions_incident_confirm_word', 'SIGN OUT' ) );
 
 		return '' !== $word ? $word : 'SIGN OUT';
 	}
@@ -115,7 +115,7 @@ final class Incident {
 		 *
 		 * @param array $job The job: by, via, keep, exclude_roles, passwords and app_passwords.
 		 */
-		do_action( 'user_session_manager_incident_started', $job );
+		do_action( 'axle_sessions_incident_started', $job );
 
 		return $job;
 	}
@@ -279,6 +279,6 @@ final class Incident {
 		 * @param array $entry time, by, via, users and sessions (signed out), passwords (made unusable), app_passwords (revoked), excluded, skipped, exclude_roles and kept_own.
 		 * @param array $job   The finished job.
 		 */
-		do_action( 'user_session_manager_incident_finished', $entry, $job );
+		do_action( 'axle_sessions_incident_finished', $entry, $job );
 	}
 }

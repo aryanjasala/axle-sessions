@@ -2,15 +2,15 @@
 /**
  * Tests that listing and ending sessions checks the person they belong to, not only a global capability.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\Access;
-use AryanX\Axle\UserSessionManager\Sessions;
-use AryanX\Axle\UserSessionManager\Settings;
-use AryanX\Axle\UserSessionManager\SharedLogins;
+use AryanX\Axle\Sessions\Access;
+use AryanX\Axle\Sessions\Sessions;
+use AryanX\Axle\Sessions\Settings;
+use AryanX\Axle\Sessions\SharedLogins;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
 
@@ -79,7 +79,7 @@ final class PermissionsTest extends SessionTestCase {
 		$abilities = $this->abilities( $settings, $sessions, new SharedLogins( $settings, $sessions ) );
 
 		$this->assertTrue( Access::can_sign_out_everyone() );
-		Filters\expectApplied( 'user_session_manager_incident_capability' )->once()->andReturn( 'manage_network' );
+		Filters\expectApplied( 'axle_sessions_incident_capability' )->once()->andReturn( 'manage_network' );
 		Functions\when( 'current_user_can' )->alias(
 			static function ( $capability ) {
 				return 'manage_network' !== $capability;
@@ -103,7 +103,7 @@ final class PermissionsTest extends SessionTestCase {
 		$this->assertSame( 'all', $settings->get( 'not_me_scope' ) );
 		$this->assertSame( 365, $settings->history_days() );
 
-		Filters\expectApplied( 'user_session_manager_history_days' )->once()->andReturn( -4 );
+		Filters\expectApplied( 'axle_sessions_history_days' )->once()->andReturn( -4 );
 		$this->assertSame( 0, ( new Settings() )->history_days() );
 	}
 }

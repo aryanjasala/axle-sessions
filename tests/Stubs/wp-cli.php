@@ -2,7 +2,7 @@
 /**
  * Stand-ins for the WP-CLI pieces the commands use, so they run in unit tests.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
 // phpcs:ignoreFile

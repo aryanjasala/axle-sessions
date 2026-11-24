@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name:       User Session Manager
- * Plugin URI:        https://wordpress.org/plugins/user-session-manager/
+ * Plugin Name:       Axle Sessions
+ * Plugin URI:        https://wordpress.org/plugins/axle-sessions/
  * Description:       See every device signed in to WordPress, revoke one, and limit sessions per role.
  * Version:           1.0.0
  * Requires at least: 6.6
@@ -10,19 +10,19 @@
  * Author URI:        https://profiles.wordpress.org/aryanjasala/
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       user-session-manager
+ * Text Domain:       axle-sessions
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
 const VERSION     = '1.0.0';
 const PLUGIN_FILE = __FILE__;
 
-// PSR-4: AryanX\Axle\UserSessionManager\Foo\Bar lives in src/Foo/Bar.php.
+// PSR-4: AryanX\Axle\Sessions\Foo\Bar lives in src/Foo/Bar.php.
 spl_autoload_register(
 	static function ( $class_name ) {
 		$prefix = __NAMESPACE__ . '\\';

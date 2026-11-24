@@ -2,13 +2,13 @@
 /**
  * Tests for settings and the per-user policy.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager\Tests\Unit;
+namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\UserSessionManager\Access;
-use AryanX\Axle\UserSessionManager\Settings;
+use AryanX\Axle\Sessions\Access;
+use AryanX\Axle\Sessions\Settings;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
@@ -72,7 +72,7 @@ final class SettingsTest extends SessionTestCase {
 		$this->policies( array( 'author' => array( 'max_sessions' => 2 ) ) );
 		$user = new \WP_User( 3, 'pat', array( 'author' ) );
 
-		Filters\expectApplied( 'user_session_manager_max_sessions' )->once()->with( 2, $user )->andReturn( -4 );
+		Filters\expectApplied( 'axle_sessions_max_sessions' )->once()->with( 2, $user )->andReturn( -4 );
 
 		$this->assertSame( 0, ( new Settings() )->max_sessions( $user ) );
 	}
@@ -81,7 +81,7 @@ final class SettingsTest extends SessionTestCase {
 		$this->policies( array(), array( 'limit_mode' => 'block' ) );
 		$user = new \WP_User( 3, 'pat' );
 
-		Filters\expectApplied( 'user_session_manager_limit_mode' )->once()->with( 'block', $user )->andReturn( 'explode' );
+		Filters\expectApplied( 'axle_sessions_limit_mode' )->once()->with( 'block', $user )->andReturn( 'explode' );
 
 		$this->assertSame( 'evict_oldest', ( new Settings() )->limit_mode( $user ) );
 	}
@@ -89,7 +89,7 @@ final class SettingsTest extends SessionTestCase {
 	public function test_the_idle_timeout_filter_can_set_minutes_per_user(): void {
 		$user = new \WP_User( 3, 'pat' );
 
-		Filters\expectApplied( 'user_session_manager_idle_timeout' )->once()->with( 0, $user )->andReturn( '15' );
+		Filters\expectApplied( 'axle_sessions_idle_timeout' )->once()->with( 0, $user )->andReturn( '15' );
 
 		$this->assertSame( 15, ( new Settings() )->idle_timeout( $user ) );
 	}
@@ -109,7 +109,7 @@ final class SettingsTest extends SessionTestCase {
 		$this->assertSame( 8 * HOUR_IN_SECONDS, $settings->lifetime( $user, false, 2 * DAY_IN_SECONDS ) );
 		$this->assertSame( 14 * DAY_IN_SECONDS, $settings->lifetime( $user, true, 14 * DAY_IN_SECONDS ), '0 keeps the WordPress default.' );
 
-		Filters\expectApplied( 'user_session_manager_session_lifetime' )->once()->with( 8 * HOUR_IN_SECONDS, $user, false )->andReturn( -1 );
+		Filters\expectApplied( 'axle_sessions_session_lifetime' )->once()->with( 8 * HOUR_IN_SECONDS, $user, false )->andReturn( -1 );
 		$this->assertSame( 2 * DAY_IN_SECONDS, $settings->lifetime( $user, false, 2 * DAY_IN_SECONDS ) );
 	}
 
@@ -117,7 +117,7 @@ final class SettingsTest extends SessionTestCase {
 		$settings = new Settings();
 		$this->assertSame( 300, $settings->last_seen_interval() );
 
-		Filters\expectApplied( 'user_session_manager_last_seen_interval' )->twice()->andReturn( 10 * DAY_IN_SECONDS, -5 );
+		Filters\expectApplied( 'axle_sessions_last_seen_interval' )->twice()->andReturn( 10 * DAY_IN_SECONDS, -5 );
 		$this->assertSame( DAY_IN_SECONDS, $settings->last_seen_interval() );
 		$this->assertSame( 0, $settings->last_seen_interval() );
 	}
@@ -132,17 +132,17 @@ final class SettingsTest extends SessionTestCase {
 		);
 		$settings = new Settings();
 
-		Filters\expectApplied( 'user_session_manager_mask_ip' )->once()->with( true, '203.0.113.7', 9 )->andReturn( false );
+		Filters\expectApplied( 'axle_sessions_mask_ip' )->once()->with( true, '203.0.113.7', 9 )->andReturn( false );
 		$this->assertFalse( $settings->mask_ip( '203.0.113.7', 9 ) );
 
-		Filters\expectApplied( 'user_session_manager_device_memory_days' )->once()->with( 45 )->andReturn( 9999 );
+		Filters\expectApplied( 'axle_sessions_device_memory_days' )->once()->with( 45 )->andReturn( 9999 );
 		$this->assertSame( 365, $settings->device_days() );
 	}
 
 	public function test_save_announces_the_new_and_old_settings(): void {
 		$this->policies( array(), array( 'limit_mode' => 'evict_oldest' ) );
 
-		Actions\expectDone( 'user_session_manager_settings_saved' )
+		Actions\expectDone( 'axle_sessions_settings_saved' )
 			->once()
 			->with(
 				\Mockery::on(
@@ -162,8 +162,8 @@ final class SettingsTest extends SessionTestCase {
 
 	public function test_capability_filters_fall_back_when_empty(): void {
 		Functions\when( 'is_multisite' )->justReturn( true );
-		Filters\expectApplied( 'user_session_manager_capability' )->once()->with( 'edit_users' )->andReturn( '' );
-		Filters\expectApplied( 'user_session_manager_settings_capability' )->once()->with( 'manage_network_options' )->andReturn( 'manage_sessions' );
+		Filters\expectApplied( 'axle_sessions_capability' )->once()->with( 'edit_users' )->andReturn( '' );
+		Filters\expectApplied( 'axle_sessions_settings_capability' )->once()->with( 'manage_network_options' )->andReturn( 'manage_sessions' );
 
 		$this->assertSame( 'edit_users', Access::capability() );
 		$this->assertSame( 'manage_sessions', Access::settings_capability() );

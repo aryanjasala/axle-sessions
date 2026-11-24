@@ -2,7 +2,7 @@
 /**
  * Stand-ins for the WordPress user classes the session code touches.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
 // phpcs:ignoreFile
@@ -61,6 +61,20 @@ if ( ! class_exists( 'WP_User_Query' ) ) {
 
 		public function get_results() {
 			return $this->results;
+		}
+	}
+}
+
+if ( ! class_exists( 'WP_Screen' ) ) {
+	/**
+	 * Enough of WP_Screen to tell which admin screen a notice is on.
+	 */
+	class WP_Screen {
+		/** @var string */
+		public $id = '';
+
+		public function __construct( string $id = '' ) {
+			$this->id = $id;
 		}
 	}
 }

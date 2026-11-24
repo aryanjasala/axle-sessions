@@ -2,10 +2,10 @@
 /**
  * The hourly clean-up.
  *
- * @package AryanX\Axle\UserSessionManager
+ * @package AryanX\Axle\Sessions
  */
 
-namespace AryanX\Axle\UserSessionManager;
+namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -19,8 +19,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Pruner implements Service {
 
-	public const HOOK   = 'user_session_manager_prune';
-	public const CURSOR = 'user_session_manager_prune_cursor';
+	public const HOOK   = 'axle_sessions_prune';
+	public const CURSOR = 'axle_sessions_prune_cursor';
 
 	private const BATCH = 500;
 
@@ -191,7 +191,7 @@ final class Pruner implements Service {
 		 *
 		 * @param array $result users (looked at), expired and idle (sessions removed), last (user ID) and done.
 		 */
-		do_action( 'user_session_manager_pruned', $result );
+		do_action( 'axle_sessions_pruned', $result );
 
 		return $result;
 	}
@@ -207,6 +207,6 @@ final class Pruner implements Service {
 		 *
 		 * @param int $size Default 500.
 		 */
-		return max( 1, min( 5000, (int) apply_filters( 'user_session_manager_prune_batch', self::BATCH ) ) );
+		return max( 1, min( 5000, (int) apply_filters( 'axle_sessions_prune_batch', self::BATCH ) ) );
 	}
 }
