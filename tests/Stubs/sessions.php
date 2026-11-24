@@ -65,6 +65,20 @@ if ( ! class_exists( 'WP_User_Query' ) ) {
 	}
 }
 
+if ( ! class_exists( 'WP_Screen' ) ) {
+	/**
+	 * Enough of WP_Screen to tell which admin screen a notice is on.
+	 */
+	class WP_Screen {
+		/** @var string */
+		public $id = '';
+
+		public function __construct( string $id = '' ) {
+			$this->id = $id;
+		}
+	}
+}
+
 if ( ! class_exists( 'WP_List_Table' ) ) {
 	/**
 	 * Enough of WP_List_Table to load the Sessions table class.

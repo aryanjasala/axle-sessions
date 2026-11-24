@@ -346,6 +346,7 @@ final class DeviceSwap implements Service {
 		$form   = isset( $_POST['usm_form'] ) ? sanitize_text_field( wp_unslash( $_POST['usm_form'] ) ) : '';
 		$handle = isset( $_POST['usm_handle'] ) ? sanitize_text_field( wp_unslash( $_POST['usm_handle'] ) ) : '';
 		$cancel = $post && ! empty( $_POST['usm_cancel'] );
+		$nonce  = isset( $_POST['usm_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['usm_nonce'] ) ) : '';
 		// phpcs:enable WordPress.Security.NonceVerification
 
 		if ( $this->is_limited() ) {
@@ -368,6 +369,12 @@ final class DeviceSwap implements Service {
 		if ( ! hash_equals( $this->form_token( $found['token'] ), $form ) ) {
 			$this->count_failure();
 			$this->expired( 403 );
+		}
+
+		// A WordPress nonce for this account, on top of the cookie and form tokens. A stale page gets the list again and the token is kept.
+		if ( ! wp_verify_nonce( $nonce, self::nonce_action( $user->ID ) ) ) {
+			$this->render_list( $user, $found['token'], esc_html__( 'This page was open for too long, so nothing was changed. Choose again.', 'axle-sessions' ) );
+			exit;
 		}
 		$this->consume( $user->ID );
 
@@ -476,6 +483,7 @@ final class DeviceSwap implements Service {
 		$max     = $this->settings->max_sessions( $user );
 		$action  = add_query_arg( 'action', self::ACTION, network_site_url( 'wp-login.php', 'login' ) );
 		$form    = $this->form_token( $token );
+		$nonce   = wp_create_nonce( self::nonce_action( $user->ID ) );
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Display-only flags from our own redirect.
 		$gone = isset( $_GET['usm_gone'] );
@@ -508,12 +516,14 @@ final class DeviceSwap implements Service {
 					?>
 				</p>
 				<input type="hidden" name="usm_form" value="<?php echo esc_attr( $form ); ?>">
+				<input type="hidden" name="usm_nonce" value="<?php echo esc_attr( $nonce ); ?>">
 				<input type="hidden" name="usm_handle" value="<?php echo esc_attr( $row['handle'] ); ?>">
 				<p class="submit"><button type="submit" class="button button-primary"><?php esc_html_e( 'Sign out this device and sign in here', 'axle-sessions' ); ?></button></p>
 			</form>
 		<?php endforeach; ?>
 		<form method="post" action="<?php echo esc_url( $action ); ?>" class="usm-swap-cancel">
 			<input type="hidden" name="usm_form" value="<?php echo esc_attr( $form ); ?>">
+			<input type="hidden" name="usm_nonce" value="<?php echo esc_attr( $nonce ); ?>">
 			<input type="hidden" name="usm_cancel" value="1">
 			<p class="submit"><button type="submit" class="button"><?php esc_html_e( 'Cancel, I will sign in later', 'axle-sessions' ); ?></button></p>
 		</form>
@@ -526,6 +536,16 @@ final class DeviceSwap implements Service {
 				'body'    => (string) ob_get_clean(),
 			)
 		);
+	}
+
+	/**
+	 * Nonce action for the device list forms, bound to the account.
+	 *
+	 * @param int $user_id The account being signed in.
+	 * @return string
+	 */
+	private static function nonce_action( int $user_id ): string {
+		return self::ACTION . '_' . $user_id;
 	}
 
 	/**

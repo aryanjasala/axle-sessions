@@ -331,9 +331,10 @@ final class NotMe implements Service {
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification -- The key in the request is the credential: a random, single-use token.
-		$post = isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'];
-		$key  = isset( $_REQUEST['usm_key'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['usm_key'] ) ) : '';
-		$sure = $post && ! empty( $_POST['usm_confirm'] );
+		$post  = isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'];
+		$key   = isset( $_REQUEST['usm_key'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['usm_key'] ) ) : '';
+		$sure  = $post && ! empty( $_POST['usm_confirm'] );
+		$nonce = isset( $_POST['usm_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['usm_nonce'] ) ) : '';
 		// phpcs:enable WordPress.Security.NonceVerification
 
 		if ( $this->is_limited() ) {
@@ -368,6 +369,12 @@ final class NotMe implements Service {
 			exit;
 		}
 
+		// The token is the credential. The WordPress nonce, bound to this account, also proves the button came from the page we showed.
+		if ( ! wp_verify_nonce( $nonce, self::nonce_action( $found['user']->ID ) ) ) {
+			$this->render_confirm( $found, $key, __( 'This page was open for too long, so nothing was changed. Press the button again.', 'axle-sessions' ) );
+			exit;
+		}
+
 		$report = $this->redeem( $found );
 		$text   = $report['reset']
 			? __( 'Done. We signed the account out and its password no longer works. We sent a link to the email address on the account so you can choose a new one.', 'axle-sessions' )
@@ -399,8 +406,9 @@ final class NotMe implements Service {
 	 *
 	 * @param array  $found The result of lookup().
 	 * @param string $key   The key from the address.
+	 * @param string $error Shown above the page when the last press did not count.
 	 */
-	private function render_confirm( array $found, string $key ): void {
+	private function render_confirm( array $found, string $key, string $error = '' ): void {
 		$link  = $found['link'];
 		$scope = $this->settings->not_me_scope( $found['user'] );
 		$site  = wp_specialchars_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES );
@@ -443,6 +451,7 @@ final class NotMe implements Service {
 		<form method="post" action="<?php echo esc_url( add_query_arg( 'action', self::ACTION, network_site_url( 'wp-login.php', 'login' ) ) ); ?>">
 			<input type="hidden" name="usm_key" value="<?php echo esc_attr( $key ); ?>">
 			<input type="hidden" name="usm_confirm" value="1">
+			<input type="hidden" name="usm_nonce" value="<?php echo esc_attr( wp_create_nonce( self::nonce_action( $found['user']->ID ) ) ); ?>">
 			<p class="submit"><button type="submit" class="button button-primary button-large"><?php esc_html_e( 'This wasn\'t me, secure the account', 'axle-sessions' ); ?></button></p>
 		</form>
 		<?php
@@ -458,9 +467,20 @@ final class NotMe implements Service {
 						wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $link['login'] )
 					)
 				),
+				'error'   => esc_html( $error ),
 				'body'    => (string) ob_get_clean(),
 			)
 		);
+	}
+
+	/**
+	 * Nonce action for the button on the "Was this you?" page, bound to the account.
+	 *
+	 * @param int $user_id The account the link belongs to.
+	 * @return string
+	 */
+	private static function nonce_action( int $user_id ): string {
+		return self::ACTION . '_' . $user_id;
 	}
 
 	/**

@@ -183,6 +183,8 @@ final class Plugin {
 	 * Registers the services.
 	 */
 	private function register(): void {
+		( new Upgrade() )->register();
+
 		$policies = new SettingsPage( $this->settings );
 		$services = array(
 			$this->sessions,

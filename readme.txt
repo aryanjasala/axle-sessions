@@ -45,7 +45,7 @@ Free and open source under the GPL. No pro version, no upsells, no ads in wp-adm
 
 = Privacy =
 
-Sessions hold an IP address and a browser string. The plugin takes part in Tools > Export Personal Data (it lists a user's sessions) and Tools > Erase Personal Data (it lists sessions, sign-in history and reports, and signs the user out everywhere and forgets them), adds suggested text to Settings > Privacy, and can store shortened IP addresses. The new device email keeps only a scrambled fingerprint of each browser and network, never the address, and forgets it after 30 days. Shared login detection uses only what the sessions already hold and calls no outside service. Sign-in history keeps the device, the IP address as stored, the times and how each session ended for 90 days by default (you can change it, or set 0 to keep none). A "This wasn't me" report keeps the device, address and time. When an account looks shared, a copy of the sessions behind it is kept with the reasons for 7 days after the last sign, and the export and erase tools cover it.
+Sessions hold an IP address and a browser string. The plugin takes part in Tools > Export Personal Data (it lists a user's sessions) and Tools > Erase Personal Data (it lists sessions, sign-in history and reports, and signs the user out everywhere and forgets them), adds suggested text to Settings > Privacy, and can store shortened IP addresses. The new device email keeps only a scrambled fingerprint of each browser and network, never the address, and forgets it after 30 days. Shared login detection uses only what the sessions already hold and calls no outside service. Sign-in history keeps the device, the IP address as stored, the times and how each session ended for 90 days by default (you can change it, or set 0 to keep none). A "This wasn't me" report keeps the device, address and time for administrators, until the user's data is erased or newer reports push it out of the latest 50. The log of "Sign everyone out" keeps the time, which administrator did it and the counts, not who was signed out, for the latest 20 runs. A session's own record, with its IP address and browser string, is deleted when the session ends. Nothing is sent to any outside service, and the plugin loads no files from outside your site. Deleting the plugin removes its settings, history, reports and flags. When an account looks shared, a copy of the sessions behind it is kept with the reasons for 7 days after the last sign, and the export and erase tools cover it.
 
 = WP-CLI =
 
@@ -108,7 +108,7 @@ An incident is a bad time for a mass email. People who are signed out see a mess
 
 = Does it work on multisite? =
 
-Yes. Users and their sessions are shared by the network, so the all-sessions screen and the settings live in Network Admin. Policies follow the roles a user has on the site they are using.
+Yes. Users and their sessions are shared by the network, so the all-sessions screen and the settings live in Network Admin, and only network administrators change the settings. Device memory, sign-in history and reports are kept per user for the whole network. The hourly clean-up runs from the main site. Policies follow the roles a user has on the site they are using. People who may not edit other users see only their own sessions, on their profile.
 
 = My host or another plugin stores sessions in Redis. Will this work? =
 

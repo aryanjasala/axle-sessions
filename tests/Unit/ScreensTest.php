@@ -38,6 +38,64 @@ final class ScreensTest extends SessionTestCase {
 		$this->assertSame( 'Done.', ProfileSessions::message( 'revoked', 1 ) );
 	}
 
+	/**
+	 * Prints the result notice for a query string, on a screen.
+	 *
+	 * @param string $screen Screen ID, or empty for none.
+	 * @param array  $query  $_GET values.
+	 * @return string
+	 */
+	private function notice_on( string $screen, array $query ): string {
+		Functions\when( 'get_current_screen' )->justReturn( '' === $screen ? null : new \WP_Screen( $screen ) );
+		Functions\when( 'number_format_i18n' )->returnArg();
+		Functions\when( 'wp_unslash' )->returnArg();
+		Functions\when( 'sanitize_key' )->alias( 'strtolower' );
+		Functions\when( 'absint' )->alias( 'intval' );
+		$_GET = $query;
+		$settings = new Settings();
+		$sessions = new Sessions( $settings );
+		$page     = $this->profile( $settings, $sessions, new SharedLogins( $settings, $sessions ) );
+
+		ob_start();
+		$page->notice();
+		$html = (string) ob_get_clean();
+		$_GET = array();
+
+		return $html;
+	}
+
+	public function test_the_result_notice_only_shows_on_the_plugins_own_screens(): void {
+		$query = array(
+			'usm_message' => 'bulk',
+			'usm_count'   => '3',
+		);
+
+		foreach ( array( 'profile', 'user-edit', 'users_page_user-sessions', 'users_page_user-sessions-network', 'profile-network' ) as $id ) {
+			$this->assertStringContainsString( '3 sessions signed out.', $this->notice_on( $id, $query ), $id );
+		}
+		foreach ( array( 'dashboard', 'plugins', 'users', 'options-general', '' ) as $id ) {
+			$this->assertSame( '', $this->notice_on( $id, $query ), $id );
+		}
+		$this->assertStringContainsString( 'is-dismissible', $this->notice_on( 'profile', $query ) );
+	}
+
+	public function test_a_made_up_address_does_not_reveal_a_user_name(): void {
+		$this->user( 1, 'admin' );
+		$this->user( 7, 'alice' );
+		$this->current_user = 1;
+		$query              = array(
+			'usm_message' => 'signed_out_user',
+			'usm_count'   => '2',
+			'usm_user'    => '7',
+		);
+
+		Functions\when( 'current_user_can' )->justReturn( false );
+		$this->assertStringNotContainsString( 'alice', $this->notice_on( 'profile', $query ) );
+
+		Functions\when( 'current_user_can' )->justReturn( true );
+		$this->assertStringContainsString( 'alice was signed out of 2 sessions.', $this->notice_on( 'profile', $query ) );
+	}
+
 	public function test_the_question_says_this_browser_stays_unless_you_choose_otherwise(): void {
 		$this->user( 1, 'admin', array( 'administrator' ) );
 		Filters\expectApplied( 'axle_sessions_confirm_message' )->once()->with( \Mockery::type( 'string' ), array( 1 ), 3, true )->andReturnFirstArg();

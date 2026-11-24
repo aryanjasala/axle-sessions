@@ -442,9 +442,29 @@ final class ProfileSessions implements Service {
 	}
 
 	/**
-	 * Says what the last task did, on the profile screens.
+	 * Whether the current admin screen is one of the plugin's own: a profile, or Users > Sessions.
+	 *
+	 * @return bool
+	 */
+	private static function on_own_screen(): bool {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( ! $screen instanceof \WP_Screen ) {
+			return false;
+		}
+
+		$id = preg_replace( '/-network$/', '', (string) $screen->id );
+
+		return in_array( $id, array( 'profile', 'user-edit', 'users_page_' . SessionsPage::SLUG ), true );
+	}
+
+	/**
+	 * Says what the last task did, on the screens it redirects to. Never anywhere else.
 	 */
 	public function notice(): void {
+		if ( ! self::on_own_screen() ) {
+			return;
+		}
+
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Display-only values set by our own redirect.
 		$message = isset( $_GET['usm_message'] ) ? sanitize_key( wp_unslash( $_GET['usm_message'] ) ) : '';
 		$count   = isset( $_GET['usm_count'] ) ? absint( $_GET['usm_count'] ) : 0;
@@ -452,6 +472,11 @@ final class ProfileSessions implements Service {
 		$extra   = isset( $_GET['usm_extra'] ) ? absint( $_GET['usm_extra'] ) : 0;
 		$apps    = isset( $_GET['usm_apps'] ) ? absint( $_GET['usm_apps'] ) : 0;
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+		// The address can be typed by anyone, so a name only shows to someone who may manage that user.
+		if ( $user && ! Access::can_manage( $user->ID ) ) {
+			$user = false;
+		}
 
 		$text = self::message( $message, $count, $user ? $user->user_login : '', $extra, $apps );
 		if ( '' === $text ) {

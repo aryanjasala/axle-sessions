@@ -10,7 +10,7 @@ namespace AryanX\Axle\Sessions;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers Axle Sessions's abilities on WordPress 6.9 and later.
+ * Registers the abilities of Axle Sessions on WordPress 6.9 and later.
  *
  * Useful for an agent handling "I lost my phone" or a suspected break-in:
  * list where the account is signed in, then sign out one device or all of them.

@@ -1,25 +1,57 @@
 <?php
 /**
- * Removes Axle Sessions's settings, device memory, sign-in history, reports, shared login flags and schedule, on every site.
+ * Removes the settings, device memory, sign-in history, reports, shared login flags and schedule of Axle Sessions, on every site.
  *
  * The `last_seen` time the plugin adds inside core's `session_tokens` user meta
  * is left alone: core ignores it, and it goes away with each session.
  *
- * @package Sessions
+ * @package AryanX\Axle\Sessions
  */
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
 /**
+ * Names the plugin has stored, under its current prefix and the one it had before it was renamed.
+ *
+ * @return array{options: string[], user_meta: string[], events: string[]}
+ */
+function axle_sessions_stored_names(): array {
+	$options   = array( 'settings', 'prune_cursor', 'history_cursor', 'not_me_events', 'incidents', 'db_version' );
+	$user_meta = array( 'devices', 'shared', 'history', 'not_me', 'swap', 'hide_steps' );
+	$events    = array( 'prune' );
+	$names     = array(
+		'options'   => array(),
+		'user_meta' => array(),
+		'events'    => array(),
+	);
+
+	foreach ( array( 'axle_sessions_', 'user_session_manager_' ) as $prefix ) {
+		foreach ( $options as $name ) {
+			$names['options'][] = $prefix . $name;
+		}
+		foreach ( $user_meta as $name ) {
+			$names['user_meta'][] = $prefix . $name;
+		}
+		foreach ( $events as $name ) {
+			$names['events'][] = $prefix . $name;
+		}
+	}
+
+	return $names;
+}
+
+/**
  * Removes Axle Sessions data from the current site.
  */
 function axle_sessions_uninstall_site(): void {
-	wp_clear_scheduled_hook( 'axle_sessions_prune' );
-	delete_option( 'axle_sessions_settings' );
-	delete_option( 'axle_sessions_prune_cursor' );
-	delete_option( 'axle_sessions_history_cursor' );
-	delete_option( 'axle_sessions_not_me_events' );
-	delete_option( 'axle_sessions_incidents' );
+	$names = axle_sessions_stored_names();
+
+	foreach ( $names['events'] as $hook ) {
+		wp_clear_scheduled_hook( $hook );
+	}
+	foreach ( $names['options'] as $option ) {
+		delete_option( $option );
+	}
 }
 
 if ( is_multisite() ) {
@@ -43,21 +75,15 @@ if ( is_multisite() ) {
 	} while ( $axle_sessions_sites );
 
 	// Settings are network-wide on multisite.
-	delete_site_option( 'axle_sessions_settings' );
-	delete_site_option( 'axle_sessions_prune_cursor' );
-	delete_site_option( 'axle_sessions_history_cursor' );
-	delete_site_option( 'axle_sessions_not_me_events' );
-	delete_site_option( 'axle_sessions_incidents' );
+	foreach ( axle_sessions_stored_names()['options'] as $axle_sessions_option ) {
+		delete_site_option( $axle_sessions_option );
+	}
 } else {
 	axle_sessions_uninstall_site();
 }
 
-// The device memory for the new device email and the shared login flags are user meta, shared across a network.
-delete_metadata( 'user', 0, 'axle_sessions_devices', '', true );
-delete_metadata( 'user', 0, 'axle_sessions_shared', '', true );
-// Sign-in history, "This wasn't me" links and the dismissed "Get started" card.
-delete_metadata( 'user', 0, 'axle_sessions_history', '', true );
-delete_metadata( 'user', 0, 'axle_sessions_not_me', '', true );
-// A pending "sign out another device" step.
-delete_metadata( 'user', 0, 'axle_sessions_swap', '', true );
-delete_metadata( 'user', 0, 'axle_sessions_hide_steps', '', true );
+// Device memory for the new device email, shared login flags, sign-in history, "This wasn't me" links,
+// a pending "sign out another device" step and the dismissed "Get started" card are user meta, shared across a network.
+foreach ( axle_sessions_stored_names()['user_meta'] as $axle_sessions_meta_key ) {
+	delete_metadata( 'user', 0, $axle_sessions_meta_key, '', true );
+}

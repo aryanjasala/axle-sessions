@@ -696,6 +696,11 @@ test.describe( 'Axle Sessions', () => {
 		expect( sessions( 'alice' ) ).toHaveLength( 2 );
 		expect( mail() ).toHaveLength( 1 );
 
+		// The right key without the page's WordPress nonce changes nothing and shows the page again.
+		const noNonce = await tab.context().request.post( link, { form: { usm_key: new URL( link ).searchParams.get( 'usm_key' ), usm_confirm: '1' } } );
+		expect( await noNonce.text() ).toContain( 'open for too long' );
+		expect( sessions( 'alice' ) ).toHaveLength( 2 );
+
 		await tab.getByRole( 'button', { name: 'This wasn\'t me, secure the account' } ).click();
 		await expect( tab.locator( 'body' ) ).toContainText( 'Done. We signed the account out' );
 		expect( sessions( 'alice' ) ).toHaveLength( 0 );
@@ -1235,10 +1240,17 @@ test.describe( 'Axle Sessions', () => {
 		const second = await open( browser, 'alice', FIREFOX );
 		const html = await second.page.content();
 		const formToken = html.match( /name="usm_form" value="([^"]+)"/ )[ 1 ];
+		const nonce = html.match( /name="usm_nonce" value="([^"]+)"/ )[ 1 ];
 		const post = ( data ) => second.context.request.post( '/wp-login.php?action=axle_sessions_devices', { form: data, maxRedirects: 0 } );
 
+		// Without the WordPress nonce, even a right token and a right handle change nothing, and the step stays open.
+		const noNonce = await post( { usm_form: formToken, usm_handle: aliceHandle } );
+		expect( noNonce.status() ).toBe( 200 );
+		expect( await noNonce.text() ).toContain( 'open for too long' );
+		expect( sessions( 'alice' ).map( ( s ) => s.handle ) ).toEqual( [ aliceHandle ] );
+
 		// Bob's handle in Alice's step: nothing of Bob's ends, and Alice gets a new step.
-		const sneaky = await post( { usm_form: formToken, usm_handle: bobHandle } );
+		const sneaky = await post( { usm_form: formToken, usm_handle: bobHandle, usm_nonce: nonce } );
 		expect( sneaky.status() ).toBe( 302 );
 		expect( sneaky.headers().location ).toContain( 'usm_gone=1' );
 		expect( sessions( 'bob' ) ).toHaveLength( 1 );

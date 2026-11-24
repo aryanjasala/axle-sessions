@@ -72,7 +72,7 @@ final class SiteHealth implements Service {
 	 * @return array
 	 */
 	public function add_test( $tests ): array {
-		$tests                                   = (array) $tests;
+		$tests                            = (array) $tests;
 		$tests['direct']['axle_sessions'] = array(
 			'label' => __( 'Axle Sessions', 'axle-sessions' ),
 			'test'  => array( $this, 'run' ),
