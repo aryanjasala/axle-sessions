@@ -344,7 +344,7 @@ final class History implements Service {
 	 * device". Anyone else doing it, or WP-CLI, is an administrator.
 	 *
 	 * @param int    $user_id User the session belonged to.
-	 * @param string $context profile, admin, bulk, cli, ability, shared, not_me, swap, incident or privacy.
+	 * @param string $context profile, admin, bulk, cli, shared, not_me, swap, incident or privacy.
 	 * @return array{reason: string, by: int}
 	 */
 	public static function reason_for( int $user_id, string $context ): array {
@@ -368,7 +368,7 @@ final class History implements Service {
 				'by'     => 0,
 			);
 		}
-		if ( in_array( $context, array( 'profile', 'admin', 'bulk', 'ability' ), true ) && $current === $user_id ) {
+		if ( in_array( $context, array( 'profile', 'admin', 'bulk' ), true ) && $current === $user_id ) {
 			return array(
 				'reason' => 'other_device',
 				'by'     => 0,

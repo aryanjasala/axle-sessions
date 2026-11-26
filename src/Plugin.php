@@ -203,7 +203,6 @@ final class Plugin {
 			new SessionsPage( $this->settings, $this->sessions, $this->shared, $this->not_me, $this->incident, $policies ),
 			new UsersColumn( $this->sessions ),
 			new SiteHealth( $this->settings, $this->sessions, $this->not_me ),
-			new Abilities( $this->sessions, $this->shared, $this->history, $this->not_me, $this->incident ),
 		);
 
 		foreach ( $services as $service ) {

@@ -6,7 +6,7 @@ WordPress already keeps a record of every login in the `session_tokens` user met
 
 Axle Sessions reads and writes that same meta with the same structure. Core stores each session under a verifier, the SHA-256 hash of the token in the login cookie, and only ends a session when it has the raw token. This plugin ends a session from its verifier alone, so an admin can sign out a browser they never had the cookie for.
 
-Verifiers never reach a page. The screens, WP-CLI and abilities use a **handle** instead: `<user ID>-<24 hex characters>`, an HMAC of the user ID and the verifier keyed with the site's auth salt. A handle cannot be turned back into the verifier or the token.
+Verifiers never reach a page. The screens and WP-CLI use a **handle** instead: `<user ID>-<24 hex characters>`, an HMAC of the user ID and the verifier keyed with the site's auth salt. A handle cannot be turned back into the verifier or the token.
 
 ## Last active
 
@@ -80,14 +80,14 @@ On profiles that show the sessions table, core's own "Log Out Everywhere Else" r
 
 ## This wasn't me
 
-On by default, and only used when the new device email is on. The email gets a link to `wp-login.php?action=axle_sessions_not_me&usm_key=<user ID>.<token>`. It works for 7 days (`axle_sessions_not_me_lifetime`) and once.
+On by default, and only used when the new device email is on. The email gets a link to `wp-login.php?action=axle_sessions_not_me&axle_sessions_key=<user ID>.<token>`. It works for 7 days (`axle_sessions_not_me_lifetime`) and once.
 
 - The link opens a page with no login needed. It says which device signed in and what pressing the button does. Opening it (a mail scanner does) changes nothing.
 - Pressing **This wasn't me, secure the account** signs the account out everywhere (setting: or only the reported session), replaces the password with one nobody knows, **revokes every application password of the account**, emails a reset link to the address on the account, records the report and emails the administrators (`axle_sessions_not_me_recipients`).
 - The token is random. Only a keyed hash is stored in the `axle_sessions_not_me` user meta, with the user, the session handle and the expiry. Hashes are compared in constant time, the link is deleted before anything happens, and at most 5 links per user are kept.
 - A wrong, expired or used link gets the same page. More than 10 wrong keys from one address in 15 minutes get a 429 (`axle_sessions_not_me_attempts`).
 - The confirm page lists the application passwords that will be revoked. Opening it changes nothing.
-- Reports (user, device, IP address as stored, time, sessions signed out, names of the application passwords revoked) show on the profile, on Users > Sessions for 30 days, in Site Health for 7 days, in `wp axle-sessions reports` and in the `list-not-me-reports` ability. Up to 50 are kept.
+- Reports (user, device, IP address as stored, time, sessions signed out, names of the application passwords revoked) show on the profile, on Users > Sessions for 30 days, in Site Health for 7 days, in `wp axle-sessions reports` and nowhere else. Up to 50 are kept.
 
 ## Sign-in history
 
@@ -143,13 +143,11 @@ Elevate and Agent Governance close their own doors from these:
 | `axle_sessions_device_swap_attempts` | `( int $attempts )` | Wrong tokens one address may try in 15 minutes. Default 10, at least 3 |
 | `axle_sessions_uses_two_factor` | `( bool $uses, WP_User $user )` | True for an account with a second step from a plugin other than Two Factor, so `wp_login` is not fired again after the device list |
 
-## WP-CLI and abilities for these features
+## WP-CLI for these features
 
 - `wp axle-sessions sign-out-everyone [--keep-user=<user>] [--exclude-roles=<roles>] [--require-new-passwords] [--keep-app-passwords] [--yes]`: revokes application passwords unless `--keep-app-passwords`.
 - `wp axle-sessions settings --device-swap=<on|off>`.
 - `wp axle-sessions reports` has an `app_passwords` column.
-- Ability `axle-sessions/sign-out-everyone` (destructive, not idempotent): input `confirm` (must be true), `keep_current` (default true), `exclude_roles`, `require_new_passwords` (default false), `revoke_app_passwords` (default true). Output `users_signed_out`, `sessions_ended`, `passwords_retired`, `app_passwords_revoked`, `excluded`, `skipped`.
-- Ability `axle-sessions/list-not-me-reports` (read-only): each report has `app_passwords_revoked` (a count).
 
 ## Hooks
 
@@ -176,13 +174,13 @@ Elevate and Agent Governance close their own doors from these:
 | `axle_sessions_shared_login_exempt` | filter | `( bool $exempt, WP_User $user )`. True leaves the user out of shared login detection. Default true when one of their roles is set to "Do not check" |
 | `axle_sessions_shared_login_country` | filter | `( string $country, string $ip, int $user_id )`. The country of an address, from your own lookup. Default empty, which leaves countries out of the check |
 | `axle_sessions_shared_login_email` | filter | `( array\|false $email, WP_User $user, array $flag, string $audience )`. The email about an account that looks shared. `$audience` is `user` or `admin`. Return false or an empty `to` to skip it |
-| `axle_sessions_shared_login_evidence_text` | filter | `( string $text, array $evidence )`. How one reason reads on the screens, in WP-CLI, abilities and the emails |
+| `axle_sessions_shared_login_evidence_text` | filter | `( string $text, array $evidence )`. How one reason reads on the screens, in WP-CLI and the emails |
 | `axle_sessions_hide_core_sessions` | filter | `( bool $hide, int $user_id )`. Whether core's "Log Out Everywhere Else" row is hidden on a profile that shows the sessions table. Default true |
 | `axle_sessions_list_per_page` | filter | `( int $per_page )`. Rows per page on Users > Sessions. Default 20 |
 | `axle_sessions_max_users_scanned` | filter | `( int $max )`. Signed-in users one listing reads at most. Default 10000 |
 | `axle_sessions_prune_batch` | filter | `( int $size )`. Users one run of the hourly clean-up looks at. Default 500 |
 | `axle_sessions_session_started` | action | `( WP_User $user, array $session )`. A user signed in and their new session was saved, after the limit was applied |
-| `axle_sessions_session_revoked` | action | `( int $user_id, array $session, string $context )`. One session was signed out. `$context` is `profile`, `admin`, `bulk`, `cli`, `ability` or `shared` (keep only the newest session) |
+| `axle_sessions_session_revoked` | action | `( int $user_id, array $session, string $context )`. One session was signed out. `$context` is `profile`, `admin`, `bulk`, `cli` or `shared` (keep only the newest session) |
 | `axle_sessions_session_active` | action | `( int $user_id, array $session )`. "Last active" was saved for a session, at most once per interval |
 | `axle_sessions_shared_login_detected` | action | `( WP_User $user, array $sessions, array $evidence )`. An account looks shared, and the reasons involve a session not seen before. Each of `$sessions` has `handle`, `device`, `device_type`, `ip`, `country`, `login` and `last_seen`. Each of `$evidence` has `type` (`networks`, `countries`, `same_type` or `devices`), `count`, `limit`, `handles` and `time` |
 | `axle_sessions_user_signed_out_everywhere` | action | `( int $user_id, int $count, string $context )`. Every session of a user was ended. `$context` also can be `privacy` |
@@ -256,22 +254,6 @@ add_action( 'axle_sessions_session_revoked', function ( $user_id, $session, $con
 	error_log( sprintf( 'Session of user %d on %s signed out from %s', $user_id, $session['ip'], $context ) );
 }, 10, 3 );
 ```
-
-## Abilities
-
-On WordPress 6.9 and later, Axle Sessions registers [abilities](https://developer.wordpress.org/apis/abilities/), which AI agents find and run through the [MCP adapter](https://github.com/WordPress/mcp-adapter) and anything else through the REST API under `/wp-abilities/v1/`. Each one is marked public, which the MCP adapter needs before it lists an ability. Useful for "I lost my phone" or a suspected break-in.
-
-| Ability | Does | Needs |
-| --- | --- | --- |
-| `axle-sessions/list-sessions` | Read-only. Sessions with handle, device, IP address, signed in, last active and expires. No input: your own. `user` (ID, login or email): that user's. `all`: everyone's. `limit`, 1 to 100, default 50 | Any logged-in user for their own. The plugin capability, `list_users` and `edit_user` for someone else's |
-| `axle-sessions/revoke-session` | Signs out the session with `handle`. Destructive and idempotent: a session that already ended returns `revoked: false` | Your own session, or the plugin capability for someone else's |
-| `axle-sessions/list-shared-logins` | Read-only. Accounts that look shared, with each reason, the sessions behind it (handle, device, IP address, country, signed in, last active), what was done and when. No input: every flagged account. `user`: only that user. `limit`, 1 to 100, default 50 | The plugin capability and `list_users` for every account. Your own account without them, or the plugin capability and `edit_user` for someone else's |
-| `axle-sessions/list-sign-in-history` | Read-only. Sign-in history with how each session ended. `user`, `limit` (1 to 200) | Yourself, or the plugin capability, `list_users` and `edit_user` |
-| `axle-sessions/list-not-me-reports` | Read-only. "This wasn't me" reports for people you may edit. `days` | The plugin capability and `list_users` |
-| `axle-sessions/sign-out-everyone` | Destructive. Sign everyone out. `confirm` must be true. `keep_current`, `exclude_roles`, `require_new_passwords` | The plugin capability and `list_users`, plus `edit_user` for each person |
-| `axle-sessions/sign-out-user` | Ends every session of `user`. Returns `sessions_ended` | Yourself, or the plugin capability for someone else |
-
-Run them over REST with `GET .../list-sessions/run?input[user]=alice` and `DELETE .../revoke-session/run?input[handle]=7-...`.
 
 ## WP-CLI
 

@@ -41,11 +41,11 @@ WordPress already records every login: the browser, the IP address, when it star
 - **New device email** when someone signs in from a browser and network not seen in 30 days
 - **Shared login detection**: a "Possibly shared" badge with the reasons when an account's sessions look like more than one person, and per role a choice to also email or keep only the newest session
 - **Privacy**: export and erase tools, privacy policy text, and shortened IP addresses on request
-- **Abilities** for AI agents, **WP-CLI** for everything, and a **Site Health** check
+- **WP-CLI** for everything, and a **Site Health** check
 - **This wasn't me**: the new device email has a signed, single-use link that signs the device out, makes the account choose a new password and tells an administrator. Opening it changes nothing until the person presses the button
 - **Sign-in history** on each profile: when and where an account signed in over the last 90 days, and how each session ended (signed out, expired, idle, from another device, by an administrator, limit reached, reported, password changed)
 - **A clear message on the login screen** saying why you were signed out and when, shown only to the browser that held the session
-- **Sign everyone out** for incidents: keep yourself, leave out roles, optionally retire every password, typed confirm, in batches, with WP-CLI and an ability
+- **Sign everyone out** for incidents: keep yourself, leave out roles, optionally retire every password, typed confirm, in batches, with WP-CLI
 - **Close every door**: "This wasn't me" and "Sign everyone out" also revoke application passwords, so a key made in a hijacked session stops working. The incident form shows the count first
 - **Let me in by ending the other device**: a login refused over the limit shows the person's other devices after the password (and Two Factor) check, and lets them end one and sign in without typing the password again
 - **One screen**: the policies are the Policies tab on Users > Sessions, and the old Settings address redirects there
@@ -73,7 +73,7 @@ wp axle-sessions list --user=maria
 wp axle-sessions revoke 7-9f86d081884c7d659a2feaa0
 ```
 
-A handle like `7-9f86...` is an HMAC of the session, so the token and the stored verifier never appear on a page, in WP-CLI output or in an ability response.
+A handle like `7-9f86...` is an HMAC of the session, so the token and the stored verifier never appear on a page or in WP-CLI output.
 
 ## Screenshots
 
@@ -96,7 +96,7 @@ A handle like `7-9f86...` is an HMAC of the session, so the token and the stored
 
 | Doc | What it covers |
 | --- | --- |
-| [Reference](docs/REFERENCE.md) | How sessions are read and ended, policies, shared login detection, hooks, abilities, WP-CLI, data and privacy |
+| [Reference](docs/REFERENCE.md) | How sessions are read and ended, policies, shared login detection, hooks, WP-CLI, data and privacy |
 | [Development](docs/DEVELOPMENT.md) | Local setup, commands and tests |
 | [Contributing](docs/CONTRIBUTING.md) | Pull requests, required checks and PR titles |
 | [Releasing](docs/RELEASING.md) | How merged pull requests become releases |
@@ -122,7 +122,6 @@ src/
 ├── AppPasswords.php       lists and revokes application passwords for incidents
 ├── DeviceSwap.php         the device list after a refused login
 ├── Access.php             who may see and end whose sessions
-├── Abilities.php          abilities for AI agents
 ├── Admin/                 profile section, Users > Sessions, Users column, settings
 ├── Health/SiteHealth.php  the Site Health check
 └── Cli/Command.php        wp axle-sessions

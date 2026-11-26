@@ -11,21 +11,21 @@ const SETTINGS = '/wp-admin/options-general.php?page=axle-sessions';
 const PASSWORD = 'e2e-password-123';
 
 // A must-use plugin for the suite: captures email, lets a test force the idle timeout,
-// and lets a browser context say which IP address it signs in from (the X-USM-E2E-IP header),
+// and lets a browser context say which IP address it signs in from (the X-AXLE-SESSIONS-E2E-IP header),
 // since every context reaches the Docker site from the same address.
 const MU_PLUGIN = `<?php
 add_filter( 'wp_is_application_passwords_available', '__return_true' );
-if ( ! empty( $_SERVER['HTTP_X_USM_E2E_IP'] ) && filter_var( $_SERVER['HTTP_X_USM_E2E_IP'], FILTER_VALIDATE_IP ) ) {
-	$_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_USM_E2E_IP'];
+if ( ! empty( $_SERVER['HTTP_X_AXLE_SESSIONS_E2E_IP'] ) && filter_var( $_SERVER['HTTP_X_AXLE_SESSIONS_E2E_IP'], FILTER_VALIDATE_IP ) ) {
+	$_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_AXLE_SESSIONS_E2E_IP'];
 }
 add_filter( 'pre_wp_mail', function ( $short, $atts ) {
-	$log   = get_option( 'usm_e2e_mail', array() );
+	$log   = get_option( 'axle_sessions_e2e_mail', array() );
 	$log[] = array( 'to' => $atts['to'], 'subject' => $atts['subject'], 'message' => $atts['message'] );
-	update_option( 'usm_e2e_mail', $log, false );
+	update_option( 'axle_sessions_e2e_mail', $log, false );
 	return true;
 }, 10, 2 );
 add_filter( 'axle_sessions_idle_timeout', function ( $minutes, $user ) {
-	$forced = get_option( 'usm_e2e_idle', '' );
+	$forced = get_option( 'axle_sessions_e2e_idle', '' );
 	// Never the admin: every test shares its session.
 	return '' === $forced || 'admin' === $user->user_login ? $minutes : (int) $forced;
 }, 10, 2 );
@@ -34,7 +34,7 @@ add_filter( 'axle_sessions_idle_timeout', function ( $minutes, $user ) {
 const id = ( login ) => Number( wp( 'user', 'get', login, '--field=ID' ) );
 const sessions = ( login ) => JSON.parse( wp( 'axle-sessions', 'list', `--user=${ login }`, '--fields=handle,device,ip,ua,signed_in,last_active,expires', '--format=json' ) );
 const raw = ( login ) => JSON.parse( wpEval( `echo wp_json_encode( get_user_meta( ${ id( login ) }, 'session_tokens', true ) ?: new stdClass() );` ) );
-const mail = () => JSON.parse( wpEval( `echo wp_json_encode( get_option( 'usm_e2e_mail', array() ) );` ) );
+const mail = () => JSON.parse( wpEval( `echo wp_json_encode( get_option( 'axle_sessions_e2e_mail', array() ) );` ) );
 const shared = () => JSON.parse( wp( 'axle-sessions', 'shared', '--fields=user,action,sessions,evidence,signed_out', '--format=json' ) );
 const flag = ( login ) => JSON.parse( wpEval( `echo wp_json_encode( get_user_meta( ${ id( login ) }, 'axle_sessions_shared', true ) ?: null );` ) );
 
@@ -47,7 +47,7 @@ const flag = ( login ) => JSON.parse( wpEval( `echo wp_json_encode( get_user_met
  * @return {Promise<{context: import('@playwright/test').BrowserContext, page: import('@playwright/test').Page}>}
  */
 async function signIn( browser, login, userAgent, ip = '' ) {
-	return logInAs( browser, login, PASSWORD, { userAgent, ...( ip ? { extraHTTPHeaders: { 'X-USM-E2E-IP': ip } } : {} ) } );
+	return logInAs( browser, login, PASSWORD, { userAgent, ...( ip ? { extraHTTPHeaders: { 'X-AXLE-SESSIONS-E2E-IP': ip } } : {} ) } );
 }
 
 /**
@@ -57,7 +57,7 @@ async function signIn( browser, login, userAgent, ip = '' ) {
  * @param {string}                           label Name of the confirming link.
  */
 async function confirmInPlace( page, label ) {
-	const box = page.locator( '.usm-confirm-box' );
+	const box = page.locator( '.axle-sessions-confirm-box' );
 	await expect( box ).toBeVisible();
 	await box.getByRole( 'link', { name: label } ).click();
 }
@@ -90,12 +90,12 @@ test.describe( 'Axle Sessions', () => {
 			}
 			wp( 'user', 'create', login, `${ login }@example.com`, `--role=${ role }`, `--user_pass=${ PASSWORD }`, `--display_name=${ login[ 0 ].toUpperCase() + login.slice( 1 ) }` );
 		}
-		wpEval( `wp_mkdir_p( WPMU_PLUGIN_DIR ); file_put_contents( WPMU_PLUGIN_DIR . '/usm-e2e.php', base64_decode( '${ Buffer.from( MU_PLUGIN ).toString( 'base64' ) }' ) );` );
+		wpEval( `wp_mkdir_p( WPMU_PLUGIN_DIR ); file_put_contents( WPMU_PLUGIN_DIR . '/axle-sessions-e2e.php', base64_decode( '${ Buffer.from( MU_PLUGIN ).toString( 'base64' ) }' ) );` );
 	} );
 
 	test.beforeEach( () => {
 		wp( 'option', 'delete', 'axle_sessions_settings' );
-		wpEval( `delete_option( 'usm_e2e_mail' ); delete_option( 'usm_e2e_idle' );
+		wpEval( `delete_option( 'axle_sessions_e2e_mail' ); delete_option( 'axle_sessions_e2e_idle' );
 			foreach ( array( 'alice', 'bob', 'sam', 'carol' ) as $login ) {
 				$user = get_user_by( 'login', $login );
 				delete_user_meta( $user->ID, 'session_tokens' );
@@ -109,7 +109,7 @@ test.describe( 'Axle Sessions', () => {
 			delete_option( 'axle_sessions_not_me_events' ); delete_option( 'axle_sessions_incidents' );
 			delete_user_meta( 1, 'axle_sessions_hide_steps' );
 			foreach ( array( 'alice', 'bob', 'sam', 'carol' ) as $login ) { wp_set_password( 'e2e-password-123', get_user_by( 'login', $login )->ID ); }
-			global $wpdb; $wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%usm_nm_%' OR option_name LIKE '%usm_sw_%'" );` );
+			global $wpdb; $wpdb->query( "DELETE FROM $wpdb->options WHERE option_name LIKE '%axle_sessions_nm_%' OR option_name LIKE '%axle_sessions_sw_%'" );` );
 	} );
 
 	test.afterEach( async () => {
@@ -120,7 +120,7 @@ test.describe( 'Axle Sessions', () => {
 
 	test.afterAll( () => {
 		wp( 'option', 'delete', 'axle_sessions_settings' );
-		wpEval( `@unlink( WPMU_PLUGIN_DIR . '/usm-e2e.php' ); delete_option( 'usm_e2e_mail' ); delete_option( 'usm_e2e_idle' );` );
+		wpEval( `@unlink( WPMU_PLUGIN_DIR . '/axle-sessions-e2e.php' ); delete_option( 'axle_sessions_e2e_mail' ); delete_option( 'axle_sessions_e2e_idle' );` );
 		for ( const login of [ 'alice', 'bob', 'sam', 'carol' ] ) {
 			wp( 'user', 'delete', login, '--yes' );
 		}
@@ -131,16 +131,16 @@ test.describe( 'Axle Sessions', () => {
 		const laptop = await open( browser, 'alice', FIREFOX );
 
 		await laptop.page.goto( '/wp-admin/profile.php' );
-		const section = laptop.page.locator( '.usm-sessions' );
+		const section = laptop.page.locator( '.axle-sessions-sessions' );
 		await expect( laptop.page.getByRole( 'heading', { name: 'Your sessions' } ) ).toBeVisible();
 		// Core's own "Log Out Everywhere Else" row would be a second control for the same thing.
 		await expect( laptop.page.locator( '.user-sessions-wrap' ) ).toBeHidden();
-		await expect( section.locator( '.usm-session' ) ).toHaveCount( 2 );
-		const current = section.locator( '.usm-session.is-current' );
+		await expect( section.locator( '.axle-sessions-session' ) ).toHaveCount( 2 );
+		const current = section.locator( '.axle-sessions-session.is-current' );
 		await expect( current ).toContainText( 'Firefox on Windows' );
 		await expect( current ).toContainText( 'This device' );
 		await expect( current.getByRole( 'link', { name: 'Sign out' } ) ).toHaveCount( 0 );
-		const other = section.locator( '.usm-session:not(.is-current)' );
+		const other = section.locator( '.axle-sessions-session:not(.is-current)' );
 		await expect( other ).toContainText( 'Safari on iOS' );
 		await expect( other ).toContainText( 'Phone' );
 
@@ -152,13 +152,13 @@ test.describe( 'Axle Sessions', () => {
 
 		await other.getByRole( 'link', { name: 'Sign out' } ).click();
 		// It asks in place first, and Cancel changes nothing.
-		await expect( laptop.page.locator( '.usm-confirm-box' ) ).toContainText( 'cannot be undone' );
-		await laptop.page.locator( '.usm-confirm-box' ).getByRole( 'button', { name: 'Cancel' } ).click();
+		await expect( laptop.page.locator( '.axle-sessions-confirm-box' ) ).toContainText( 'cannot be undone' );
+		await laptop.page.locator( '.axle-sessions-confirm-box' ).getByRole( 'button', { name: 'Cancel' } ).click();
 		expect( sessions( 'alice' ) ).toHaveLength( 2 );
 		await other.getByRole( 'link', { name: 'Sign out' } ).click();
 		await confirmInPlace( laptop.page, 'Sign out this session' );
-		await expect( laptop.page.locator( '.usm-notice' ) ).toContainText( 'Session signed out.' );
-		await expect( section.locator( '.usm-session' ) ).toHaveCount( 1 );
+		await expect( laptop.page.locator( '.axle-sessions-notice' ) ).toContainText( 'Session signed out.' );
+		await expect( section.locator( '.axle-sessions-session' ) ).toHaveCount( 1 );
 
 		const left = sessions( 'alice' );
 		expect( left ).toHaveLength( 1 );
@@ -184,7 +184,7 @@ test.describe( 'Axle Sessions', () => {
 		await laptop.page.reload();
 		await laptop.page.getByRole( 'link', { name: 'Sign out all other sessions' } ).click();
 		await confirmInPlace( laptop.page, 'Sign out all other sessions' );
-		await expect( laptop.page.locator( '.usm-notice' ) ).toContainText( 'Signed out 2 other sessions.' );
+		await expect( laptop.page.locator( '.axle-sessions-notice' ) ).toContainText( 'Signed out 2 other sessions.' );
 		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ CHROME ] );
 		expect( await signedIn( phone.page ) ).toBe( false );
 		expect( await signedIn( tablet.page ) ).toBe( false );
@@ -199,25 +199,25 @@ test.describe( 'Axle Sessions', () => {
 		// The Users list counts sessions and links to them.
 		await page.goto( '/wp-admin/users.php' );
 		const aliceRow = page.locator( 'tr', { has: page.getByRole( 'link', { name: 'alice', exact: true } ) } );
-		await aliceRow.locator( '.column-usm_sessions a' ).click();
-		await expect( page.locator( '.usm-summary' ) ).toContainText( '2 active sessions for 1 user. Showing alice only.' );
-		await expect( page.locator( 'tbody .usm-session' ) ).toHaveCount( 2 );
+		await aliceRow.locator( '.column-axle_sessions_sessions a' ).click();
+		await expect( page.locator( '.axle-sessions-summary' ) ).toContainText( '2 active sessions for 1 user. Showing alice only.' );
+		await expect( page.locator( 'tbody .axle-sessions-session' ) ).toHaveCount( 2 );
 
 		await page.goto( SESSIONS );
-		await page.locator( '#usm-role' ).selectOption( 'editor' );
+		await page.locator( '#axle-sessions-role' ).selectOption( 'editor' );
 		await page.getByRole( 'button', { name: 'Filter' } ).click();
-		await expect( page.locator( 'tbody .usm-session' ) ).toHaveCount( 1 );
-		await expect( page.locator( 'tbody .usm-session' ) ).toContainText( 'Chrome on macOS' );
+		await expect( page.locator( 'tbody .axle-sessions-session' ) ).toHaveCount( 1 );
+		await expect( page.locator( 'tbody .axle-sessions-session' ) ).toContainText( 'Chrome on macOS' );
 
 		await page.goto( SESSIONS );
-		await page.locator( '#usm-search-search-input' ).fill( 'alice' );
+		await page.locator( '#axle-sessions-search-search-input' ).fill( 'alice' );
 		await page.locator( '#search-submit' ).click();
-		await expect( page.locator( 'tbody .usm-session' ) ).toHaveCount( 2 );
+		await expect( page.locator( 'tbody .axle-sessions-session' ) ).toHaveCount( 2 );
 
 		// Search by IP address prefix.
 		const ip = sessions( 'bob' )[ 0 ].ip;
 		await page.goto( `${ SESSIONS }&s=${ ip.split( '.' ).slice( 0, 2 ).join( '.' ) }.` );
-		await expect( page.locator( 'tbody .usm-session' ).filter( { hasText: 'bob' } ) ).toHaveCount( 1 );
+		await expect( page.locator( 'tbody .axle-sessions-session' ).filter( { hasText: 'bob' } ) ).toHaveCount( 1 );
 
 		const html = await page.content();
 		for ( const verifier of [ ...Object.keys( raw( 'alice' ) ), ...Object.keys( raw( 'bob' ) ) ] ) {
@@ -226,38 +226,38 @@ test.describe( 'Axle Sessions', () => {
 
 		// Row action: one session. Filtered to alice, so the admin's own sessions from earlier runs never push her rows to page 2.
 		await page.goto( aliceUrl );
-		const iphoneRow = page.locator( 'tbody .usm-session', { hasText: 'Safari on iOS' } );
+		const iphoneRow = page.locator( 'tbody .axle-sessions-session', { hasText: 'Safari on iOS' } );
 		await iphoneRow.hover();
 		await iphoneRow.getByRole( 'link', { name: 'Sign out', exact: true } ).click();
 		await confirmInPlace( page, 'Sign out this session' );
-		await expect( page.locator( '.usm-notice' ) ).toContainText( 'Session signed out.' );
+		await expect( page.locator( '.axle-sessions-notice' ) ).toContainText( 'Session signed out.' );
 		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ FIREFOX ] );
 
 		// Bulk: sign bob out everywhere, after a confirmation.
 		await page.goto( `${ SESSIONS }&user_id=${ id( 'bob' ) }` );
-		await page.locator( 'tbody .usm-session', { hasText: 'bob' } ).locator( 'input[type=checkbox]' ).check();
+		await page.locator( 'tbody .axle-sessions-session', { hasText: 'bob' } ).locator( 'input[type=checkbox]' ).check();
 		await page.locator( '#bulk-action-selector-top' ).selectOption( 'sign_out' );
 		await page.locator( '#doaction' ).click();
 		await expect( page.getByRole( 'heading', { name: 'Sign out bob everywhere?' } ) ).toBeVisible();
 		expect( sessions( 'bob' ) ).toHaveLength( 1 );
 		await page.getByRole( 'button', { name: 'Sign out everywhere', exact: true } ).click();
-		await expect( page.locator( '.usm-notice' ) ).toContainText( '1 session signed out.' );
+		await expect( page.locator( '.axle-sessions-notice' ) ).toContainText( '1 session signed out.' );
 		expect( sessions( 'bob' ) ).toHaveLength( 0 );
 
 		// Row action: a whole user. It asks first, and Cancel changes nothing.
 		await page.goto( aliceUrl );
-		const aliceSession = page.locator( 'tbody .usm-session', { hasText: 'alice' } );
+		const aliceSession = page.locator( 'tbody .axle-sessions-session', { hasText: 'alice' } );
 		await aliceSession.hover();
 		await aliceSession.getByRole( 'link', { name: 'Sign out everywhere' } ).click();
 		await expect( page.getByRole( 'heading', { name: 'Sign out alice everywhere?' } ) ).toBeVisible();
-		await expect( page.locator( '.usm-confirm' ) ).toContainText( 'alice is signed in on 1 device.' );
+		await expect( page.locator( '.axle-sessions-confirm' ) ).toContainText( 'alice is signed in on 1 device.' );
 		await page.getByRole( 'link', { name: 'Cancel' } ).click();
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
 
 		await aliceSession.hover();
 		await aliceSession.getByRole( 'link', { name: 'Sign out everywhere' } ).click();
 		await page.getByRole( 'button', { name: 'Sign out everywhere', exact: true } ).click();
-		await expect( page.locator( '.usm-notice' ) ).toContainText( 'alice was signed out of 1 session.' );
+		await expect( page.locator( '.axle-sessions-notice' ) ).toContainText( 'alice was signed out of 1 session.' );
 		expect( sessions( 'alice' ) ).toHaveLength( 0 );
 	} );
 
@@ -268,7 +268,7 @@ test.describe( 'Axle Sessions', () => {
 
 		// The current session has no checkbox and no "Sign out": a list never signs out the browser in use.
 		await laptop.page.goto( carolUrl );
-		const current = laptop.page.locator( 'tbody .usm-session.is-current' );
+		const current = laptop.page.locator( 'tbody .axle-sessions-session.is-current' );
 		await expect( current.locator( 'input[type=checkbox]' ) ).toHaveCount( 0 );
 		await current.hover();
 		await expect( current.getByRole( 'link', { name: 'Sign out', exact: true } ) ).toHaveCount( 0 );
@@ -276,12 +276,12 @@ test.describe( 'Axle Sessions', () => {
 		// On your own row the action is "Sign out everywhere else", and the question says what happens to this browser.
 		await current.getByRole( 'link', { name: 'Sign out everywhere else' } ).click();
 		await expect( laptop.page.getByRole( 'heading', { name: 'Sign out your other devices?' } ) ).toBeVisible();
-		await expect( laptop.page.locator( '.usm-confirm' ) ).toContainText( 'You are signed in on 2 devices, this browser included.' );
+		await expect( laptop.page.locator( '.axle-sessions-confirm' ) ).toContainText( 'You are signed in on 2 devices, this browser included.' );
 		await expect( laptop.page.getByRole( 'button', { name: 'Sign out everywhere else' } ) ).toHaveClass( /button-primary/ );
 		expect( sessions( 'carol' ) ).toHaveLength( 2 );
 
 		await laptop.page.getByRole( 'button', { name: 'Sign out everywhere else' } ).click();
-		await expect( laptop.page.locator( '.usm-notice' ) ).toContainText( 'Signed out 1 other session.' );
+		await expect( laptop.page.locator( '.axle-sessions-notice' ) ).toContainText( 'Signed out 1 other session.' );
 		expect( sessions( 'carol' ).map( ( s ) => s.ua ) ).toEqual( [ CHROME ] );
 		expect( await signedIn( phone.page ) ).toBe( false );
 		expect( await signedIn( laptop.page ) ).toBe( true );
@@ -289,8 +289,8 @@ test.describe( 'Axle Sessions', () => {
 		// "This browser too" ends every session and lands on the login screen, logged out.
 		await open( browser, 'carol', FIREFOX );
 		await laptop.page.goto( carolUrl );
-		await laptop.page.locator( 'tbody .usm-session.is-current' ).hover();
-		await laptop.page.locator( 'tbody .usm-session.is-current' ).getByRole( 'link', { name: 'Sign out everywhere else' } ).click();
+		await laptop.page.locator( 'tbody .axle-sessions-session.is-current' ).hover();
+		await laptop.page.locator( 'tbody .axle-sessions-session.is-current' ).getByRole( 'link', { name: 'Sign out everywhere else' } ).click();
 		await laptop.page.getByRole( 'button', { name: 'Sign out everywhere, this browser too' } ).click();
 		await expect( laptop.page ).toHaveURL( /wp-login\.php.*loggedout=true/ );
 		expect( sessions( 'carol' ) ).toHaveLength( 0 );
@@ -303,31 +303,31 @@ test.describe( 'Axle Sessions', () => {
 
 		await page.goto( `/wp-admin/user-edit.php?user_id=${ id( 'alice' ) }` );
 		await expect( page.locator( '.user-sessions-wrap' ) ).toBeHidden();
-		await page.locator( '.usm-profile' ).getByRole( 'link', { name: 'Sign out everywhere' } ).click();
-		await expect( page.locator( '.usm-confirm' ) ).toContainText( 'alice is signed in on 2 devices.' );
+		await page.locator( '.axle-sessions-profile' ).getByRole( 'link', { name: 'Sign out everywhere' } ).click();
+		await expect( page.locator( '.axle-sessions-confirm' ) ).toContainText( 'alice is signed in on 2 devices.' );
 		expect( sessions( 'alice' ) ).toHaveLength( 2 );
-		await page.locator( '.usm-confirm' ).getByRole( 'link', { name: 'Sign out everywhere' } ).click();
-		await expect( page.locator( '.usm-notice' ) ).toContainText( 'alice was signed out of 2 sessions.' );
+		await page.locator( '.axle-sessions-confirm' ).getByRole( 'link', { name: 'Sign out everywhere' } ).click();
+		await expect( page.locator( '.axle-sessions-notice' ) ).toContainText( 'alice was signed out of 2 sessions.' );
 		expect( sessions( 'alice' ) ).toHaveLength( 0 );
 
 		// 1,001 sessions read "1,001", like the pagination next to them.
 		wpEval( `$id = get_user_by( 'login', 'bob' )->ID; $all = array();
-			for ( $i = 0; $i < 1001; $i++ ) { $all[ hash( 'sha256', "usm-e2e-$i" ) ] = array( 'expiration' => time() + 3600, 'ip' => '203.0.113.9', 'ua' => 'curl/8', 'login' => time() - 60 ); }
+			for ( $i = 0; $i < 1001; $i++ ) { $all[ hash( 'sha256', "axle-sessions-e2e-$i" ) ] = array( 'expiration' => time() + 3600, 'ip' => '203.0.113.9', 'ua' => 'curl/8', 'login' => time() - 60 ); }
 			update_user_meta( $id, 'session_tokens', $all );` );
 		await page.goto( `${ SESSIONS }&user_id=${ id( 'bob' ) }` );
-		await expect( page.locator( '.usm-summary' ) ).toContainText( '1,001 active sessions for 1 user.' );
+		await expect( page.locator( '.axle-sessions-summary' ) ).toContainText( '1,001 active sessions for 1 user.' );
 	} );
 
 	test( 'the screens fit a phone without sideways scrolling', async ( { browser } ) => {
 		const phone = await open( browser, 'carol', IPHONE );
 		await open( browser, 'carol', FIREFOX );
 		await phone.page.setViewportSize( { width: 375, height: 800 } );
-		for ( const url of [ SETTINGS, '/wp-admin/profile.php', `${ SESSIONS }&usm_incident=1`, `/wp-admin/user-edit.php?user_id=${ id( 'carol' ) }#usm-history`, `${ SESSIONS }&user_id=${ id( 'carol' ) }` ] ) {
+		for ( const url of [ SETTINGS, '/wp-admin/profile.php', `${ SESSIONS }&axle_sessions_incident=1`, `/wp-admin/user-edit.php?user_id=${ id( 'carol' ) }#axle-sessions-history`, `${ SESSIONS }&user_id=${ id( 'carol' ) }` ] ) {
 			await phone.page.goto( url );
 			expect( await phone.page.evaluate( () => document.documentElement.scrollWidth ), url ).toBeLessThanOrEqual( 375 );
 		}
 		// One "Show more details" toggle per row, as on core's lists.
-		const row = phone.page.locator( 'tbody .usm-session:not(.is-current)' );
+		const row = phone.page.locator( 'tbody .axle-sessions-session:not(.is-current)' );
 		await expect( row.locator( '.toggle-row' ) ).toHaveCount( 1 );
 		await row.locator( '.toggle-row' ).click();
 		await expect( row.getByRole( 'link', { name: 'Sign out everywhere else' } ) ).toBeVisible();
@@ -335,7 +335,7 @@ test.describe( 'Axle Sessions', () => {
 
 	test( 'a role limit of one signs out the older session', async ( { page, browser } ) => {
 		await page.goto( SETTINGS );
-		await page.locator( '#usm-author-max_sessions' ).fill( '1' );
+		await page.locator( '#axle-sessions-author-max_sessions' ).fill( '1' );
 		await page.getByRole( 'button', { name: 'Save settings' } ).click();
 		await expect( page.locator( '.notice-success' ) ).toContainText( 'Settings saved.' );
 		expect( JSON.parse( wp( 'option', 'get', 'axle_sessions_settings', '--format=json' ) ).policies.author.max_sessions ).toBe( 1 );
@@ -368,7 +368,7 @@ test.describe( 'Axle Sessions', () => {
 	test( 'an idle session is signed out on its next request, and by the clean-up', async ( { browser } ) => {
 		const phone = await open( browser, 'alice', IPHONE );
 		await open( browser, 'alice', FIREFOX );
-		wpEval( `update_option( 'usm_e2e_idle', 1 );` );
+		wpEval( `update_option( 'axle_sessions_e2e_idle', 1 );` );
 
 		// Both sessions were last active two minutes ago.
 		wpEval( `$id = get_user_by( 'login', 'alice' )->ID; $all = get_user_meta( $id, 'session_tokens', true );
@@ -383,7 +383,7 @@ test.describe( 'Axle Sessions', () => {
 
 	test( 'session length follows the role', async ( { page, browser } ) => {
 		await page.goto( SETTINGS );
-		await page.locator( '#usm-author-lifetime_hours' ).fill( '1' );
+		await page.locator( '#axle-sessions-author-lifetime_hours' ).fill( '1' );
 		await page.getByRole( 'button', { name: 'Save settings' } ).click();
 		await expect( page.locator( '.notice-success' ) ).toBeVisible();
 
@@ -485,58 +485,6 @@ test.describe( 'Axle Sessions', () => {
 		expect( JSON.parse( wp( 'axle-sessions', 'settings', '--format=json' ) ) ).toMatchObject( { limit_mode: 'block', mask_ip: true, new_device_email: false } );
 	} );
 
-	test( 'abilities: list, sign out a session and sign a user out, with permissions', async ( { rest, browser } ) => {
-		test.skip( 'yes' !== wpEval( "echo function_exists( 'wp_register_ability' ) ? 'yes' : 'no';" ), 'The Abilities API needs WordPress 6.9.' );
-		await open( browser, 'alice', IPHONE );
-		await open( browser, 'alice', FIREFOX );
-		await open( browser, 'bob', CHROME );
-		const path = ( name ) => `/wp-abilities/v1/abilities/axle-sessions/${ name }/run`;
-
-		const listed = await rest( 'GET', '/wp-abilities/v1/abilities?category=axle-sessions' );
-		expect( listed.body.map( ( ability ) => ability.name ).sort() ).toEqual( [
-			'axle-sessions/list-not-me-reports',
-			'axle-sessions/list-sessions',
-			'axle-sessions/list-shared-logins',
-			'axle-sessions/list-sign-in-history',
-			'axle-sessions/revoke-session',
-			'axle-sessions/sign-out-everyone',
-			'axle-sessions/sign-out-user',
-		] );
-		// MCP clients only list abilities marked public.
-		expect( JSON.parse( wpEval( `echo wp_json_encode( array_values( array_filter( array_map( function ( $ability ) { $meta = $ability->get_meta(); return ( ! empty( $meta['public'] ) && ! empty( $meta['mcp']['public'] ) ) ? '' : $ability->get_name(); }, wp_get_abilities() ), function ( $name ) { return 0 === strpos( $name, 'axle-sessions/' ); } ) ) );` ) ) ).toEqual( [] );
-
-		// Without input: the caller's own sessions, the current one marked.
-		const own = await rest( 'GET', path( 'list-sessions' ) );
-		expect( own.status ).toBe( 200 );
-		expect( own.body.sessions.every( ( session ) => session.user_login === 'admin' ) ).toBe( true );
-		expect( own.body.sessions.filter( ( session ) => session.current ) ).toHaveLength( 1 );
-
-		const alice = await rest( 'GET', `${ path( 'list-sessions' ) }?input[user]=alice` );
-		expect( alice.body.total ).toBe( 2 );
-		const phone = alice.body.sessions.find( ( session ) => session.device === 'Safari on iOS' );
-		expect( phone ).toMatchObject( { device_type: 'mobile', user_login: 'alice', current: false } );
-
-		const everyone = await rest( 'GET', `${ path( 'list-sessions' ) }?input[all]=1` );
-		expect( everyone.body.sessions.map( ( session ) => session.user_login ) ).toEqual( expect.arrayContaining( [ 'admin', 'alice', 'bob' ] ) );
-
-		const revoked = await rest( 'DELETE', `${ path( 'revoke-session' ) }?input[handle]=${ phone.handle }` );
-		expect( revoked.body ).toEqual( { revoked: true } );
-		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ FIREFOX ] );
-		// Idempotent: the second call changes nothing and still succeeds.
-		expect( ( await rest( 'DELETE', `${ path( 'revoke-session' ) }?input[handle]=${ phone.handle }` ) ).body ).toEqual( { revoked: false } );
-
-		const signedOut = await rest( 'DELETE', `${ path( 'sign-out-user' ) }?input[user]=bob` );
-		expect( signedOut.body ).toEqual( { sessions_ended: 1 } );
-		expect( sessions( 'bob' ) ).toHaveLength( 0 );
-
-		// A subscriber may list and end their own sessions, nobody else's.
-		const asSam = ( php ) => wpEval( `wp_set_current_user( get_user_by( 'login', 'sam' )->ID ); ${ php }` );
-		expect( asSam( `$r = wp_get_ability( 'axle-sessions/list-sessions' )->execute( array( 'user' => 'alice' ) ); echo is_wp_error( $r ) ? $r->get_error_code() : 'ran';` ) ).toBe( 'ability_invalid_permissions' );
-		expect( asSam( `$r = wp_get_ability( 'axle-sessions/sign-out-user' )->execute( array( 'user' => 'alice' ) ); echo is_wp_error( $r ) ? $r->get_error_code() : 'ran';` ) ).toBe( 'ability_invalid_permissions' );
-		expect( asSam( `$r = wp_get_ability( 'axle-sessions/list-sessions' )->execute( array() ); echo is_wp_error( $r ) ? $r->get_error_code() : $r['total'];` ) ).toBe( '0' );
-		expect( sessions( 'alice' ) ).toHaveLength( 1 );
-	} );
-
 	test( 'two computers on different networks at once flag the account, with the reasons on both screens', async ( { page, browser } ) => {
 		const windows = await open( browser, 'alice', FIREFOX, '192.0.2.10' );
 		await open( browser, 'alice', CHROME, '198.51.100.20' );
@@ -553,24 +501,24 @@ test.describe( 'Axle Sessions', () => {
 
 		// Her own profile says so, and marks both sessions.
 		await windows.page.goto( '/wp-admin/profile.php' );
-		const box = windows.page.locator( '.usm-shared' );
+		const box = windows.page.locator( '.axle-sessions-shared' );
 		await expect( box ).toContainText( 'This account looks shared by more than one person.' );
 		await expect( box ).toContainText( '2 computers on different networks were used at the same time.' );
 		await expect( box ).toContainText( 'Firefox on Windows, 192.0.2.10, last active' );
 		await expect( box ).toContainText( 'Chrome on macOS, 198.51.100.20, last active' );
 		await expect( box ).toContainText( 'Nothing was blocked.' );
-		await expect( windows.page.locator( '.usm-sessions .usm-badge-shared' ) ).toHaveCount( 2 );
+		await expect( windows.page.locator( '.axle-sessions-sessions .axle-sessions-badge-shared' ) ).toHaveCount( 2 );
 
 		// Users > Sessions: a "Possibly shared" view, the badges, and the reasons for one user.
 		await page.goto( SESSIONS );
 		await page.locator( '.subsubsub' ).getByRole( 'link', { name: /Possibly shared/ } ).click();
 		await expect( page.locator( '.subsubsub .current' ) ).toContainText( 'Possibly shared (1)' );
-		await expect( page.locator( 'tbody .usm-session' ) ).toHaveCount( 2 );
-		await expect( page.locator( 'tbody .usm-session .usm-badge-shared' ) ).toHaveCount( 2 );
-		const row = page.locator( 'tbody .usm-session' ).first();
+		await expect( page.locator( 'tbody .axle-sessions-session' ) ).toHaveCount( 2 );
+		await expect( page.locator( 'tbody .axle-sessions-session .axle-sessions-badge-shared' ) ).toHaveCount( 2 );
+		const row = page.locator( 'tbody .axle-sessions-session' ).first();
 		await row.hover();
 		await row.getByRole( 'link', { name: 'Only this user' } ).click();
-		await expect( page.locator( '.usm-shared' ) ).toContainText( '2 computers on different networks were used at the same time.' );
+		await expect( page.locator( '.axle-sessions-shared' ) ).toContainText( '2 computers on different networks were used at the same time.' );
 	} );
 
 	test( 'a phone and a laptop on two networks are one person, not a shared account', async ( { page, browser } ) => {
@@ -623,40 +571,13 @@ test.describe( 'Axle Sessions', () => {
 		expect( await signedIn( second.page ) ).toBe( true );
 		expect( shared() ).toEqual( [ expect.objectContaining( { user: 'alice', action: 'sign_out_others', signed_out: 1 } ) ] );
 		await second.page.goto( '/wp-admin/profile.php' );
-		await expect( second.page.locator( '.usm-shared' ) ).toContainText( '1 session was signed out. The newest one was kept.' );
+		await expect( second.page.locator( '.axle-sessions-shared' ) ).toContainText( '1 session was signed out. The newest one was kept.' );
 
 		// An editor account meant to be shared, such as a kiosk, is never checked.
 		await open( browser, 'bob', FIREFOX, '192.0.2.10' );
 		await open( browser, 'bob', CHROME, '198.51.100.20' );
 		expect( flag( 'bob' ) ).toBeNull();
 		expect( sessions( 'bob' ) ).toHaveLength( 2 );
-	} );
-
-	test( 'ability: list accounts that look shared, with permissions', async ( { rest, browser } ) => {
-		test.skip( 'yes' !== wpEval( "echo function_exists( 'wp_register_ability' ) ? 'yes' : 'no';" ), 'The Abilities API needs WordPress 6.9.' );
-		await open( browser, 'alice', FIREFOX, '192.0.2.10' );
-		await open( browser, 'alice', CHROME, '198.51.100.20' );
-		const path = '/wp-abilities/v1/abilities/axle-sessions/list-shared-logins/run';
-
-		const ability = await rest( 'GET', '/wp-abilities/v1/abilities/axle-sessions/list-shared-logins' );
-		expect( ability.body.meta.annotations ).toMatchObject( { readonly: true } );
-
-		const listed = await rest( 'GET', path );
-		expect( listed.status ).toBe( 200 );
-		expect( listed.body.total ).toBe( 1 );
-		const account = listed.body.accounts[ 0 ];
-		expect( account ).toMatchObject( { user_login: 'alice', action: 'flag', signed_out: 0 } );
-		expect( account.evidence[ 0 ] ).toMatchObject( { type: 'same_type', summary: '2 computers on different networks were used at the same time.' } );
-		expect( account.sessions.map( ( s ) => s.ip ).sort() ).toEqual( [ '192.0.2.10', '198.51.100.20' ] );
-		// The handles work with revoke-session while the session is active.
-		expect( sessions( 'alice' ).map( ( s ) => s.handle ).sort() ).toEqual( account.sessions.map( ( s ) => s.handle ).sort() );
-
-		expect( ( await rest( 'GET', `${ path }?input[user]=bob` ) ).body ).toEqual( { total: 0, accounts: [] } );
-
-		// A subscriber may ask about their own account, not about everyone.
-		const asSam = ( php ) => wpEval( `wp_set_current_user( get_user_by( 'login', 'sam' )->ID ); ${ php }` );
-		expect( asSam( `$r = wp_get_ability( 'axle-sessions/list-shared-logins' )->execute( array() ); echo is_wp_error( $r ) ? $r->get_error_code() : 'ran';` ) ).toBe( 'ability_invalid_permissions' );
-		expect( asSam( `$r = wp_get_ability( 'axle-sessions/list-shared-logins' )->execute( array( 'user' => 'sam' ) ); echo is_wp_error( $r ) ? $r->get_error_code() : $r['total'];` ) ).toBe( '0' );
 	} );
 
 	test( 'erasing personal data drops the flag too', async ( { browser } ) => {
@@ -697,7 +618,7 @@ test.describe( 'Axle Sessions', () => {
 		expect( mail() ).toHaveLength( 1 );
 
 		// The right key without the page's WordPress nonce changes nothing and shows the page again.
-		const noNonce = await tab.context().request.post( link, { form: { usm_key: new URL( link ).searchParams.get( 'usm_key' ), usm_confirm: '1' } } );
+		const noNonce = await tab.context().request.post( link, { form: { axle_sessions_key: new URL( link ).searchParams.get( 'axle_sessions_key' ), axle_sessions_confirm: '1' } } );
 		expect( await noNonce.text() ).toContain( 'open for too long' );
 		expect( sessions( 'alice' ) ).toHaveLength( 2 );
 
@@ -723,17 +644,17 @@ test.describe( 'Axle Sessions', () => {
 		const again = await tab.goto( link );
 		expect( again.status() ).toBe( 404 );
 		await expect( tab.locator( 'body' ) ).toContainText( 'This link has expired, or it has already been used' );
-		const wrong = await tab.goto( link.replace( /usm_key=(\d+)\.[0-9a-f]+/, 'usm_key=$1.' + 'a'.repeat( 48 ) ) );
+		const wrong = await tab.goto( link.replace( /axle_sessions_key=(\d+)\.[0-9a-f]+/, 'axle_sessions_key=$1.' + 'a'.repeat( 48 ) ) );
 		expect( wrong.status() ).toBe( 404 );
 		await expect( tab.locator( 'body' ) ).toContainText( 'This link has expired, or it has already been used' );
 
 		// The event shows on the profile, on Users > Sessions, in WP-CLI and in the history.
 		await page.goto( `/wp-admin/user-edit.php?user_id=${ id( 'alice' ) }` );
-		await expect( page.locator( '.usm-report' ) ).toContainText( 'This wasn\'t me' );
-		await expect( page.locator( '.usm-report' ) ).toContainText( 'Safari on iOS' );
-		await expect( page.locator( '.usm-history-row' ).first() ).toContainText( 'Reported as "This wasn\'t me"' );
+		await expect( page.locator( '.axle-sessions-report' ) ).toContainText( 'This wasn\'t me' );
+		await expect( page.locator( '.axle-sessions-report' ) ).toContainText( 'Safari on iOS' );
+		await expect( page.locator( '.axle-sessions-history-row' ).first() ).toContainText( 'Reported as "This wasn\'t me"' );
 		await page.goto( SESSIONS );
-		await expect( page.locator( '.usm-reports' ) ).toContainText( 'alice' );
+		await expect( page.locator( '.axle-sessions-reports' ) ).toContainText( 'alice' );
 		const reports = JSON.parse( wp( 'axle-sessions', 'reports', '--format=json' ) );
 		expect( reports ).toHaveLength( 1 );
 		expect( reports[ 0 ] ).toMatchObject( { user: 'alice', device: 'Safari on iOS', scope: 'all', ended: 2 } );
@@ -759,7 +680,7 @@ test.describe( 'Axle Sessions', () => {
 		expect( mail().pop().message ).not.toContain( 'axle_sessions_not_me' );
 
 		// Too many wrong keys from one address slow down.
-		const bad = '/wp-login.php?action=axle_sessions_not_me&usm_key=3.' + 'b'.repeat( 48 );
+		const bad = '/wp-login.php?action=axle_sessions_not_me&axle_sessions_key=3.' + 'b'.repeat( 48 );
 		for ( let i = 0; i < 10; i++ ) {
 			expect( ( await request.get( bad ) ).status() ).toBe( 404 );
 		}
@@ -783,8 +704,8 @@ test.describe( 'Axle Sessions', () => {
 		await strangerPage.goto( '/wp-admin/' );
 		await expect( strangerPage.locator( '.message' ) ).toHaveCount( 0 );
 
-		await page.goto( `/wp-admin/user-edit.php?user_id=${ id( 'alice' ) }#usm-history` );
-		const rows = page.locator( '.usm-history-row' );
+		await page.goto( `/wp-admin/user-edit.php?user_id=${ id( 'alice' ) }#axle-sessions-history` );
+		const rows = page.locator( '.axle-sessions-history-row' );
 		await expect( rows ).toHaveCount( 2 );
 		await expect( rows.filter( { hasText: 'Safari on iOS' } ) ).toContainText( 'Device limit reached' );
 		await expect( rows.filter( { hasText: 'Firefox on Windows' } ) ).toContainText( 'Still signed in' );
@@ -797,12 +718,12 @@ test.describe( 'Axle Sessions', () => {
 
 		// Idle timeout, and a session that ran out.
 		const idle = await open( browser, 'alice', ANDROID );
-		wpEval( `update_option( 'usm_e2e_idle', 1 ); $id = get_user_by( 'login', 'alice' )->ID; $all = get_user_meta( $id, 'session_tokens', true );
+		wpEval( `update_option( 'axle_sessions_e2e_idle', 1 ); $id = get_user_by( 'login', 'alice' )->ID; $all = get_user_meta( $id, 'session_tokens', true );
 			foreach ( $all as $k => $s ) { $all[ $k ]['last_seen'] = time() - 120; } update_user_meta( $id, 'session_tokens', $all );` );
 		await idle.page.goto( '/wp-admin/profile.php' );
 		await expect( idle.page.locator( '.message' ) ).toContainText( 'You were signed out because you were inactive for a while' );
 
-		wpEval( `delete_option( 'usm_e2e_idle' );` );
+		wpEval( `delete_option( 'axle_sessions_e2e_idle' );` );
 		const expired = await open( browser, 'alice', CHROME );
 		wpEval( `$id = get_user_by( 'login', 'alice' )->ID; $all = get_user_meta( $id, 'session_tokens', true );
 			foreach ( $all as $k => $s ) { $all[ $k ]['expiration'] = time() - 5; } update_user_meta( $id, 'session_tokens', $all );
@@ -864,7 +785,7 @@ test.describe( 'Axle Sessions', () => {
 		await page.goto( SESSIONS );
 		await page.getByRole( 'link', { name: 'Sign everyone out' } ).click();
 		await expect( page.getByRole( 'heading', { name: 'Sign everyone out?' } ) ).toBeVisible();
-		await expect( page.locator( '.usm-incident-form' ) ).toContainText( 'This cannot be undone' );
+		await expect( page.locator( '.axle-sessions-incident-form' ) ).toContainText( 'This cannot be undone' );
 		const go = page.getByRole( 'button', { name: 'Sign everyone out' } );
 		const typed = page.getByLabel( /Type SIGN OUT to confirm/ );
 		await expect( go ).toBeDisabled();
@@ -873,7 +794,7 @@ test.describe( 'Axle Sessions', () => {
 
 		// The server checks the words too, whatever the page says.
 		await page.evaluate( () => {
-			const button = document.querySelector( '[data-usm-typed-button]' );
+			const button = document.querySelector( '[data-axle-sessions-typed-button]' );
 			button.removeAttribute( 'disabled' );
 			button.setAttribute( 'aria-disabled', 'false' );
 		} );
@@ -887,14 +808,14 @@ test.describe( 'Axle Sessions', () => {
 		await expect( page.getByRole( 'button', { name: 'Sign everyone out' } ) ).toBeEnabled();
 		await page.getByRole( 'button', { name: 'Sign everyone out' } ).click();
 
-		await expect( page.locator( '.usm-notice' ) ).toContainText( 'Everyone was signed out: 3 sessions ended.' );
-		await expect( page.locator( '.usm-notice' ) ).toContainText( 'must now choose a new password' );
+		await expect( page.locator( '.axle-sessions-notice' ) ).toContainText( 'Everyone was signed out: 3 sessions ended.' );
+		await expect( page.locator( '.axle-sessions-notice' ) ).toContainText( 'must now choose a new password' );
 		expect( sessions( 'alice' ) ).toHaveLength( 0 );
 		expect( sessions( 'sam' ) ).toHaveLength( 0 );
 		expect( sessions( 'carol' ) ).toHaveLength( 0 );
 		expect( sessions( 'bob' ) ).toHaveLength( 1 );
 		expect( await signedIn( page ) ).toBe( true );
-		await expect( page.locator( '.usm-incident-log' ) ).toHaveCount( 0 );
+		await expect( page.locator( '.axle-sessions-incident-log' ) ).toHaveCount( 0 );
 
 		// Passwords: retired for everyone but you and the left-out role.
 		const works = ( login, password ) => {
@@ -910,39 +831,24 @@ test.describe( 'Axle Sessions', () => {
 		expect( works( 'bob', PASSWORD ) ).toBe( true );
 		expect( works( 'admin', ADMIN_PASSWORD ) ).toBe( true );
 		await page.goto( SESSIONS );
-		await expect( page.locator( '.usm-incident-log' ) ).toContainText( '3 sessions signed out' );
+		await expect( page.locator( '.axle-sessions-incident-log' ) ).toContainText( '3 sessions signed out' );
 
 		// It is in each person's history, and the login screen says why.
 		const history = JSON.parse( wp( 'axle-sessions', 'history', 'alice', '--format=json' ) );
 		expect( history[ 0 ].reason ).toBe( 'admin' );
 	} );
 
-	test( 'Sign everyone out from WP-CLI and from the ability, with exclusions', async ( { rest, browser } ) => {
-		test.skip( 'yes' !== wpEval( "echo function_exists( 'wp_register_ability' ) ? 'yes' : 'no';" ), 'The Abilities API needs WordPress 6.9.' );
+	test( 'Sign everyone out from WP-CLI, with exclusions', async ( { browser } ) => {
 		await open( browser, 'alice', IPHONE );
 		await open( browser, 'bob', CHROME );
 		await open( browser, 'sam', FIREFOX );
-		const path = '/wp-abilities/v1/abilities/axle-sessions/sign-out-everyone/run';
 
-		// An explicit yes is required, and nobody is signed out without it.
-		const refused = await rest( 'POST', path, { input: { confirm: false } } );
-		expect( refused.status ).toBeGreaterThanOrEqual( 400 );
-		expect( sessions( 'alice' ) ).toHaveLength( 1 );
-
-		const done = await rest( 'POST', path, { input: { confirm: true, exclude_roles: [ 'editor' ] } } );
-		expect( done.status ).toBe( 200 );
-		expect( done.body ).toMatchObject( { users_signed_out: 2, sessions_ended: 2, passwords_retired: 0 } );
-		expect( sessions( 'bob' ) ).toHaveLength( 1 );
-
-		// A subscriber has no permission.
-		expect( wpEval( `wp_set_current_user( get_user_by( 'login', 'sam' )->ID ); $r = wp_get_ability( 'axle-sessions/sign-out-everyone' )->execute( array( 'confirm' => true ) ); echo is_wp_error( $r ) ? $r->get_error_code() : 'ran';` ) ).toBe( 'ability_invalid_permissions' );
-
-		await open( browser, 'alice', IPHONE );
 		expect( wp( 'axle-sessions', 'sign-out-everyone', '--keep-user=admin', '--exclude-roles=editor', '--yes' ) ).toContain( 'Signed' );
 		expect( sessions( 'alice' ) ).toHaveLength( 0 );
+		expect( sessions( 'sam' ) ).toHaveLength( 0 );
 		expect( sessions( 'bob' ) ).toHaveLength( 1 );
 		const log = JSON.parse( wpEval( `echo wp_json_encode( get_option( 'axle_sessions_incidents' ) );` ) );
-		expect( log.map( ( entry ) => entry.via ) ).toEqual( [ 'cli', 'ability' ] );
+		expect( log.map( ( entry ) => entry.via ) ).toEqual( [ 'cli' ] );
 	} );
 
 	test( 'the settings screen saves the new options, has a Help tab, and the Get started card can be dismissed', async ( { page } ) => {
@@ -950,7 +856,7 @@ test.describe( 'Axle Sessions', () => {
 		await page.getByLabel( 'Sign out only the session the email was about' ).check();
 		await page.getByLabel( 'Keep sign-in history for' ).fill( '30' );
 		await page.getByRole( 'button', { name: 'Save settings' } ).click();
-		await expect( page.locator( '.usm-notice' ) ).toContainText( 'Settings saved.' );
+		await expect( page.locator( '.axle-sessions-notice' ) ).toContainText( 'Settings saved.' );
 		const saved = JSON.parse( wp( 'axle-sessions', 'settings', '--format=json' ) );
 		expect( saved ).toMatchObject( { not_me: true, not_me_scope: 'session', history_days: 30 } );
 
@@ -959,23 +865,23 @@ test.describe( 'Axle Sessions', () => {
 		await expect( page.locator( '#tab-panel-axle-sessions-history' ) ).toContainText( 'kept for the number of days you set' );
 
 		await page.goto( SESSIONS );
-		await expect( page.locator( '.usm-steps' ) ).toContainText( 'Limit administrator sessions' );
-		await page.locator( '.usm-steps' ).getByRole( 'link', { name: 'Dismiss' } ).click();
-		await expect( page.locator( '.usm-steps' ) ).toHaveCount( 0 );
+		await expect( page.locator( '.axle-sessions-steps' ) ).toContainText( 'Limit administrator sessions' );
+		await page.locator( '.axle-sessions-steps' ).getByRole( 'link', { name: 'Dismiss' } ).click();
+		await expect( page.locator( '.axle-sessions-steps' ) ).toHaveCount( 0 );
 		await page.reload();
-		await expect( page.locator( '.usm-steps' ) ).toHaveCount( 0 );
+		await expect( page.locator( '.axle-sessions-steps' ) ).toHaveCount( 0 );
 	} );
 
 	test( 'other scripts can change the confirm step through wp.hooks', async ( { page, browser } ) => {
 		await open( browser, 'alice', IPHONE );
 		await page.goto( `/wp-admin/user-edit.php?user_id=${ id( 'alice' ) }` );
 		await page.evaluate( () => wp.hooks.addFilter( 'axle_sessions.confirm_message', 'e2e', ( message ) => message + ' Hooked.' ) );
-		await page.locator( '.usm-sessions' ).getByRole( 'link', { name: 'Sign out' } ).click();
-		await expect( page.locator( '.usm-confirm-box' ) ).toContainText( 'Hooked.' );
+		await page.locator( '.axle-sessions-sessions' ).getByRole( 'link', { name: 'Sign out' } ).click();
+		await expect( page.locator( '.axle-sessions-confirm-box' ) ).toContainText( 'Hooked.' );
 		// Escape cancels and gives focus back to the link.
 		await page.keyboard.press( 'Escape' );
-		await expect( page.locator( '.usm-confirm-box' ) ).toHaveCount( 0 );
-		await expect( page.locator( '.usm-sessions' ).getByRole( 'link', { name: 'Sign out' } ) ).toBeFocused();
+		await expect( page.locator( '.axle-sessions-confirm-box' ) ).toHaveCount( 0 );
+		await expect( page.locator( '.axle-sessions-sessions' ).getByRole( 'link', { name: 'Sign out' } ) ).toBeFocused();
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
 	} );
 	test( 'This wasn\'t me also revokes application passwords: a real key works before and is refused after', async ( { browser } ) => {
@@ -1022,9 +928,9 @@ test.describe( 'Axle Sessions', () => {
 
 	test( 'the This wasn\'t me report fires axle_sessions_app_passwords_revoked and not_me_reported with the revoked keys', async ( { browser } ) => {
 		wp( 'axle-sessions', 'settings', '--new-device-email=on' );
-		wpEval( `add_action( 'axle_sessions_not_me_reported', function ( $user, $report ) { update_option( 'usm_e2e_seen', array( 'reported', $user->ID, wp_list_pluck( $report['app_passwords'], 'name' ) ), false ); }, 10, 2 );` );
+		wpEval( `add_action( 'axle_sessions_not_me_reported', function ( $user, $report ) { update_option( 'axle_sessions_e2e_seen', array( 'reported', $user->ID, wp_list_pluck( $report['app_passwords'], 'name' ) ), false ); }, 10, 2 );` );
 		// The hook above lives only for that eval, so register through a must-use file for the real request.
-		wpEval( `file_put_contents( WPMU_PLUGIN_DIR . '/usm-e2e-listen.php', '<?php add_action( "axle_sessions_not_me_reported", function ( $u, $r ) { update_option( "usm_e2e_seen", array( "reported" => wp_list_pluck( $r["app_passwords"], "name" ) ), false ); }, 10, 2 ); add_action( "axle_sessions_app_passwords_revoked", function ( $id, $rows, $ctx ) { update_option( "usm_e2e_seen_apps", array( "ctx" => $ctx, "names" => wp_list_pluck( $rows, "name" ), "has_uuid" => isset( $rows[0]["uuid"] ), "has_secret" => isset( $rows[0]["password"] ) ), false ); }, 10, 3 );' );` );
+		wpEval( `file_put_contents( WPMU_PLUGIN_DIR . '/axle-sessions-e2e-listen.php', '<?php add_action( "axle_sessions_not_me_reported", function ( $u, $r ) { update_option( "axle_sessions_e2e_seen", array( "reported" => wp_list_pluck( $r["app_passwords"], "name" ) ), false ); }, 10, 2 ); add_action( "axle_sessions_app_passwords_revoked", function ( $id, $rows, $ctx ) { update_option( "axle_sessions_e2e_seen_apps", array( "ctx" => $ctx, "names" => wp_list_pluck( $rows, "name" ), "has_uuid" => isset( $rows[0]["uuid"] ), "has_secret" => isset( $rows[0]["password"] ) ), false ); }, 10, 3 );' );` );
 		const key = await appPasswordClient( 'alice', 'Agent key' );
 		try {
 			await open( browser, 'alice', CHROME );
@@ -1036,11 +942,11 @@ test.describe( 'Axle Sessions', () => {
 			await tab.goto( link );
 			await tab.getByRole( 'button', { name: 'This wasn\'t me, secure the account' } ).click();
 			await expect( tab.locator( '#login' ) ).toContainText( 'application password was revoked' );
-			expect( JSON.parse( wpEval( 'echo wp_json_encode( get_option( "usm_e2e_seen" ) );' ) ) ).toEqual( { reported: [ 'Agent key' ] } );
-			expect( JSON.parse( wpEval( 'echo wp_json_encode( get_option( "usm_e2e_seen_apps" ) );' ) ) ).toEqual( { ctx: 'not_me', names: [ 'Agent key' ], has_uuid: true, has_secret: false } );
+			expect( JSON.parse( wpEval( 'echo wp_json_encode( get_option( "axle_sessions_e2e_seen" ) );' ) ) ).toEqual( { reported: [ 'Agent key' ] } );
+			expect( JSON.parse( wpEval( 'echo wp_json_encode( get_option( "axle_sessions_e2e_seen_apps" ) );' ) ) ).toEqual( { ctx: 'not_me', names: [ 'Agent key' ], has_uuid: true, has_secret: false } );
 		} finally {
 			await key.dispose();
-			wpEval( `@unlink( WPMU_PLUGIN_DIR . '/usm-e2e-listen.php' ); delete_option( 'usm_e2e_seen' ); delete_option( 'usm_e2e_seen_apps' );` );
+			wpEval( `@unlink( WPMU_PLUGIN_DIR . '/axle-sessions-e2e-listen.php' ); delete_option( 'axle_sessions_e2e_seen' ); delete_option( 'axle_sessions_e2e_seen_apps' );` );
 		}
 	} );
 
@@ -1053,29 +959,29 @@ test.describe( 'Axle Sessions', () => {
 			expect( ( await alice.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
 			expect( ( await sam.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
 
-			await page.goto( SESSIONS + '&usm_incident=1' );
-			await expect( page.locator( '.usm-app-preview' ) ).toContainText( 'This revokes 2 application passwords of 2 users.' );
-			await expect( page.locator( '.usm-app-preview' ) ).toContainText( 'Your own are kept' );
+			await page.goto( SESSIONS + '&axle_sessions_incident=1' );
+			await expect( page.locator( '.axle-sessions-app-preview' ) ).toContainText( 'This revokes 2 application passwords of 2 users.' );
+			await expect( page.locator( '.axle-sessions-app-preview' ) ).toContainText( 'Your own are kept' );
 			await expect( page.getByLabel( 'Also revoke application passwords' ) ).toBeChecked();
 
 			// Unticked: the keys stay.
 			await page.getByLabel( 'Also revoke application passwords' ).uncheck();
 			await page.getByLabel( /Type SIGN OUT to confirm/ ).fill( 'SIGN OUT' );
 			await page.getByRole( 'button', { name: 'Sign everyone out' } ).click();
-			await expect( page.locator( '.usm-notice' ) ).toContainText( 'Everyone was signed out' );
-			await expect( page.locator( '.usm-notice' ) ).not.toContainText( 'application password' );
+			await expect( page.locator( '.axle-sessions-notice' ) ).toContainText( 'Everyone was signed out' );
+			await expect( page.locator( '.axle-sessions-notice' ) ).not.toContainText( 'application password' );
 			expect( ( await alice.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
 
 			// Ticked (the default): they go, yours stays so the job can finish.
-			await page.goto( SESSIONS + '&usm_incident=1' );
+			await page.goto( SESSIONS + '&axle_sessions_incident=1' );
 			await page.getByLabel( /Type SIGN OUT to confirm/ ).fill( 'SIGN OUT' );
 			await page.getByRole( 'button', { name: 'Sign everyone out' } ).click();
-			await expect( page.locator( '.usm-notice' ) ).toContainText( '2 application passwords were revoked.' );
+			await expect( page.locator( '.axle-sessions-notice' ) ).toContainText( '2 application passwords were revoked.' );
 			expect( ( await alice.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
 			expect( ( await sam.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
 			expect( ( await mine.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
 			await page.goto( SESSIONS );
-			await expect( page.locator( '.usm-incident-log' ) ).toContainText( '2 application passwords revoked' );
+			await expect( page.locator( '.axle-sessions-incident-log' ) ).toContainText( '2 application passwords revoked' );
 			const log = JSON.parse( wpEval( `echo wp_json_encode( get_option( 'axle_sessions_incidents' ) );` ) );
 			expect( log[ 0 ] ).toMatchObject( { app_passwords: 2 } );
 			expect( log[ 1 ] ).toMatchObject( { app_passwords: 0 } );
@@ -1086,26 +992,16 @@ test.describe( 'Axle Sessions', () => {
 		}
 	} );
 
-	test( 'Sign everyone out from WP-CLI and the ability revokes application passwords unless told not to', async ( { rest } ) => {
-		test.skip( 'yes' !== wpEval( "echo function_exists( 'wp_register_ability' ) ? 'yes' : 'no';" ), 'The Abilities API needs WordPress 6.9.' );
+	test( 'Sign everyone out from WP-CLI revokes application passwords unless told not to', async () => {
 		const bob = await appPasswordClient( 'bob', 'Bob key' );
 		const carol = await appPasswordClient( 'carol', 'Carol key' );
 		try {
 			expect( wp( 'axle-sessions', 'sign-out-everyone', '--keep-user=admin', '--keep-app-passwords', '--yes' ) ).toContain( '0 application passwords revoked' );
 			expect( ( await bob.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
-
-			const path = '/wp-abilities/v1/abilities/axle-sessions/sign-out-everyone/run';
-			const kept = await rest( 'POST', path, { input: { confirm: true, revoke_app_passwords: false } } );
-			expect( kept.body ).toMatchObject( { app_passwords_revoked: 0 } );
-			expect( ( await bob.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
-
-			const done = await rest( 'POST', path, { input: { confirm: true, exclude_roles: [ 'administrator' ] } } );
-			expect( done.status ).toBe( 200 );
-			expect( done.body ).toMatchObject( { app_passwords_revoked: 1 } );
-			expect( ( await bob.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
 			expect( ( await carol.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 200 );
 
-			expect( wp( 'axle-sessions', 'sign-out-everyone', '--keep-user=admin', '--yes' ) ).toContain( '1 application passwords revoked' );
+			expect( wp( 'axle-sessions', 'sign-out-everyone', '--keep-user=admin', '--yes' ) ).toContain( '2 application passwords revoked' );
+			expect( ( await bob.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
 			expect( ( await carol.call( 'GET', '/wp/v2/users/me' ) ).status ).toBe( 401 );
 		} finally {
 			await bob.dispose();
@@ -1124,7 +1020,7 @@ test.describe( 'Axle Sessions', () => {
 		contexts.push( wrong.context );
 		await expect( wrong.page.locator( '#login_error' ) ).toBeVisible();
 		expect( wrong.page.url() ).not.toContain( 'axle_sessions_devices' );
-		expect( ( await wrong.context.cookies() ).some( ( c ) => c.name.startsWith( 'usm_swap_' ) ) ).toBe( false );
+		expect( ( await wrong.context.cookies() ).some( ( c ) => c.name.startsWith( 'axle_sessions_swap_' ) ) ).toBe( false );
 
 		// The right password lands on the list. Nothing is signed in yet, and the old device stays.
 		const second = await open( browser, 'alice', FIREFOX );
@@ -1134,7 +1030,7 @@ test.describe( 'Axle Sessions', () => {
 		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ IPHONE ] );
 		const cookies = await second.context.cookies();
 		expect( cookies.some( ( c ) => c.name.startsWith( 'wordpress_logged_in_' ) && c.value ) ).toBe( false );
-		expect( cookies.find( ( c ) => c.name.startsWith( 'usm_swap_' ) ).httpOnly ).toBe( true );
+		expect( cookies.find( ( c ) => c.name.startsWith( 'axle_sessions_swap_' ) ).httpOnly ).toBe( true );
 		expect( await signedIn( second.page ) ).toBe( false );
 		await second.page.goBack();
 		await second.page.goBack().catch( () => null );
@@ -1160,15 +1056,15 @@ test.describe( 'Axle Sessions', () => {
 		const second = await open( browser, 'carol', FIREFOX );
 		await expect( second.page.locator( '#login_error' ) ).toContainText( 'This account can be signed in on 1 device at a time.' );
 		expect( second.page.url() ).not.toContain( 'axle_sessions_devices' );
-		expect( ( await second.context.cookies() ).some( ( c ) => c.name.startsWith( 'usm_swap_' ) ) ).toBe( false );
+		expect( ( await second.context.cookies() ).some( ( c ) => c.name.startsWith( 'axle_sessions_swap_' ) ) ).toBe( false );
 		expect( sessions( 'carol' ).map( ( s ) => s.ua ) ).toEqual( [ IPHONE ] );
 		// A site can widen the rule with the filter.
-		wpEval( `file_put_contents( WPMU_PLUGIN_DIR . '/usm-e2e-widen.php', '<?php add_filter( "axle_sessions_device_swap_enabled", "__return_true" );' );` );
+		wpEval( `file_put_contents( WPMU_PLUGIN_DIR . '/axle-sessions-e2e-widen.php', '<?php add_filter( "axle_sessions_device_swap_enabled", "__return_true" );' );` );
 		try {
 			const third = await open( browser, 'carol', CHROME );
 			await expect( third.page ).toHaveURL( /axle_sessions_devices/ );
 		} finally {
-			wpEval( `@unlink( WPMU_PLUGIN_DIR . '/usm-e2e-widen.php' );` );
+			wpEval( `@unlink( WPMU_PLUGIN_DIR . '/axle-sessions-e2e-widen.php' );` );
 		}
 	} );
 
@@ -1178,10 +1074,10 @@ test.describe( 'Axle Sessions', () => {
 		await open( browser, 'alice', IPHONE );
 		const second = await open( browser, 'alice', FIREFOX );
 		await expect( second.page ).toHaveURL( /action=axle_sessions_devices/ );
-		const cookie = ( await second.context.cookies() ).find( ( c ) => c.name.startsWith( 'usm_swap_' ) );
+		const cookie = ( await second.context.cookies() ).find( ( c ) => c.name.startsWith( 'axle_sessions_swap_' ) );
 		const html = await second.page.content();
-		const handle = html.match( /name="usm_handle" value="([^"]+)"/ )[ 1 ];
-		const formToken = html.match( /name="usm_form" value="([^"]+)"/ )[ 1 ];
+		const handle = html.match( /name="axle_sessions_handle" value="([^"]+)"/ )[ 1 ];
+		const formToken = html.match( /name="axle_sessions_form" value="([^"]+)"/ )[ 1 ];
 		const post = ( context, data ) => context.request.post( '/wp-login.php?action=axle_sessions_devices', { form: data, maxRedirects: 0 } );
 
 		// Another browser with the same cookie value but another user agent gets nothing.
@@ -1191,7 +1087,7 @@ test.describe( 'Axle Sessions', () => {
 		const stolen = await thief.request.get( '/wp-login.php?action=axle_sessions_devices' );
 		expect( stolen.status() ).toBe( 403 );
 		expect( await stolen.text() ).not.toContain( 'Safari on iOS' );
-		const stolenPost = await post( thief, { usm_form: formToken, usm_handle: handle } );
+		const stolenPost = await post( thief, { axle_sessions_form: formToken, axle_sessions_handle: handle } );
 		expect( stolenPost.status() ).toBe( 403 );
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
 
@@ -1201,7 +1097,7 @@ test.describe( 'Axle Sessions', () => {
 		expect( ( await bare.request.get( '/wp-login.php?action=axle_sessions_devices' ) ).status() ).toBe( 403 );
 
 		// A wrong form token ends nothing and uses nothing up.
-		const bad = await post( second.context, { usm_form: 'a'.repeat( 64 ), usm_handle: handle } );
+		const bad = await post( second.context, { axle_sessions_form: 'a'.repeat( 64 ), axle_sessions_handle: handle } );
 		expect( bad.status() ).toBe( 403 );
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
 
@@ -1214,16 +1110,16 @@ test.describe( 'Axle Sessions', () => {
 
 		// A fresh sign in, then used once: replaying the same request does nothing.
 		const third = await open( browser, 'alice', FIREFOX );
-		const cookie3 = ( await third.context.cookies() ).find( ( c ) => c.name.startsWith( 'usm_swap_' ) );
+		const cookie3 = ( await third.context.cookies() ).find( ( c ) => c.name.startsWith( 'axle_sessions_swap_' ) );
 		const html3 = await third.page.content();
-		const handle3 = html3.match( /name="usm_handle" value="([^"]+)"/ )[ 1 ];
-		const form3 = html3.match( /name="usm_form" value="([^"]+)"/ )[ 1 ];
+		const handle3 = html3.match( /name="axle_sessions_handle" value="([^"]+)"/ )[ 1 ];
+		const form3 = html3.match( /name="axle_sessions_form" value="([^"]+)"/ )[ 1 ];
 		await third.page.getByRole( 'button', { name: 'Sign out this device and sign in here' } ).click();
 		await expect( third.page ).toHaveURL( /wp-admin/ );
 		const replayContext = await browser.newContext( { storageState: { cookies: [], origins: [] }, userAgent: FIREFOX } );
 		contexts.push( replayContext );
 		await replayContext.addCookies( [ { name: cookie3.name, value: cookie3.value, url: 'http://localhost:8901' } ] );
-		const replay = await post( replayContext, { usm_form: form3, usm_handle: handle3 } );
+		const replay = await post( replayContext, { axle_sessions_form: form3, axle_sessions_handle: handle3 } );
 		expect( replay.status() ).toBe( 403 );
 		expect( sessions( 'alice' ).map( ( s ) => s.ua ) ).toEqual( [ FIREFOX ] );
 	} );
@@ -1239,25 +1135,25 @@ test.describe( 'Axle Sessions', () => {
 
 		const second = await open( browser, 'alice', FIREFOX );
 		const html = await second.page.content();
-		const formToken = html.match( /name="usm_form" value="([^"]+)"/ )[ 1 ];
-		const nonce = html.match( /name="usm_nonce" value="([^"]+)"/ )[ 1 ];
+		const formToken = html.match( /name="axle_sessions_form" value="([^"]+)"/ )[ 1 ];
+		const nonce = html.match( /name="axle_sessions_nonce" value="([^"]+)"/ )[ 1 ];
 		const post = ( data ) => second.context.request.post( '/wp-login.php?action=axle_sessions_devices', { form: data, maxRedirects: 0 } );
 
 		// Without the WordPress nonce, even a right token and a right handle change nothing, and the step stays open.
-		const noNonce = await post( { usm_form: formToken, usm_handle: aliceHandle } );
+		const noNonce = await post( { axle_sessions_form: formToken, axle_sessions_handle: aliceHandle } );
 		expect( noNonce.status() ).toBe( 200 );
 		expect( await noNonce.text() ).toContain( 'open for too long' );
 		expect( sessions( 'alice' ).map( ( s ) => s.handle ) ).toEqual( [ aliceHandle ] );
 
 		// Bob's handle in Alice's step: nothing of Bob's ends, and Alice gets a new step.
-		const sneaky = await post( { usm_form: formToken, usm_handle: bobHandle, usm_nonce: nonce } );
+		const sneaky = await post( { axle_sessions_form: formToken, axle_sessions_handle: bobHandle, axle_sessions_nonce: nonce } );
 		expect( sneaky.status() ).toBe( 302 );
-		expect( sneaky.headers().location ).toContain( 'usm_gone=1' );
+		expect( sneaky.headers().location ).toContain( 'axle_sessions_gone=1' );
 		expect( sessions( 'bob' ) ).toHaveLength( 1 );
 		expect( sessions( 'alice' ) ).toHaveLength( 1 );
 		expect( await signedIn( second.page ) ).toBe( false );
 
-		await second.page.goto( '/wp-login.php?action=axle_sessions_devices&usm_gone=1' );
+		await second.page.goto( '/wp-login.php?action=axle_sessions_devices&axle_sessions_gone=1' );
 		await expect( second.page.locator( '#login_error' ) ).toContainText( 'had already signed out' );
 		await second.page.getByRole( 'button', { name: 'Cancel, I will sign in later' } ).click();
 		await expect( second.page.locator( '#login' ) ).toContainText( 'Nothing was signed out' );
@@ -1296,13 +1192,13 @@ test.describe( 'Axle Sessions', () => {
 		await page.goto( SETTINGS );
 		await expect( page ).toHaveURL( /users\.php\?page=user-sessions&tab=policies/ );
 		await expect( page.getByRole( 'link', { name: 'Policies' } ) ).toHaveAttribute( 'aria-current', 'page' );
-		await expect( page.locator( '.usm-policies' ) ).toBeVisible();
+		await expect( page.locator( '.axle-sessions-policies' ) ).toBeVisible();
 		await expect( page.locator( '#adminmenu' ).getByRole( 'link', { name: 'User Sessions' } ) ).toHaveCount( 0 );
 		await page.getByLabel( 'Refuse the new login' ).check();
 		await expect( page.getByLabel( 'Let a refused person sign out one of their other devices to get in' ) ).toBeChecked();
 		await page.getByLabel( 'Let a refused person sign out one of their other devices to get in' ).uncheck();
 		await page.getByRole( 'button', { name: 'Save settings' } ).click();
-		await expect( page.locator( '.usm-notice' ) ).toContainText( 'Settings saved.' );
+		await expect( page.locator( '.axle-sessions-notice' ) ).toContainText( 'Settings saved.' );
 		expect( JSON.parse( wp( 'axle-sessions', 'settings', '--format=json' ) ) ).toMatchObject( { limit_mode: 'block', device_swap: false } );
 		await expect( page ).toHaveURL( /tab=policies/ );
 

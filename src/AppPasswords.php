@@ -64,7 +64,7 @@ final class AppPasswords {
 	 * Revokes a user's application passwords.
 	 *
 	 * @param int    $user_id User ID.
-	 * @param string $context not_me, incident, cli or ability, or a caller's own.
+	 * @param string $context not_me, incident, cli, or a caller's own.
 	 * @param int    $since   Only passwords created at or after this time. 0 revokes all.
 	 * @return array<int, array{uuid: string, name: string, created: int, last_used: int}> The passwords that were revoked.
 	 */
@@ -85,7 +85,7 @@ final class AppPasswords {
 			 *
 			 * @param int      $user_id The account.
 			 * @param array[]  $revoked Each revoked password: uuid, name, created and last_used (Unix times). The secret is never included.
-			 * @param string   $context not_me, incident, cli or ability.
+			 * @param string   $context not_me, incident, cli.
 			 */
 			do_action( 'axle_sessions_app_passwords_revoked', $user_id, $revoked, $context );
 		}

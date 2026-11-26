@@ -1,106 +1,106 @@
 /* Axle Sessions: profile section, Users > Sessions and the settings screen.
-   Layout only: the look comes from axle-ui.css. Prefix: usm- */
-.usm-sessions {
+   Layout only: the look comes from axle-ui.css. Prefix: axle-sessions- */
+.axle-sessions-sessions {
 	max-width: 1100px;
 	margin-top: 8px;
 }
 
-.usm-sessions td,
-.usm-page .wp-list-table td {
+.axle-sessions-sessions td,
+.axle-sessions-page .wp-list-table td {
 	vertical-align: middle;
 }
 
-.usm-device {
+.axle-sessions-device {
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
 }
 
-.usm-device .dashicons {
+.axle-sessions-device .dashicons {
 	width: 28px;
 	height: 28px;
 	font-size: 28px;
 	color: var(--axle-muted);
 }
 
-.usm-device small,
-.usm-user small {
+.axle-sessions-device small,
+.axle-sessions-user small {
 	color: var(--axle-muted);
 }
 
-.usm-badge {
+.axle-sessions-badge {
 	margin-left: 4px;
 	vertical-align: middle;
 }
 
-.usm-sessions .usm-session.is-current > td,
-.usm-page .wp-list-table .usm-session.is-current > th,
-.usm-page .wp-list-table .usm-session.is-current > td {
+.axle-sessions-sessions .axle-sessions-session.is-current > td,
+.axle-sessions-page .wp-list-table .axle-sessions-session.is-current > th,
+.axle-sessions-page .wp-list-table .axle-sessions-session.is-current > td {
 	background: var(--axle-info-bg);
 }
 
-.usm-page .wp-list-table .column-user {
+.axle-sessions-page .wp-list-table .column-user {
 	width: 24%;
 }
 
-.usm-page .wp-list-table .column-device {
+.axle-sessions-page .wp-list-table .column-device {
 	width: 22%;
 }
 
-.usm-actions {
+.axle-sessions-actions {
 	text-align: right;
 }
 
-.usm-ip {
+.axle-sessions-ip {
 	font-family: Consolas, Monaco, monospace;
 }
 
-.usm-user {
+.axle-sessions-user {
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
 }
 
-.usm-user img {
+.axle-sessions-user img {
 	border-radius: 50%;
 }
 
-.usm-policies {
+.axle-sessions-policies {
 	max-width: 1000px;
 	margin-top: 8px;
 }
 
-.usm-policies th[scope="row"] {
+.axle-sessions-policies th[scope="row"] {
 	font-weight: 600;
 	vertical-align: middle;
 }
 
-.usm-bulk {
+.axle-sessions-bulk {
 	display: flex;
 	align-items: center;
 	gap: 16px;
 }
 
-.usm-profile {
+.axle-sessions-profile {
 	margin: 24px 0;
 }
 
-.usm-profile .usm-empty,
-.usm-profile .usm-confirm {
+.axle-sessions-profile .axle-sessions-empty,
+.axle-sessions-profile .axle-sessions-confirm {
 	max-width: 760px;
 }
 
 /* The question before a sign out everywhere. */
-.usm-confirm {
+.axle-sessions-confirm {
 	max-width: 760px;
 }
 
-.usm-confirm-users {
+.axle-sessions-confirm-users {
 	margin-left: 1.5em;
 	list-style: disc;
 }
 
-.usm-confirm-actions {
+.axle-sessions-confirm-actions {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
@@ -108,55 +108,55 @@
 }
 
 /* Shared login detection: the evidence. */
-.usm-shared.notice {
+.axle-sessions-shared.notice {
 	max-width: 1100px;
 	margin: 8px 0 16px;
 }
 
-.usm-shared-evidence {
+.axle-sessions-shared-evidence {
 	margin: 0.5em 0 0.5em 1.5em;
 	list-style: disc;
 }
 
-.usm-shared-sessions {
+.axle-sessions-shared-sessions {
 	margin: 4px 0 8px 1.5em;
 	list-style: circle;
 }
 
-.usm-shared-help {
+.axle-sessions-shared-help {
 	max-width: 1000px;
 	margin-top: 8px;
 }
 
 /* Small screens: one card per session and per role, labels beside the values. */
 @media screen and (max-width: 782px) {
-	.usm-sessions thead,
-	.usm-policies thead {
+	.axle-sessions-sessions thead,
+	.axle-sessions-policies thead {
 		display: none;
 	}
 
-	.usm-sessions,
-	.usm-sessions tbody,
-	.usm-sessions tr,
-	.usm-sessions td,
-	.usm-policies,
-	.usm-policies tbody,
-	.usm-policies tr,
-	.usm-policies th,
-	.usm-policies td {
+	.axle-sessions-sessions,
+	.axle-sessions-sessions tbody,
+	.axle-sessions-sessions tr,
+	.axle-sessions-sessions td,
+	.axle-sessions-policies,
+	.axle-sessions-policies tbody,
+	.axle-sessions-policies tr,
+	.axle-sessions-policies th,
+	.axle-sessions-policies td {
 		display: block;
 		width: auto;
 		box-sizing: border-box;
 	}
 
-	.usm-sessions tr,
-	.usm-policies tr {
+	.axle-sessions-sessions tr,
+	.axle-sessions-policies tr {
 		padding: 8px 0;
 		border-bottom: 1px solid var(--axle-neutral-bg);
 	}
 
-	.usm-sessions td[data-colname],
-	.usm-policies td[data-colname] {
+	.axle-sessions-sessions td[data-colname],
+	.axle-sessions-policies td[data-colname] {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -164,50 +164,50 @@
 		padding: 4px 8px;
 	}
 
-	.usm-sessions td[data-colname]::before,
-	.usm-policies td[data-colname]::before {
+	.axle-sessions-sessions td[data-colname]::before,
+	.axle-sessions-policies td[data-colname]::before {
 		content: attr(data-colname);
 		color: var(--axle-muted);
 		font-weight: 600;
 	}
 
-	.usm-actions {
+	.axle-sessions-actions {
 		text-align: left;
 	}
 
-	.usm-page .wp-list-table .column-user,
-	.usm-page .wp-list-table .column-device {
+	.axle-sessions-page .wp-list-table .column-user,
+	.axle-sessions-page .wp-list-table .column-device {
 		width: auto;
 	}
 }
 
 /* Until axle-ui.css does it: the danger button text, #d63638, is 4.4:1 on core's button background in WordPress 6.x. */
-.usm-page .button.axle-button--danger,
-.usm-profile .button.axle-button--danger {
+.axle-sessions-page .button.axle-button--danger,
+.axle-sessions-profile .button.axle-button--danger {
 	color: var(--axle-error-text);
 }
 
 /* Sign-in history, reports and "Sign everyone out". */
-.usm-profile .usm-history {
+.axle-sessions-profile .axle-sessions-history {
 	margin-top: 8px;
 }
 
-.usm-profile .usm-report {
+.axle-sessions-profile .axle-sessions-report {
 	max-width: 1100px;
 	margin: 8px 0 16px;
 }
 
-.usm-page .usm-spinner {
+.axle-sessions-page .axle-sessions-spinner {
 	float: none;
 	margin: 0 4px 0 0;
 	vertical-align: middle;
 }
 
-.usm-incident-form {
+.axle-sessions-incident-form {
 	max-width: 760px;
 }
 
-.usm-incident-roles {
+.axle-sessions-incident-roles {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 4px 16px;
@@ -215,32 +215,32 @@
 	list-style: none;
 }
 
-.usm-incident-log {
+.axle-sessions-incident-log {
 	margin: 0 0 0 1.5em;
 	list-style: disc;
 }
 
-.usm-page .usm-report-table {
+.axle-sessions-page .axle-sessions-report-table {
 	margin-top: 8px;
 }
 
-.usm-page .axle-scroll .tablenav {
+.axle-sessions-page .axle-scroll .tablenav {
 	height: auto;
 }
 
 /* Links inside table cells keep their underline, so they do not rely on colour alone. */
-.usm-page .usm-report-table td a {
+.axle-sessions-page .axle-sessions-report-table td a {
 	text-decoration: underline;
 }
 
 /* On a phone the search box sits under the views instead of floating beside them. */
 @media screen and (max-width: 782px) {
-	.usm-page .subsubsub {
+	.axle-sessions-page .subsubsub {
 		float: none;
 		margin: 8px 0;
 	}
 
-	.usm-page .search-box {
+	.axle-sessions-page .search-box {
 		float: none;
 		display: flex;
 		flex-wrap: wrap;
@@ -250,7 +250,7 @@
 		position: static;
 	}
 
-	.usm-page .search-box input[type="search"] {
+	.axle-sessions-page .search-box input[type="search"] {
 		flex: 1 1 140px;
 		min-width: 0;
 		margin: 0;

@@ -10,7 +10,7 @@
 ( function () {
 	'use strict';
 
-	var data = window.usmAdmin || {};
+	var data = window.axleSessionsAdmin || {};
 	var wp = window.wp || {};
 	var open = null;
 
@@ -51,15 +51,15 @@
 	function ask( link ) {
 		close( false );
 
-		var title = link.getAttribute( 'data-usm-confirm-title' ) || data.title || '';
-		var message = link.getAttribute( 'data-usm-confirm' ) || '';
+		var title = link.getAttribute( 'data-axle-sessions-confirm-title' ) || data.title || '';
+		var message = link.getAttribute( 'data-axle-sessions-confirm' ) || '';
 		if ( wp.hooks && wp.hooks.applyFilters ) {
 			message = wp.hooks.applyFilters( 'axle_sessions.confirm_message', message, link );
 		}
 
-		var id = 'usm-confirm-' + Date.now();
+		var id = 'axle-sessions-confirm-' + Date.now();
 		var box = document.createElement( 'div' );
-		box.className = 'axle-confirm axle-confirm--danger usm-confirm-box';
+		box.className = 'axle-confirm axle-confirm--danger axle-sessions-confirm-box';
 		box.setAttribute( 'role', 'group' );
 		box.setAttribute( 'aria-labelledby', id );
 
@@ -78,7 +78,7 @@
 		var yes = document.createElement( 'a' );
 		yes.className = 'button axle-button--danger';
 		yes.href = link.href;
-		yes.textContent = link.getAttribute( 'data-usm-confirm-button' ) || data.confirm || '';
+		yes.textContent = link.getAttribute( 'data-axle-sessions-confirm-button' ) || data.confirm || '';
 
 		var no = document.createElement( 'button' );
 		no.type = 'button';
@@ -111,7 +111,7 @@
 	}
 
 	document.addEventListener( 'click', function ( event ) {
-		var link = event.target.closest ? event.target.closest( 'a[data-usm-confirm]' ) : null;
+		var link = event.target.closest ? event.target.closest( 'a[data-axle-sessions-confirm]' ) : null;
 		if ( ! link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || 0 !== event.button ) {
 			return;
 		}
@@ -123,12 +123,12 @@
 	 * Keeps the "Sign everyone out" button off until the words match. The server checks them too.
 	 */
 	function typedConfirm() {
-		var input = document.querySelector( '[data-usm-typed]' );
-		var button = document.querySelector( '[data-usm-typed-button]' );
+		var input = document.querySelector( '[data-axle-sessions-typed]' );
+		var button = document.querySelector( '[data-axle-sessions-typed-button]' );
 		if ( ! input || ! button ) {
 			return;
 		}
-		var word = input.getAttribute( 'data-usm-typed' );
+		var word = input.getAttribute( 'data-axle-sessions-typed' );
 		var update = function () {
 			var match = input.value.trim() === word;
 			button.disabled = ! match;
@@ -140,14 +140,14 @@
 
 	document.addEventListener( 'DOMContentLoaded', function () {
 		typedConfirm();
-		var notice = document.querySelector( '.usm-notice' );
+		var notice = document.querySelector( '.axle-sessions-notice' );
 		if ( notice ) {
 			speak( notice.textContent );
 		}
-		var progress = document.querySelector( '[data-usm-progress]' );
+		var progress = document.querySelector( '[data-axle-sessions-progress]' );
 		if ( progress ) {
-			speak( progress.getAttribute( 'data-usm-progress' ) );
-			var next = document.querySelector( '[data-usm-continue]' );
+			speak( progress.getAttribute( 'data-axle-sessions-progress' ) );
+			var next = document.querySelector( '[data-axle-sessions-continue]' );
 			if ( next ) {
 				window.setTimeout( function () {
 					window.location.assign( next.href );

@@ -62,7 +62,7 @@ Sessions hold an IP address and a browser string. The plugin takes part in Tools
 
 = For developers =
 
-Every limit and default has a filter, and every sign out fires an action. On WordPress 6.9 and later, AI agents can list sessions, find accounts that look shared and sign sessions out through the Abilities API. The full list is in [the reference](https://github.com/aryanjasala/axle-sessions/blob/main/docs/REFERENCE.md).
+Every limit and default has a filter, and every sign out fires an action. The full list is in [the reference](https://github.com/aryanjasala/axle-sessions/blob/main/docs/REFERENCE.md).
 
 == Frequently Asked Questions ==
 

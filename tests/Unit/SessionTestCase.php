@@ -7,7 +7,6 @@
 
 namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\Sessions\Abilities;
 use AryanX\Axle\Sessions\Admin\ProfileSessions;
 use AryanX\Axle\Sessions\Admin\SessionsPage;
 use AryanX\Axle\Sessions\Cli\Command;
@@ -195,10 +194,6 @@ abstract class SessionTestCase extends TestCase {
 	 */
 	protected function policies( array $policies, array $other = array() ): void {
 		$this->options[ Settings::OPTION ] = array( 'policies' => $policies ) + $other;
-	}
-
-	protected function abilities( Settings $settings, Sessions $sessions, SharedLogins $shared ): Abilities {
-		return new Abilities( $sessions, $shared, new History( $settings, $sessions ), new NotMe( $settings, $sessions ), new Incident( $sessions ) );
 	}
 
 	protected function profile( Settings $settings, Sessions $sessions, SharedLogins $shared ): ProfileSessions {

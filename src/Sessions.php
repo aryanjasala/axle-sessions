@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  * the login cookie, and only ends a session when it has the raw token. This
  * class reads and writes the same meta with the same structure, so a session
  * can be ended from its verifier alone. Verifiers never leave PHP: screens,
- * WP-CLI and abilities use a handle, an HMAC of the user ID and the verifier
+ * WP-CLI use a handle, an HMAC of the user ID and the verifier
  * keyed with the site's auth salt, which cannot be turned back into either.
  */
 final class Sessions implements Service {
@@ -228,7 +228,7 @@ final class Sessions implements Service {
 	 *
 	 * @param int    $user_id  User ID.
 	 * @param string $verifier Verifier.
-	 * @param string $context  Where it was ended: profile, admin, bulk, cli, ability, or a caller's own.
+	 * @param string $context  Where it was ended: profile, admin, bulk, cli, or a caller's own.
 	 * @return bool Whether a session was ended.
 	 */
 	public function revoke( int $user_id, string $verifier, string $context ): bool {
@@ -242,7 +242,7 @@ final class Sessions implements Service {
 		 *
 		 * @param int    $user_id User the session belonged to.
 		 * @param array  $session Session data: expiration, ip, ua, login, last_seen and handle.
-		 * @param string $context profile, admin, bulk, cli or ability.
+		 * @param string $context profile, admin, bulk, cli.
 		 */
 		do_action( 'axle_sessions_session_revoked', $user_id, $session + array( 'handle' => $this->handle( $user_id, $verifier ) ), $context );
 
@@ -285,7 +285,7 @@ final class Sessions implements Service {
 	 * Ends every session of a user.
 	 *
 	 * @param int    $user_id User ID.
-	 * @param string $context Where it was done: profile, admin, bulk, cli, ability or privacy.
+	 * @param string $context Where it was done: profile, admin, bulk, cli or privacy.
 	 * @return int Sessions ended.
 	 */
 	public function sign_out_everywhere( int $user_id, string $context ): int {
@@ -297,7 +297,7 @@ final class Sessions implements Service {
 		 *
 		 * @param int    $user_id The user.
 		 * @param int    $count   Sessions that were active.
-		 * @param string $context profile, admin, bulk, cli, ability or privacy.
+		 * @param string $context profile, admin, bulk, cli or privacy.
 		 */
 		do_action( 'axle_sessions_user_signed_out_everywhere', $user_id, $count, $context );
 
@@ -335,7 +335,7 @@ final class Sessions implements Service {
 	}
 
 	/**
-	 * A session as the screens, WP-CLI and abilities show it. Never the verifier.
+	 * A session as the screens and WP-CLI show it. Never the verifier.
 	 *
 	 * @param int    $user_id  User ID.
 	 * @param string $verifier Verifier.
@@ -378,7 +378,7 @@ final class Sessions implements Service {
 	}
 
 	/**
-	 * Sessions across users, for the Sessions screen, WP-CLI and abilities.
+	 * Sessions across users, for the Sessions screen and WP-CLI.
 	 *
 	 * Sessions live inside user meta, so this reads every signed-in user's
 	 * sessions, BATCH users at a time, then sorts and pages them in PHP. A site

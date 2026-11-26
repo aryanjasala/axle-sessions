@@ -18,12 +18,15 @@ defined( 'ABSPATH' ) || exit;
  * never replaces a new one, and the work carries on at the next request until
  * the stored version says it is done.
  *
- * The short-lived `usm_` transients and cookies are not renamed. They expire on their own.
+ * Version 2 also removes the transients stored under the short `usm_` prefix, which
+ * this plugin used before it moved to `axle_sessions_`. They held only short-lived
+ * state (login limits, incident progress) and are rebuilt when needed. The cookies
+ * under that prefix last minutes and expire on their own.
  */
 final class Upgrade {
 
 	public const VERSION_OPTION = 'axle_sessions_db_version';
-	public const VERSION        = 1;
+	public const VERSION        = 2;
 
 	private const OLD_PREFIX = 'user_session_manager_';
 	private const NEW_PREFIX = 'axle_sessions_';
@@ -82,6 +85,7 @@ final class Upgrade {
 
 		$this->move_options();
 		$this->move_events();
+		$this->drop_short_transients();
 
 		if ( $this->move_user_meta() ) {
 			update_option( self::VERSION_OPTION, self::VERSION );
@@ -116,6 +120,31 @@ final class Upgrade {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Deletes the transients stored under the old short prefix. They are not moved.
+	 */
+	public function drop_short_transients(): void {
+		global $wpdb;
+		if ( ! is_object( $wpdb ) ) {
+			return;
+		}
+
+		$like = array(
+			$wpdb->esc_like( '_transient_usm_' ) . '%',
+			$wpdb->esc_like( '_transient_timeout_usm_' ) . '%',
+			$wpdb->esc_like( '_site_transient_usm_' ) . '%',
+			$wpdb->esc_like( '_site_transient_timeout_usm_' ) . '%',
+		);
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Runs once, to remove leftovers that have no API.
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s", $like[0], $like[1], $like[2], $like[3] ) );
+
+		if ( is_multisite() ) {
+			$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->sitemeta} WHERE meta_key LIKE %s OR meta_key LIKE %s", $like[2], $like[3] ) );
+		}
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 	}
 
 	/**

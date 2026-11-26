@@ -97,13 +97,13 @@ final class NotMeTest extends SessionTestCase {
 		$link     = $this->not_me()->create_link( $user, $session );
 		parse_str( (string) wp_parse_url_for_test( $link, 'query' ), $query );
 
-		return array( $user, $link, (string) $query['usm_key'], $session );
+		return array( $user, $link, (string) $query['axle_sessions_key'], $session );
 	}
 
 	public function test_the_link_is_random_stored_hashed_and_bound_to_the_session(): void {
 		list( , $link, $key, $session ) = $this->link();
 
-		$this->assertStringContainsString( 'wp-login.php?action=axle_sessions_not_me&usm_key=7.', $link );
+		$this->assertStringContainsString( 'wp-login.php?action=axle_sessions_not_me&axle_sessions_key=7.', $link );
 		$token = substr( $key, 2 );
 		$this->assertSame( 48, strlen( $token ) );
 

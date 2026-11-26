@@ -27,7 +27,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProfileSessions implements Service {
 
 	public const ACTION = 'axle_sessions';
-	public const ANCHOR = 'usm-sessions';
+	public const ANCHOR = 'axle-sessions-sessions';
 
 	/**
 	 * Session store.
@@ -177,9 +177,9 @@ final class ProfileSessions implements Service {
 		$shared = $this->shared->handles( $user->ID );
 		$back   = $own ? self_admin_url( 'profile.php' ) : add_query_arg( 'user_id', $user->ID, self_admin_url( 'user-edit.php' ) );
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only shows the question; the sign out itself has a nonce.
-		$confirm = isset( $_GET['usm_confirm'] ) && 'sign_out' === sanitize_key( wp_unslash( $_GET['usm_confirm'] ) );
+		$confirm = isset( $_GET['axle_sessions_confirm'] ) && 'sign_out' === sanitize_key( wp_unslash( $_GET['axle_sessions_confirm'] ) );
 		?>
-		<div class="usm-profile axle-ui">
+		<div class="axle-sessions-profile axle-ui">
 		<h2 id="<?php echo esc_attr( self::ANCHOR ); ?>"><?php echo $own ? esc_html__( 'Your sessions', 'axle-sessions' ) : esc_html__( 'Sessions', 'axle-sessions' ); ?></h2>
 		<?php if ( ! $this->sessions->is_supported() ) : ?>
 			<p><?php esc_html_e( 'Another plugin stores sessions outside WordPress user data, so they cannot be listed here.', 'axle-sessions' ); ?></p>
@@ -200,10 +200,10 @@ final class ProfileSessions implements Service {
 			<?php echo wp_kses( Display::shared_evidence( $flag ), Display::ALLOWED ); ?>
 		<?php endif; ?>
 		<?php if ( ! $rows ) : ?>
-			<div class="axle-empty usm-empty"><p><?php esc_html_e( 'No active sessions. Sessions show up here when this account signs in.', 'axle-sessions' ); ?></p></div>
+			<div class="axle-empty axle-sessions-empty"><p><?php esc_html_e( 'No active sessions. Sessions show up here when this account signs in.', 'axle-sessions' ); ?></p></div>
 		<?php else : ?>
 			<div class="axle-scroll" tabindex="0" role="region" aria-label="<?php esc_attr_e( 'Active sessions', 'axle-sessions' ); ?>">
-			<table class="widefat striped usm-sessions">
+			<table class="widefat striped axle-sessions-sessions">
 				<thead>
 					<tr>
 						<th scope="col"><?php esc_html_e( 'Device', 'axle-sessions' ); ?></th>
@@ -216,15 +216,15 @@ final class ProfileSessions implements Service {
 				</thead>
 				<tbody>
 					<?php foreach ( $rows as $row ) : ?>
-						<tr class="usm-session<?php echo $row['current'] ? ' is-current' : ''; ?>" data-handle="<?php echo esc_attr( $row['handle'] ); ?>">
-							<td class="usm-device-cell"><?php echo wp_kses( Display::device( $row, in_array( $row['handle'], $shared, true ) ), Display::ALLOWED ); ?></td>
-							<td class="usm-ip" data-colname="<?php esc_attr_e( 'IP address', 'axle-sessions' ); ?>"><?php echo esc_html( '' !== $row['ip'] ? $row['ip'] : __( 'Unknown', 'axle-sessions' ) ); ?></td>
+						<tr class="axle-sessions-session<?php echo $row['current'] ? ' is-current' : ''; ?>" data-handle="<?php echo esc_attr( $row['handle'] ); ?>">
+							<td class="axle-sessions-device-cell"><?php echo wp_kses( Display::device( $row, in_array( $row['handle'], $shared, true ) ), Display::ALLOWED ); ?></td>
+							<td class="axle-sessions-ip" data-colname="<?php esc_attr_e( 'IP address', 'axle-sessions' ); ?>"><?php echo esc_html( '' !== $row['ip'] ? $row['ip'] : __( 'Unknown', 'axle-sessions' ) ); ?></td>
 							<td data-colname="<?php esc_attr_e( 'Signed in', 'axle-sessions' ); ?>"><?php echo wp_kses( Display::time( $row['login'] ), Display::ALLOWED ); ?></td>
 							<td data-colname="<?php esc_attr_e( 'Last active', 'axle-sessions' ); ?>"><?php echo wp_kses( Display::time( $row['last_seen'] ), Display::ALLOWED ); ?></td>
 							<td data-colname="<?php esc_attr_e( 'Expires', 'axle-sessions' ); ?>"><?php echo wp_kses( Display::time( $row['expiration'] ), Display::ALLOWED ); ?></td>
-							<td class="usm-actions">
+							<td class="axle-sessions-actions">
 								<?php if ( ! $row['current'] ) : ?>
-									<a class="button button-small" href="<?php echo esc_url( self::url( 'revoke', $row['handle'], $back ) ); ?>" data-usm-confirm="<?php echo esc_attr( __( 'That browser is signed out the next time it loads a page. This cannot be undone, but the person can sign in again.', 'axle-sessions' ) ); ?>" data-usm-confirm-title="<?php echo esc_attr( $row['device'] ); ?>" data-usm-confirm-button="<?php esc_attr_e( 'Sign out this session', 'axle-sessions' ); ?>"><?php esc_html_e( 'Sign out', 'axle-sessions' ); ?></a>
+									<a class="button button-small" href="<?php echo esc_url( self::url( 'revoke', $row['handle'], $back ) ); ?>" data-axle-sessions-confirm="<?php echo esc_attr( __( 'That browser is signed out the next time it loads a page. This cannot be undone, but the person can sign in again.', 'axle-sessions' ) ); ?>" data-axle-sessions-confirm-title="<?php echo esc_attr( $row['device'] ); ?>" data-axle-sessions-confirm-button="<?php esc_attr_e( 'Sign out this session', 'axle-sessions' ); ?>"><?php esc_html_e( 'Sign out', 'axle-sessions' ); ?></a>
 								<?php endif; ?>
 							</td>
 						</tr>
@@ -232,19 +232,19 @@ final class ProfileSessions implements Service {
 				</tbody>
 			</table>
 			</div>
-			<p class="usm-bulk">
+			<p class="axle-sessions-bulk">
 				<?php if ( $own && count( $rows ) > 1 ) : ?>
-					<a class="button" href="<?php echo esc_url( self::url( 'sign_out_others', (string) $user->ID, $back ) ); ?>" data-usm-confirm="<?php echo esc_attr( __( 'Every other browser is signed out the next time it loads a page. This browser stays signed in. This cannot be undone.', 'axle-sessions' ) ); ?>" data-usm-confirm-title="<?php esc_attr_e( 'Sign out all other sessions?', 'axle-sessions' ); ?>" data-usm-confirm-button="<?php esc_attr_e( 'Sign out all other sessions', 'axle-sessions' ); ?>"><?php esc_html_e( 'Sign out all other sessions', 'axle-sessions' ); ?></a>
+					<a class="button" href="<?php echo esc_url( self::url( 'sign_out_others', (string) $user->ID, $back ) ); ?>" data-axle-sessions-confirm="<?php echo esc_attr( __( 'Every other browser is signed out the next time it loads a page. This browser stays signed in. This cannot be undone.', 'axle-sessions' ) ); ?>" data-axle-sessions-confirm-title="<?php esc_attr_e( 'Sign out all other sessions?', 'axle-sessions' ); ?>" data-axle-sessions-confirm-button="<?php esc_attr_e( 'Sign out all other sessions', 'axle-sessions' ); ?>"><?php esc_html_e( 'Sign out all other sessions', 'axle-sessions' ); ?></a>
 				<?php elseif ( ! $own && ! $confirm ) : ?>
-					<a class="button" href="<?php echo esc_url( add_query_arg( 'usm_confirm', 'sign_out', $back ) . '#' . self::ANCHOR ); ?>"><?php esc_html_e( 'Sign out everywhere', 'axle-sessions' ); ?></a>
+					<a class="button" href="<?php echo esc_url( add_query_arg( 'axle_sessions_confirm', 'sign_out', $back ) . '#' . self::ANCHOR ); ?>"><?php esc_html_e( 'Sign out everywhere', 'axle-sessions' ); ?></a>
 				<?php endif; ?>
 				<?php if ( ! $own && Access::can_view_all() ) : ?>
 					<a href="<?php echo esc_url( SessionsPage::url( array( 'user_id' => $user->ID ) ) ); ?>"><?php esc_html_e( 'All sessions', 'axle-sessions' ); ?></a>
 				<?php endif; ?>
 			</p>
 			<?php if ( ! $own && $confirm ) : ?>
-				<div class="axle-confirm axle-confirm--danger usm-confirm usm-confirm-inline" role="group" aria-labelledby="usm-confirm-title">
-					<p class="axle-card__title" id="usm-confirm-title">
+				<div class="axle-confirm axle-confirm--danger axle-sessions-confirm axle-sessions-confirm-inline" role="group" aria-labelledby="axle-sessions-confirm-title">
+					<p class="axle-card__title" id="axle-sessions-confirm-title">
 						<?php
 						/* translators: %s: user login. */
 						echo esc_html( sprintf( __( 'Sign out %s everywhere?', 'axle-sessions' ), $user->user_login ) );
@@ -272,7 +272,7 @@ final class ProfileSessions implements Service {
 	private function render_reports( \WP_User $user ): void {
 		foreach ( $this->not_me->events( $user->ID, 30 ) as $event ) {
 			?>
-			<div class="notice notice-error inline usm-report">
+			<div class="notice notice-error inline axle-sessions-report">
 				<p>
 					<span class="axle-badge axle-badge--error"><?php esc_html_e( 'Reported', 'axle-sessions' ); ?></span>
 					<strong><?php esc_html_e( 'A sign-in was reported as "This wasn\'t me".', 'axle-sessions' ); ?></strong>
@@ -322,17 +322,17 @@ final class ProfileSessions implements Service {
 	private function render_history( \WP_User $user ): void {
 		$days = $this->history->days();
 		?>
-		<h3 id="usm-history"><?php esc_html_e( 'Sign-in history', 'axle-sessions' ); ?></h3>
+		<h3 id="axle-sessions-history"><?php esc_html_e( 'Sign-in history', 'axle-sessions' ); ?></h3>
 		<?php
 		if ( $days < 1 ) {
 			?>
-			<div class="axle-empty usm-empty"><p><?php esc_html_e( 'Sign-in history is turned off. Turn it on in the User Sessions settings to see when and where this account signs in.', 'axle-sessions' ); ?></p></div>
+			<div class="axle-empty axle-sessions-empty"><p><?php esc_html_e( 'Sign-in history is turned off. Turn it on in the User Sessions settings to see when and where this account signs in.', 'axle-sessions' ); ?></p></div>
 			<?php
 			return;
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only choice.
-		$all  = isset( $_GET['usm_history'] ) && 'all' === sanitize_key( wp_unslash( $_GET['usm_history'] ) );
+		$all  = isset( $_GET['axle_sessions_history'] ) && 'all' === sanitize_key( wp_unslash( $_GET['axle_sessions_history'] ) );
 		$show = $this->history_rows_shown();
 		$rows = $this->history->rows( $user->ID, $all ? 0 : $show );
 		$more = ! $all && count( $this->history->entries( $user->ID ) ) > $show;
@@ -349,11 +349,11 @@ final class ProfileSessions implements Service {
 			?>
 		</p>
 		<?php if ( ! $rows ) : ?>
-			<div class="axle-empty usm-empty"><p><?php esc_html_e( 'No sign-ins recorded yet. They show up here the next time this account signs in.', 'axle-sessions' ); ?></p></div>
+			<div class="axle-empty axle-sessions-empty"><p><?php esc_html_e( 'No sign-ins recorded yet. They show up here the next time this account signs in.', 'axle-sessions' ); ?></p></div>
 			<?php return; ?>
 		<?php endif; ?>
 		<div class="axle-scroll" tabindex="0" role="region" aria-label="<?php esc_attr_e( 'Sign-in history', 'axle-sessions' ); ?>">
-		<table class="widefat striped usm-sessions usm-history">
+		<table class="widefat striped axle-sessions-sessions axle-sessions-history">
 			<thead>
 				<tr>
 					<th scope="col"><?php esc_html_e( 'Device', 'axle-sessions' ); ?></th>
@@ -365,9 +365,9 @@ final class ProfileSessions implements Service {
 			</thead>
 			<tbody>
 				<?php foreach ( $rows as $row ) : ?>
-					<tr class="usm-history-row" data-state="<?php echo esc_attr( $row['state'] ); ?>">
+					<tr class="axle-sessions-history-row" data-state="<?php echo esc_attr( $row['state'] ); ?>">
 						<td><strong><?php echo esc_html( '' !== $row['device'] ? $row['device'] : __( 'Unknown device', 'axle-sessions' ) ); ?></strong></td>
-						<td class="usm-ip" data-colname="<?php esc_attr_e( 'IP address', 'axle-sessions' ); ?>"><?php echo esc_html( '' !== $row['ip'] ? $row['ip'] : __( 'Unknown', 'axle-sessions' ) ); ?></td>
+						<td class="axle-sessions-ip" data-colname="<?php esc_attr_e( 'IP address', 'axle-sessions' ); ?>"><?php echo esc_html( '' !== $row['ip'] ? $row['ip'] : __( 'Unknown', 'axle-sessions' ) ); ?></td>
 						<td data-colname="<?php esc_attr_e( 'Signed in', 'axle-sessions' ); ?>"><?php echo wp_kses( Display::time( $row['start'] ), Display::ALLOWED ); ?></td>
 						<td data-colname="<?php esc_attr_e( 'Last active', 'axle-sessions' ); ?>"><?php echo wp_kses( Display::time( $row['seen'] ), Display::ALLOWED ); ?></td>
 						<td data-colname="<?php esc_attr_e( 'How it ended', 'axle-sessions' ); ?>"><?php echo wp_kses( Display::ending( $row ), Display::ALLOWED ); ?></td>
@@ -377,7 +377,7 @@ final class ProfileSessions implements Service {
 		</table>
 		</div>
 		<?php if ( $more ) : ?>
-			<p><a href="<?php echo esc_url( add_query_arg( 'usm_history', 'all' ) . '#usm-history' ); ?>"><?php esc_html_e( 'Show all sign-ins', 'axle-sessions' ); ?></a></p>
+			<p><a href="<?php echo esc_url( add_query_arg( 'axle_sessions_history', 'all' ) . '#axle-sessions-history' ); ?>"><?php esc_html_e( 'Show all sign-ins', 'axle-sessions' ); ?></a></p>
 		<?php endif; ?>
 		<?php
 	}
@@ -418,18 +418,18 @@ final class ProfileSessions implements Service {
 		$args = array();
 		switch ( $task ) {
 			case 'revoke':
-				$args['usm_message'] = $this->sessions->revoke_handle( $target, 'profile' ) ? 'revoked' : 'not_found';
+				$args['axle_sessions_message'] = $this->sessions->revoke_handle( $target, 'profile' ) ? 'revoked' : 'not_found';
 				break;
 
 			case 'sign_out_others':
-				$args['usm_message'] = 'signed_out_others';
-				$args['usm_count']   = get_current_user_id() === $user_id ? $this->sessions->revoke_others( $user_id, $this->sessions->current_verifier(), 'profile' ) : 0;
+				$args['axle_sessions_message'] = 'signed_out_others';
+				$args['axle_sessions_count']   = get_current_user_id() === $user_id ? $this->sessions->revoke_others( $user_id, $this->sessions->current_verifier(), 'profile' ) : 0;
 				break;
 
 			case 'sign_out':
-				$args['usm_message'] = 'signed_out_user';
-				$args['usm_count']   = $this->sessions->sign_out_everywhere( $user_id, 'profile' );
-				$args['usm_user']    = $user_id;
+				$args['axle_sessions_message'] = 'signed_out_user';
+				$args['axle_sessions_count']   = $this->sessions->sign_out_everywhere( $user_id, 'profile' );
+				$args['axle_sessions_user']    = $user_id;
 				break;
 		}
 
@@ -466,11 +466,11 @@ final class ProfileSessions implements Service {
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Display-only values set by our own redirect.
-		$message = isset( $_GET['usm_message'] ) ? sanitize_key( wp_unslash( $_GET['usm_message'] ) ) : '';
-		$count   = isset( $_GET['usm_count'] ) ? absint( $_GET['usm_count'] ) : 0;
-		$user    = isset( $_GET['usm_user'] ) ? get_userdata( absint( $_GET['usm_user'] ) ) : false;
-		$extra   = isset( $_GET['usm_extra'] ) ? absint( $_GET['usm_extra'] ) : 0;
-		$apps    = isset( $_GET['usm_apps'] ) ? absint( $_GET['usm_apps'] ) : 0;
+		$message = isset( $_GET['axle_sessions_message'] ) ? sanitize_key( wp_unslash( $_GET['axle_sessions_message'] ) ) : '';
+		$count   = isset( $_GET['axle_sessions_count'] ) ? absint( $_GET['axle_sessions_count'] ) : 0;
+		$user    = isset( $_GET['axle_sessions_user'] ) ? get_userdata( absint( $_GET['axle_sessions_user'] ) ) : false;
+		$extra   = isset( $_GET['axle_sessions_extra'] ) ? absint( $_GET['axle_sessions_extra'] ) : 0;
+		$apps    = isset( $_GET['axle_sessions_apps'] ) ? absint( $_GET['axle_sessions_apps'] ) : 0;
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		// The address can be typed by anyone, so a name only shows to someone who may manage that user.
@@ -483,7 +483,7 @@ final class ProfileSessions implements Service {
 			return;
 		}
 
-		printf( '<div class="notice notice-%1$s is-dismissible usm-notice"><p>%2$s</p></div>', 'not_found' === $message ? 'warning' : 'success', esc_html( $text ) );
+		printf( '<div class="notice notice-%1$s is-dismissible axle-sessions-notice"><p>%2$s</p></div>', 'not_found' === $message ? 'warning' : 'success', esc_html( $text ) );
 	}
 
 	/**

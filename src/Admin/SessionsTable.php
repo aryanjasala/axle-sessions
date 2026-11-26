@@ -254,8 +254,8 @@ final class SessionsTable extends \WP_List_Table {
 		$current = isset( $_REQUEST['role'] ) ? sanitize_key( wp_unslash( $_REQUEST['role'] ) ) : '';
 		?>
 		<div class="alignleft actions">
-			<label for="usm-role" class="screen-reader-text"><?php esc_html_e( 'Filter by role', 'axle-sessions' ); ?></label>
-			<select name="role" id="usm-role">
+			<label for="axle-sessions-role" class="screen-reader-text"><?php esc_html_e( 'Filter by role', 'axle-sessions' ); ?></label>
+			<select name="role" id="axle-sessions-role">
 				<option value=""><?php esc_html_e( 'All roles', 'axle-sessions' ); ?></option>
 				<?php foreach ( wp_roles()->get_names() as $role => $name ) : ?>
 					<option value="<?php echo esc_attr( $role ); ?>" <?php selected( $current, $role ); ?>><?php echo esc_html( translate_user_role( $name ) ); ?></option>
@@ -279,7 +279,7 @@ final class SessionsTable extends \WP_List_Table {
 		}
 
 		return sprintf(
-			'<label class="screen-reader-text" for="usm-cb-%1$s">%2$s</label><input type="checkbox" id="usm-cb-%1$s" name="handles[]" value="%1$s" />',
+			'<label class="screen-reader-text" for="axle-sessions-cb-%1$s">%2$s</label><input type="checkbox" id="axle-sessions-cb-%1$s" name="handles[]" value="%1$s" />',
 			esc_attr( $item['handle'] ),
 			esc_html__( 'Select session', 'axle-sessions' )
 		);
@@ -303,7 +303,7 @@ final class SessionsTable extends \WP_List_Table {
 		}
 
 		return sprintf(
-			'<span class="usm-user">%1$s<span>%2$s<br><small>%3$s</small></span></span>',
+			'<span class="axle-sessions-user">%1$s<span>%2$s<br><small>%3$s</small></span></span>',
 			get_avatar( $user->ID, 32 ),
 			$name,
 			esc_html( $user->display_name !== $user->user_login ? $user->display_name : $user->user_email )
@@ -327,7 +327,7 @@ final class SessionsTable extends \WP_List_Table {
 		$actions = array();
 		if ( Access::can_manage( $user->ID ) && ! $item['current'] ) {
 			$actions['revoke'] = sprintf(
-				'<a href="%1$s" data-usm-confirm="%3$s" data-usm-confirm-title="%4$s" data-usm-confirm-button="%5$s">%2$s</a>',
+				'<a href="%1$s" data-axle-sessions-confirm="%3$s" data-axle-sessions-confirm-title="%4$s" data-axle-sessions-confirm-button="%5$s">%2$s</a>',
 				esc_url( SessionsPage::action_url( 'revoke', $item['handle'] ) ),
 				esc_html__( 'Sign out', 'axle-sessions' ),
 				esc_attr__( 'That browser is signed out the next time it loads a page. This cannot be undone, but the person can sign in again.', 'axle-sessions' ),
@@ -384,7 +384,7 @@ final class SessionsTable extends \WP_List_Table {
 	 * @param array $item Row.
 	 */
 	public function single_row( $item ): void {
-		printf( '<tr class="usm-session%s">', $item['current'] ? ' is-current' : '' );
+		printf( '<tr class="axle-sessions-session%s">', $item['current'] ? ' is-current' : '' );
 		$this->single_row_columns( $item );
 		echo '</tr>';
 	}

@@ -10,7 +10,7 @@ namespace AryanX\Axle\Sessions;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One place for every permission check, shared by the screens, WP-CLI and abilities.
+ * One place for every permission check, shared by the screens and WP-CLI.
  *
  * Everyone may see and end their own sessions. Seeing everyone's needs
  * list_users plus the plugin capability (edit_users by default), and ending
