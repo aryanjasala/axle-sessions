@@ -3,7 +3,7 @@
  * Plugin Name:       Axle Sessions
  * Plugin URI:        https://wordpress.org/plugins/axle-sessions/
  * Description:       See every device signed in to WordPress, revoke one, and limit sessions per role.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Requires at least: 6.6
  * Requires PHP:      7.4
  * Author:            Aryan Jasala
@@ -19,7 +19,7 @@ namespace AryanX\Axle\Sessions;
 
 defined( 'ABSPATH' ) || exit;
 
-const VERSION     = '1.0.0';
+const VERSION     = '1.0.1';
 const PLUGIN_FILE = __FILE__;
 
 // PSR-4: AryanX\Axle\Sessions\Foo\Bar lives in src/Foo/Bar.php.
