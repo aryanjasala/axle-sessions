@@ -4,7 +4,7 @@ Tags: sessions, security, login, logout, devices
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -124,6 +124,9 @@ No. The plugin reads sessions from user meta, where WordPress keeps them by defa
 6. Sign everyone out, with the application passwords to revoke.
 
 == Changelog ==
+
+= 1.0.1 =
+* Fix: longer prefixes, nonce checks, and no remote actions through abilities
 
 = 1.0.0 =
 * First release.
