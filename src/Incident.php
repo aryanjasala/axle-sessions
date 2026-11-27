@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
  * The work runs in slices. Each slice visits users for a few seconds, then
  * hands back the job with a cursor, so a site with thousands of users never
  * runs one long request. The Sessions screen carries on from a progress page,
- * WP-CLI and the ability loop until the job is done.
+ * WP-CLI loop until the job is done.
  *
  * The person who starts it is always left out of the password step, so they
  * cannot lock themselves out of the screen they are using. They stay signed in
@@ -70,7 +70,7 @@ final class Incident {
 	 *     @type string[] $exclude_roles Roles whose users are left alone.
 	 *     @type bool     $passwords     Also make every password stop working. Default false.
 	 *     @type bool     $app_passwords Also revoke every application password. Default true.
-	 *     @type string   $via           screen, cli or ability.
+	 *     @type string   $via           screen, cli.
 	 *     @type bool     $check_caps    Check edit_user for each user. Default true; WP-CLI turns it off.
 	 * }
 	 * @return array The job to hand to run().

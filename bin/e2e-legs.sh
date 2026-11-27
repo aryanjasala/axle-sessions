@@ -5,7 +5,7 @@
 # Usage: bin/e2e-legs.sh [--leg <label>] [--keep] [-- <Playwright arguments>]
 #   npm run test:e2e:legs
 #   npm run test:e2e:legs -- --leg latest
-#   npm run test:e2e:legs -- -- -g "abilities"
+#   npm run test:e2e:legs -- -- -g "WP-CLI"
 #
 # Each leg starts from an empty site, so anything on the test site is lost.
 # The stack is stopped at the end; --keep leaves the last leg running.

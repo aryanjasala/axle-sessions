@@ -1,13 +1,12 @@
 <?php
 /**
- * Tests for the hourly clean-up, the abilities and the Users column.
+ * Tests for the hourly clean-up, the Users column.
  *
  * @package AryanX\Axle\Sessions
  */
 
 namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\Sessions\Abilities;
 use AryanX\Axle\Sessions\Admin\SessionsPage;
 use AryanX\Axle\Sessions\Admin\UsersColumn;
 use AryanX\Axle\Sessions\Pruner;
@@ -67,75 +66,6 @@ final class PrunerTest extends SessionTestCase {
 		\WP_User_Query::$queue = array( array() );
 		$this->pruner()->run();
 		$this->assertSame( 0, $this->options[ Pruner::CURSOR ], 'A short batch starts over next time.' );
-	}
-
-	public function test_abilities_are_public_with_the_right_annotations(): void {
-		$registered = array();
-		Functions\when( 'wp_register_ability' )->alias(
-			static function ( $name, $args ) use ( &$registered ) {
-				$registered[ $name ] = $args;
-			}
-		);
-
-		$settings = new Settings();
-		$sessions = new Sessions( $settings );
-		( $this->abilities( $settings, $sessions, new SharedLogins( $settings, $sessions ) ) )->register_abilities();
-
-		$this->assertSame( array(
-				'axle-sessions/list-sessions',
-				'axle-sessions/revoke-session',
-				'axle-sessions/sign-out-user',
-				'axle-sessions/list-shared-logins',
-				'axle-sessions/list-sign-in-history',
-				'axle-sessions/list-not-me-reports',
-				'axle-sessions/sign-out-everyone',
-			),
-			array_keys( $registered ) );
-		foreach ( $registered as $args ) {
-			$this->assertTrue( $args['meta']['public'] );
-			$this->assertTrue( $args['meta']['mcp']['public'] );
-			$this->assertTrue( $args['meta']['show_in_rest'] );
-		}
-		$this->assertTrue( $registered['axle-sessions/list-sessions']['meta']['annotations']['readonly'] );
-		$this->assertTrue( $registered['axle-sessions/list-sign-in-history']['meta']['annotations']['readonly'] );
-		$this->assertTrue( $registered['axle-sessions/list-not-me-reports']['meta']['annotations']['readonly'] );
-		$this->assertTrue( $registered['axle-sessions/sign-out-everyone']['meta']['annotations']['destructive'] );
-		$this->assertFalse( $registered['axle-sessions/sign-out-everyone']['meta']['annotations']['readonly'] );
-		$this->assertTrue( $registered['axle-sessions/list-shared-logins']['meta']['annotations']['readonly'] );
-		$this->assertSame(
-			array(
-				'readonly'    => false,
-				'destructive' => true,
-				'idempotent'  => true,
-			),
-			$registered['axle-sessions/revoke-session']['meta']['annotations']
-		);
-	}
-
-	public function test_ability_permissions_follow_the_screens(): void {
-		$this->user( 2, 'bob' );
-		$this->user( 7, 'alice' );
-		$this->current_user = 7;
-		Functions\when( 'current_user_can' )->justReturn( false );
-		Functions\when( 'is_email' )->justReturn( false );
-		$settings  = new Settings();
-		$sessions  = new Sessions( $settings );
-		$abilities = $this->abilities( $settings, $sessions, new SharedLogins( $settings, $sessions ) );
-
-		$this->assertTrue( $abilities->can_list() );
-		$this->assertTrue( $abilities->can_list( array( 'user' => 'alice' ) ) );
-		$this->assertFalse( $abilities->can_list( array( 'user' => 'bob' ) ) );
-		$this->assertFalse( $abilities->can_list( array( 'all' => true ) ) );
-		$this->assertTrue( $abilities->can_revoke( array( 'handle' => '7-0123456789abcdef01234567' ) ) );
-		$this->assertFalse( $abilities->can_revoke( array( 'handle' => '2-0123456789abcdef01234567' ) ) );
-		$this->assertFalse( $abilities->can_sign_out( array( 'user' => 2 ) ) );
-		$this->assertTrue( $abilities->can_sign_out( array( 'user' => '7' ) ) );
-
-		$this->assertTrue( $abilities->can_list_shared( array( 'user' => 'alice' ) ) );
-		$this->assertFalse( $abilities->can_list_shared( array( 'user' => 'bob' ) ) );
-		$this->assertFalse( $abilities->can_list_shared() );
-
-		$this->assertInstanceOf( \WP_Error::class, $abilities->sign_out_user( array( 'user' => 'ghost' ) ) );
 	}
 
 	public function test_the_users_column_counts_and_links_sessions(): void {

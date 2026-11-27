@@ -9,7 +9,7 @@
       "name": "Profile > Your sessions",
       "url": "/wp-admin/profile.php",
       "include": [
-        ".usm-profile"
+        ".axle-sessions-profile"
       ]
     },
     {
@@ -51,14 +51,14 @@
           "save": "maria"
         }
       ],
-      "url": "/wp-admin/user-edit.php?user_id={maria}&usm_confirm=sign_out",
+      "url": "/wp-admin/user-edit.php?user_id={maria}&axle_sessions_confirm=sign_out",
       "steps": [
         {
-          "waitFor": ".usm-confirm-inline"
+          "waitFor": ".axle-sessions-confirm-inline"
         }
       ],
       "include": [
-        ".usm-profile"
+        ".axle-sessions-profile"
       ],
       "cleanup": [
         {
@@ -94,11 +94,11 @@
       "url": "/wp-admin/user-edit.php?user_id={maria}",
       "steps": [
         {
-          "waitFor": ".usm-shared"
+          "waitFor": ".axle-sessions-shared"
         }
       ],
       "include": [
-        ".usm-profile"
+        ".axle-sessions-profile"
       ],
       "cleanup": [
         {
@@ -214,10 +214,13 @@
           "save": "maria"
         }
       ],
-      "url": "/wp-admin/users.php?page=user-sessions&action=sign_out&user={maria}",
+      "url": "/wp-admin/users.php?page=user-sessions&user_id={maria}",
       "steps": [
         {
-          "waitFor": ".usm-confirm"
+          "evaluate": "document.querySelector( '.row-actions .delete a' ).click()"
+        },
+        {
+          "waitFor": ".axle-sessions-confirm"
         }
       ],
       "cleanup": [
@@ -269,7 +272,7 @@
       "url": "/wp-admin/users.php?page=user-sessions&shared=1&user_id={maria}",
       "steps": [
         {
-          "waitFor": ".usm-shared"
+          "waitFor": ".axle-sessions-shared"
         },
         {
           "waitFor": ".subsubsub"
@@ -307,7 +310,7 @@
       ],
       "url": "/wp-admin/users.php",
       "include": [
-        ".column-usm_sessions"
+        ".column-axle_sessions_sessions"
       ],
       "cleanup": [
         {
@@ -350,7 +353,7 @@
       ],
       "steps": [
         {
-          "waitFor": ".usm-policies"
+          "waitFor": ".axle-sessions-policies"
         }
       ]
     },
@@ -396,7 +399,7 @@
           "password": "demo-password-123"
         },
         {
-          "waitFor": ".usm-swap-device"
+          "waitFor": ".axle-sessions-swap-device"
         }
       ],
       "include": [
@@ -502,11 +505,11 @@
       "url": "/wp-admin/user-edit.php?user_id={maria}",
       "steps": [
         {
-          "waitFor": ".usm-history"
+          "waitFor": ".axle-sessions-history"
         }
       ],
       "include": [
-        ".usm-profile"
+        ".axle-sessions-profile"
       ],
       "cleanup": [
         {
@@ -536,14 +539,14 @@
           "save": "maria"
         }
       ],
-      "url": "/wp-admin/user-edit.php?user_id={maria}#usm-history",
+      "url": "/wp-admin/user-edit.php?user_id={maria}#axle-sessions-history",
       "steps": [
         {
-          "waitFor": "#usm-history"
+          "waitFor": "#axle-sessions-history"
         }
       ],
       "include": [
-        ".usm-profile"
+        ".axle-sessions-profile"
       ],
       "cleanup": [
         {
@@ -561,9 +564,9 @@
           "--history-days=0"
         ]
       ],
-      "url": "/wp-admin/profile.php#usm-history",
+      "url": "/wp-admin/profile.php#axle-sessions-history",
       "include": [
-        ".usm-profile"
+        ".axle-sessions-profile"
       ],
       "cleanup": [
         [
@@ -608,14 +611,14 @@
       "url": "/wp-admin/user-edit.php?user_id={maria}",
       "steps": [
         {
-          "click": ".usm-sessions a[data-usm-confirm]"
+          "click": ".axle-sessions-sessions a[data-axle-sessions-confirm]"
         },
         {
-          "waitFor": ".usm-confirm-box"
+          "waitFor": ".axle-sessions-confirm-box"
         }
       ],
       "include": [
-        ".usm-profile"
+        ".axle-sessions-profile"
       ],
       "cleanup": [
         {
@@ -657,13 +660,13 @@
       "url": "/wp-admin/users.php?page=user-sessions",
       "steps": [
         {
-          "waitFor": ".usm-reports"
+          "waitFor": ".axle-sessions-reports"
         },
         {
-          "waitFor": ".usm-steps"
+          "waitFor": ".axle-sessions-steps"
         },
         {
-          "waitFor": ".usm-danger"
+          "waitFor": ".axle-sessions-danger"
         }
       ],
       "cleanup": [
@@ -679,16 +682,16 @@
     },
     {
       "name": "Users > Sessions, asking before signing everyone out",
-      "url": "/wp-admin/users.php?page=user-sessions&usm_incident=1",
+      "url": "/wp-admin/users.php?page=user-sessions&axle_sessions_incident=1",
       "steps": [
         {
-          "waitFor": ".usm-incident-form"
+          "waitFor": ".axle-sessions-incident-form"
         }
       ]
     },
     {
       "name": "Users > Sessions, the confirmation words did not match",
-      "url": "/wp-admin/users.php?page=user-sessions&usm_incident=1&usm_error=typed",
+      "url": "/wp-admin/users.php?page=user-sessions&axle_sessions_incident=1&axle_sessions_error=typed",
       "steps": [
         {
           "waitFor": ".notice-error"
@@ -715,7 +718,7 @@
       ],
       "steps": [
         {
-          "waitFor": ".usm-policies"
+          "waitFor": ".axle-sessions-policies"
         }
       ]
     },
@@ -821,7 +824,7 @@
     {
       "name": "This link no longer works page",
       "loggedOut": true,
-      "url": "/wp-login.php?action=axle_sessions_not_me&usm_key=3.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "url": "/wp-login.php?action=axle_sessions_not_me&axle_sessions_key=3.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "steps": [
         {
           "waitFor": "#login_error"
@@ -833,7 +836,7 @@
       "cleanup": [
         [
           "eval",
-          "global $wpdb; $wpdb->query( \"DELETE FROM $wpdb->options WHERE option_name LIKE '%usm_nm_%'\" );"
+          "global $wpdb; $wpdb->query( \"DELETE FROM $wpdb->options WHERE option_name LIKE '%axle_sessions_nm_%'\" );"
         ]
       ]
     }

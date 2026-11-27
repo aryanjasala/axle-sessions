@@ -23,22 +23,22 @@ test( 'demo: sign out a lost phone, then a whole user', async ( { browser } ) =>
 	try {
 		await recordDemo( browser, async ( page, demo ) => {
 			await page.goto( '/wp-admin/profile.php' );
-			await page.locator( '.usm-profile' ).scrollIntoViewIfNeeded();
+			await page.locator( '.axle-sessions-profile' ).scrollIntoViewIfNeeded();
 			await demo.start();
 			await demo.pause( 1500 );
 
 			// The phone was lost: sign it out from the profile.
-			const phone = page.locator( '.usm-session', { hasText: 'Safari on iOS' } );
+			const phone = page.locator( '.axle-sessions-session', { hasText: 'Safari on iOS' } );
 			await demo.click( phone.getByRole( 'link', { name: 'Sign out' } ), 300 );
-			await expect( page.locator( '.usm-notice' ) ).toContainText( 'Session signed out.' );
-			await page.locator( '.usm-profile' ).scrollIntoViewIfNeeded();
+			await expect( page.locator( '.axle-sessions-notice' ) ).toContainText( 'Session signed out.' );
+			await page.locator( '.axle-sessions-profile' ).scrollIntoViewIfNeeded();
 			await demo.pause( 1800 );
 
 			// Every signed-in device on the site, and one user signed out everywhere.
 			await demo.click( page.locator( '#menu-users a[href*="page=user-sessions"]' ), 300 );
-			await expect( page.locator( 'tbody .usm-session' ) ).toHaveCount( 5 );
+			await expect( page.locator( 'tbody .axle-sessions-session' ) ).toHaveCount( 5 );
 			await demo.pause( 1500 );
-			const maria = page.locator( 'tbody .usm-session', { hasText: 'maria' } ).first();
+			const maria = page.locator( 'tbody .axle-sessions-session', { hasText: 'maria' } ).first();
 			await demo.moveTo( maria.locator( '.column-user' ) );
 			await demo.pause( 600 );
 			await demo.click( maria.getByRole( 'link', { name: 'Sign out everywhere' } ), 300 );
@@ -46,7 +46,7 @@ test( 'demo: sign out a lost phone, then a whole user', async ( { browser } ) =>
 			await expect( page.getByRole( 'heading', { name: 'Sign out maria everywhere?' } ) ).toBeVisible();
 			await demo.pause( 1500 );
 			await demo.click( page.getByRole( 'button', { name: 'Sign out everywhere', exact: true } ), 300 );
-			await expect( page.locator( '.usm-notice' ) ).toContainText( 'maria was signed out of 2 sessions.' );
+			await expect( page.locator( '.axle-sessions-notice' ) ).toContainText( 'maria was signed out of 2 sessions.' );
 			await demo.pause( 2000 );
 		} );
 	} finally {

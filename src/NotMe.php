@@ -102,8 +102,8 @@ final class NotMe implements Service {
 
 		return add_query_arg(
 			array(
-				'action'  => self::ACTION,
-				'usm_key' => $user->ID . '.' . $token,
+				'action'            => self::ACTION,
+				'axle_sessions_key' => $user->ID . '.' . $token,
 			),
 			network_site_url( 'wp-login.php', 'login' )
 		);
@@ -332,9 +332,9 @@ final class NotMe implements Service {
 
 		// phpcs:disable WordPress.Security.NonceVerification -- The key in the request is the credential: a random, single-use token.
 		$post  = isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'];
-		$key   = isset( $_REQUEST['usm_key'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['usm_key'] ) ) : '';
-		$sure  = $post && ! empty( $_POST['usm_confirm'] );
-		$nonce = isset( $_POST['usm_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['usm_nonce'] ) ) : '';
+		$key   = isset( $_REQUEST['axle_sessions_key'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['axle_sessions_key'] ) ) : '';
+		$sure  = $post && ! empty( $_POST['axle_sessions_confirm'] );
+		$nonce = isset( $_POST['axle_sessions_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['axle_sessions_nonce'] ) ) : '';
 		// phpcs:enable WordPress.Security.NonceVerification
 
 		if ( $this->is_limited() ) {
@@ -422,7 +422,7 @@ final class NotMe implements Service {
 		?>
 		<p><?php esc_html_e( 'If it was you, close this page. Nothing has changed.', 'axle-sessions' ); ?></p>
 		<p><strong><?php esc_html_e( 'If it was not you, press the button. This is what happens:', 'axle-sessions' ); ?></strong></p>
-		<ul class="usm-guest-list">
+		<ul class="axle-sessions-guest-list">
 			<li><?php echo esc_html( $what ); ?></li>
 			<li><?php esc_html_e( 'The current password stops working. You choose a new one from a link we email to the address on the account.', 'axle-sessions' ); ?></li>
 			<?php if ( $apps ) : ?>
@@ -449,9 +449,9 @@ final class NotMe implements Service {
 			<li><?php esc_html_e( 'A site administrator is told.', 'axle-sessions' ); ?></li>
 		</ul>
 		<form method="post" action="<?php echo esc_url( add_query_arg( 'action', self::ACTION, network_site_url( 'wp-login.php', 'login' ) ) ); ?>">
-			<input type="hidden" name="usm_key" value="<?php echo esc_attr( $key ); ?>">
-			<input type="hidden" name="usm_confirm" value="1">
-			<input type="hidden" name="usm_nonce" value="<?php echo esc_attr( wp_create_nonce( self::nonce_action( $found['user']->ID ) ) ); ?>">
+			<input type="hidden" name="axle_sessions_key" value="<?php echo esc_attr( $key ); ?>">
+			<input type="hidden" name="axle_sessions_confirm" value="1">
+			<input type="hidden" name="axle_sessions_nonce" value="<?php echo esc_attr( wp_create_nonce( self::nonce_action( $found['user']->ID ) ) ); ?>">
 			<p class="submit"><button type="submit" class="button button-primary button-large"><?php esc_html_e( 'This wasn\'t me, secure the account', 'axle-sessions' ); ?></button></p>
 		</form>
 		<?php
@@ -515,7 +515,7 @@ final class NotMe implements Service {
 		// Only a counter key, hashed with a salt: the address is never stored or shown.
 		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : ''; // phpcs:ignore WordPressVIPMinimum.Variables.ServerVariables.UserControlledHeaders, WordPressVIPMinimum.Variables.RestrictedVariables.cache_constraints___SERVER__REMOTE_ADDR__
 
-		return 'usm_nm_' . substr( hash_hmac( 'sha256', $ip, wp_salt( 'auth' ) ), 0, 32 );
+		return 'axle_sessions_nm_' . substr( hash_hmac( 'sha256', $ip, wp_salt( 'auth' ) ), 0, 32 );
 	}
 
 	/**

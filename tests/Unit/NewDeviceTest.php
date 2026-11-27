@@ -100,7 +100,7 @@ final class NewDeviceTest extends SessionTestCase {
 		$this->assertSame( 'alice@example.com', $this->sent[0]['to'] );
 		$this->assertSame( '[Example Shop] New sign-in to your account', $this->sent[0]['subject'] );
 		$this->assertStringContainsString( 'Device: Firefox on Windows', $this->sent[0]['message'] );
-		$this->assertStringContainsString( 'profile.php#usm-sessions', $this->sent[0]['message'] );
+		$this->assertStringContainsString( 'profile.php#axle-sessions-sessions', $this->sent[0]['message'] );
 	}
 
 	public function test_the_same_browser_on_a_new_network_is_new(): void {

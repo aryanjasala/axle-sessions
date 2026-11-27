@@ -74,7 +74,7 @@ final class SettingsPage implements Service {
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only flag carried over.
-		wp_safe_redirect( self::url( isset( $_GET['usm_saved'] ) ? array( 'usm_saved' => 1 ) : array() ) );
+		wp_safe_redirect( self::url( isset( $_GET['axle_sessions_saved'] ) ? array( 'axle_sessions_saved' => 1 ) : array() ) );
 		exit;
 	}
 
@@ -129,13 +129,13 @@ final class SettingsPage implements Service {
 	public function render_panel(): void {
 		$settings = $this->settings->all();
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only value set by our own redirect.
-		$saved = isset( $_GET['usm_saved'] );
+		$saved = isset( $_GET['axle_sessions_saved'] );
 		?>
-		<div class="usm-settings">
+		<div class="axle-sessions-settings">
 			<p class="axle-intro"><?php esc_html_e( 'Set how many sessions each role may have and how long they last, and choose what happens when an account looks shared.', 'axle-sessions' ); ?></p>
 
 			<?php if ( $saved ) : ?>
-				<div class="notice notice-success is-dismissible usm-notice"><p><?php esc_html_e( 'Settings saved.', 'axle-sessions' ); ?></p></div>
+				<div class="notice notice-success is-dismissible axle-sessions-notice"><p><?php esc_html_e( 'Settings saved.', 'axle-sessions' ); ?></p></div>
 			<?php endif; ?>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -150,7 +150,7 @@ final class SettingsPage implements Service {
 					?>
 				</p>
 				<div class="axle-scroll" tabindex="0" role="region" aria-label="<?php esc_attr_e( 'Policies per role', 'axle-sessions' ); ?>">
-				<table class="widefat striped usm-policies">
+				<table class="widefat striped axle-sessions-policies">
 					<thead>
 						<tr>
 							<th scope="col"><?php esc_html_e( 'Role', 'axle-sessions' ); ?></th>
@@ -168,13 +168,13 @@ final class SettingsPage implements Service {
 								<th scope="row"><?php echo esc_html( translate_user_role( $name ) ); ?></th>
 								<?php foreach ( Settings::POLICY_DEFAULTS as $key => $default ) : ?>
 									<td data-colname="<?php echo esc_attr( $this->field_label( $key ) ); ?>">
-										<label class="screen-reader-text" for="<?php echo esc_attr( "usm-{$role}-{$key}" ); ?>"><?php echo esc_html( translate_user_role( $name ) . ': ' . $this->field_label( $key ) ); ?></label>
-										<input type="number" class="small-text" min="0" max="<?php echo esc_attr( (string) Settings::POLICY_MAX[ $key ] ); ?>" step="1" id="<?php echo esc_attr( "usm-{$role}-{$key}" ); ?>" name="<?php echo esc_attr( "policies[{$role}][{$key}]" ); ?>" value="<?php echo esc_attr( (string) $policy[ $key ] ); ?>">
+										<label class="screen-reader-text" for="<?php echo esc_attr( "axle-sessions-{$role}-{$key}" ); ?>"><?php echo esc_html( translate_user_role( $name ) . ': ' . $this->field_label( $key ) ); ?></label>
+										<input type="number" class="small-text" min="0" max="<?php echo esc_attr( (string) Settings::POLICY_MAX[ $key ] ); ?>" step="1" id="<?php echo esc_attr( "axle-sessions-{$role}-{$key}" ); ?>" name="<?php echo esc_attr( "policies[{$role}][{$key}]" ); ?>" value="<?php echo esc_attr( (string) $policy[ $key ] ); ?>">
 									</td>
 								<?php endforeach; ?>
 								<td data-colname="<?php esc_attr_e( 'Account looks shared', 'axle-sessions' ); ?>">
-									<label class="screen-reader-text" for="<?php echo esc_attr( "usm-{$role}-shared" ); ?>"><?php echo esc_html( translate_user_role( $name ) . ': ' . __( 'Account looks shared', 'axle-sessions' ) ); ?></label>
-									<select id="<?php echo esc_attr( "usm-{$role}-shared" ); ?>" name="<?php echo esc_attr( "shared[{$role}]" ); ?>">
+									<label class="screen-reader-text" for="<?php echo esc_attr( "axle-sessions-{$role}-shared" ); ?>"><?php echo esc_html( translate_user_role( $name ) . ': ' . __( 'Account looks shared', 'axle-sessions' ) ); ?></label>
+									<select id="<?php echo esc_attr( "axle-sessions-{$role}-shared" ); ?>" name="<?php echo esc_attr( "shared[{$role}]" ); ?>">
 										<?php foreach ( $this->shared_labels() as $mode => $label ) : ?>
 											<option value="<?php echo esc_attr( $mode ); ?>" <?php selected( $this->settings->shared_mode( (string) $role ), $mode ); ?>><?php echo esc_html( $label ); ?></option>
 										<?php endforeach; ?>
@@ -185,7 +185,7 @@ final class SettingsPage implements Service {
 					</tbody>
 				</table>
 				</div>
-				<p class="description usm-shared-help">
+				<p class="description axle-sessions-shared-help">
 					<?php esc_html_e( '"Account looks shared" decides what happens when the sessions of an account look like more than one person: more than two networks at the same time, two computers or two phones on different networks at the same time, or more than four devices in a day. The account always gets a "Possibly shared" badge with the reasons. A login is never refused on this guess. Choose "Do not check" for accounts that are meant to be shared, such as a kiosk.', 'axle-sessions' ); ?>
 				</p>
 				</section>
@@ -213,8 +213,8 @@ final class SettingsPage implements Service {
 						<td>
 							<label><input type="checkbox" name="new_device_email" value="1" <?php checked( $settings['new_device_email'] ); ?>> <?php esc_html_e( 'Email users when they sign in from a new browser or network', 'axle-sessions' ); ?></label>
 							<p>
-								<label for="usm-device-days"><?php esc_html_e( 'Remember browsers and networks for', 'axle-sessions' ); ?></label>
-								<input type="number" class="small-text" min="1" max="365" id="usm-device-days" name="device_days" value="<?php echo esc_attr( (string) $settings['device_days'] ); ?>">
+								<label for="axle-sessions-device-days"><?php esc_html_e( 'Remember browsers and networks for', 'axle-sessions' ); ?></label>
+								<input type="number" class="small-text" min="1" max="365" id="axle-sessions-device-days" name="device_days" value="<?php echo esc_attr( (string) $settings['device_days'] ); ?>">
 								<?php esc_html_e( 'days', 'axle-sessions' ); ?>
 							</p>
 							<p class="description"><?php esc_html_e( 'A browser and IP address pair not seen on the account for that long counts as new. Only a scrambled fingerprint is kept, not the address. The first login after this is turned on is remembered without an email.', 'axle-sessions' ); ?></p>
@@ -237,8 +237,8 @@ final class SettingsPage implements Service {
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Sign-in history', 'axle-sessions' ); ?></th>
 						<td>
-							<label for="usm-history-days"><?php esc_html_e( 'Keep sign-in history for', 'axle-sessions' ); ?></label>
-							<input type="number" class="small-text" min="0" max="365" id="usm-history-days" name="history_days" value="<?php echo esc_attr( (string) $settings['history_days'] ); ?>">
+							<label for="axle-sessions-history-days"><?php esc_html_e( 'Keep sign-in history for', 'axle-sessions' ); ?></label>
+							<input type="number" class="small-text" min="0" max="365" id="axle-sessions-history-days" name="history_days" value="<?php echo esc_attr( (string) $settings['history_days'] ); ?>">
 							<?php esc_html_e( 'days', 'axle-sessions' ); ?>
 							<p class="description"><?php esc_html_e( 'The history shows on each profile: where and when an account signed in, and how each session ended. It uses the same IP address setting as sessions. Set it to 0 to keep none. Entries older than this are deleted.', 'axle-sessions' ); ?></p>
 						</td>
@@ -338,7 +338,7 @@ final class SettingsPage implements Service {
 			)
 		);
 
-		wp_safe_redirect( self::url( array( 'usm_saved' => 1 ) ) );
+		wp_safe_redirect( self::url( array( 'axle_sessions_saved' => 1 ) ) );
 		exit;
 	}
 }

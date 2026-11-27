@@ -47,7 +47,7 @@ final class Display {
 	/**
 	 * Anchor of the shared login evidence.
 	 */
-	public const SHARED_ANCHOR = 'usm-shared';
+	public const SHARED_ANCHOR = 'axle-sessions-shared';
 
 	/**
 	 * "3 hours ago" or "in 2 days", with the exact time on hover.
@@ -67,7 +67,7 @@ final class Display {
 		wp_enqueue_script( 'axle-sessions', plugins_url( 'assets/admin.js', PLUGIN_FILE ), array( 'wp-a11y', 'wp-hooks' ), VERSION, true );
 		wp_localize_script(
 			'axle-sessions',
-			'usmAdmin',
+			'axleSessionsAdmin',
 			array(
 				'title'   => __( 'Sign this session out?', 'axle-sessions' ),
 				'confirm' => __( 'Sign out', 'axle-sessions' ),
@@ -121,11 +121,11 @@ final class Display {
 		$type  = isset( $icons[ $row['device_type'] ] ) ? $row['device_type'] : 'unknown';
 
 		return sprintf(
-			'<span class="usm-device"><span class="dashicons %1$s" aria-hidden="true"></span><span><strong title="%2$s">%3$s</strong>%4$s%5$s<br><small>%6$s</small></span></span>',
+			'<span class="axle-sessions-device"><span class="dashicons %1$s" aria-hidden="true"></span><span><strong title="%2$s">%3$s</strong>%4$s%5$s<br><small>%6$s</small></span></span>',
 			esc_attr( $icons[ $type ] ),
 			esc_attr( $row['ua'] ),
 			esc_html( $row['device'] ),
-			$row['current'] ? ' <span class="usm-badge axle-badge axle-badge--info">' . esc_html__( 'This device', 'axle-sessions' ) . '</span>' : '',
+			$row['current'] ? ' <span class="axle-sessions-badge axle-badge axle-badge--info">' . esc_html__( 'This device', 'axle-sessions' ) . '</span>' : '',
 			$shared ? ' ' . self::shared_badge() : '',
 			esc_html( $types[ $type ] )
 		);
@@ -137,7 +137,7 @@ final class Display {
 	 * @return string HTML.
 	 */
 	public static function shared_badge(): string {
-		return '<span class="usm-badge usm-badge-shared axle-badge axle-badge--warning">' . esc_html__( 'Possibly shared', 'axle-sessions' ) . '</span>';
+		return '<span class="axle-sessions-badge axle-sessions-badge-shared axle-badge axle-badge--warning">' . esc_html__( 'Possibly shared', 'axle-sessions' ) . '</span>';
 	}
 
 	/**
@@ -170,7 +170,7 @@ final class Display {
 			$items .= sprintf(
 				'<li>%1$s%2$s</li>',
 				esc_html( SharedLogins::evidence_text( $evidence ) ),
-				'' !== $sessions ? '<ul class="usm-shared-sessions">' . $sessions . '</ul>' : ''
+				'' !== $sessions ? '<ul class="axle-sessions-shared-sessions">' . $sessions . '</ul>' : ''
 			);
 		}
 
@@ -184,7 +184,7 @@ final class Display {
 		}
 
 		return sprintf(
-			'<div class="usm-shared notice notice-warning inline" id="%1$s"><p>%2$s <strong>%3$s</strong></p><p>%4$s</p><ul class="usm-shared-evidence">%5$s</ul><p class="description">%6$s %7$s</p></div>',
+			'<div class="axle-sessions-shared notice notice-warning inline" id="%1$s"><p>%2$s <strong>%3$s</strong></p><p>%4$s</p><ul class="axle-sessions-shared-evidence">%5$s</ul><p class="description">%6$s %7$s</p></div>',
 			esc_attr( self::SHARED_ANCHOR ),
 			self::shared_badge(),
 			esc_html__( 'This account looks shared by more than one person.', 'axle-sessions' ),

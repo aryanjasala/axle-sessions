@@ -34,7 +34,7 @@ jobs:
             image: php7.4-apache
             core: '6.6.2'
             theme: twentytwentyfour
-          # The first release with the Abilities API, before the hooks 7.1 added to it.
+          # Between the oldest version and the latest.
           - label: '6.9'
             image: php8.3-apache
             core: '6.9.10'

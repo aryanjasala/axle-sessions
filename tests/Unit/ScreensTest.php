@@ -66,8 +66,8 @@ final class ScreensTest extends SessionTestCase {
 
 	public function test_the_result_notice_only_shows_on_the_plugins_own_screens(): void {
 		$query = array(
-			'usm_message' => 'bulk',
-			'usm_count'   => '3',
+			'axle_sessions_message' => 'bulk',
+			'axle_sessions_count'   => '3',
 		);
 
 		foreach ( array( 'profile', 'user-edit', 'users_page_user-sessions', 'users_page_user-sessions-network', 'profile-network' ) as $id ) {
@@ -84,9 +84,9 @@ final class ScreensTest extends SessionTestCase {
 		$this->user( 7, 'alice' );
 		$this->current_user = 1;
 		$query              = array(
-			'usm_message' => 'signed_out_user',
-			'usm_count'   => '2',
-			'usm_user'    => '7',
+			'axle_sessions_message' => 'signed_out_user',
+			'axle_sessions_count'   => '2',
+			'axle_sessions_user'    => '7',
 		);
 
 		Functions\when( 'current_user_can' )->justReturn( false );

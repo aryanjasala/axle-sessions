@@ -1,14 +1,13 @@
 <?php
 /**
  * Tests for shared login detection: the checks, the flag, the hooks, the
- * actions per role, and the ability, WP-CLI and privacy pieces around them.
+ * actions per role, and the WP-CLI and privacy pieces around them.
  *
  * @package AryanX\Axle\Sessions
  */
 
 namespace AryanX\Axle\Sessions\Tests\Unit;
 
-use AryanX\Axle\Sessions\Abilities;
 use AryanX\Axle\Sessions\Activity;
 use AryanX\Axle\Sessions\Admin\Display;
 use AryanX\Axle\Sessions\Cli\Command;
@@ -537,33 +536,6 @@ final class SharedLoginsTest extends SessionTestCase {
 		$this->assertSame( SharedLogins::META, \WP_User_Query::$made[0]['meta_key'] );
 	}
 
-	public function test_the_ability_lists_flagged_accounts_with_their_reasons(): void {
-		$user = $this->user( 7, 'alice' );
-		$this->two_computers( 7 );
-		$settings = new Settings();
-		$sessions = new Sessions( $settings );
-		$shared   = new SharedLogins( $settings, $sessions );
-		$shared->check( $user );
-		Functions\when( 'is_email' )->justReturn( false );
-		$this->current_user = 1;
-		Functions\when( 'current_user_can' )->justReturn( true );
-
-		\WP_User_Query::$queue = array( array( 7 ) );
-		$all = ( $this->abilities( $settings, $sessions, $shared ) )->list_shared_logins();
-
-		$this->assertSame( 1, $all['total'] );
-		$account = $all['accounts'][0];
-		$this->assertSame( 'alice', $account['user_login'] );
-		$this->assertSame( 'flag', $account['action'] );
-		$this->assertSame( 'same_type', $account['evidence'][0]['type'] );
-		$this->assertSame( '2 computers on different networks were used at the same time.', $account['evidence'][0]['summary'] );
-		$this->assertSame( array( '198.51.100.20', '192.0.2.10' ), array_column( $account['sessions'], 'ip' ), 'Most recently active first.' );
-		$this->assertMatchesRegularExpression( '/^7-[0-9a-f]{24}$/', $account['sessions'][0]['handle'] );
-
-		$this->assertSame( 1, ( $this->abilities( $settings, $sessions, $shared ) )->list_shared_logins( array( 'user' => 'alice' ) )['total'] );
-		$this->assertSame( 0, ( $this->abilities( $settings, $sessions, $shared ) )->list_shared_logins( array( 'user' => 'nobody' ) )['total'] );
-	}
-
 	public function test_privacy_exports_and_erases_the_flag(): void {
 		$user = $this->user( 7, 'alice' );
 		$this->two_computers( 7 );
@@ -617,14 +589,14 @@ final class SharedLoginsTest extends SessionTestCase {
 
 		$html = Display::shared_evidence( $flag );
 
-		$this->assertStringContainsString( 'id="usm-shared"', $html );
+		$this->assertStringContainsString( 'id="axle-sessions-shared"', $html );
 		$this->assertStringContainsString( 'Possibly shared', $html );
 		$this->assertStringContainsString( '2 computers on different networks were used at the same time.', $html );
 		$this->assertStringContainsString( '<strong>Firefox on Windows</strong>, 192.0.2.10, IN, last active', $html );
 		$this->assertStringContainsString( '<strong>Chrome on macOS</strong>, IP address unknown', $html );
 		$this->assertSame( 2, substr_count( $html, '<li><strong>' ), 'A session missing from the copy is left out.' );
 		$this->assertStringContainsString( '1 session was signed out. The newest one was kept.', $html );
-		$this->assertStringContainsString( 'usm-badge-shared', Display::device( array( 'device_type' => 'desktop', 'ua' => '', 'device' => 'x', 'current' => false ), true ) );
+		$this->assertStringContainsString( 'axle-sessions-badge-shared', Display::device( array( 'device_type' => 'desktop', 'ua' => '', 'device' => 'x', 'current' => false ), true ) );
 	}
 
 	public function test_cli_lists_flagged_accounts_and_sets_the_mode_per_role(): void {

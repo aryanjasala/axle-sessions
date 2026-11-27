@@ -43,7 +43,7 @@ CI runs the end-to-end tests on the latest WordPress and on the oldest versions 
 ```sh
 npm run test:e2e:legs                      # every leg
 npm run test:e2e:legs -- --leg latest      # one leg
-npm run test:e2e:legs -- -- -g "abilities" # Playwright arguments go after a second --
+npm run test:e2e:legs -- -- -g "WP-CLI" # Playwright arguments go after a second --
 ```
 
 Each leg starts from an empty site, and the site is stopped at the end (`--keep` leaves the last leg running).

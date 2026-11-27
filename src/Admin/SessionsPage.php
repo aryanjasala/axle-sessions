@@ -144,12 +144,20 @@ final class SessionsPage implements Service {
 	 * @return string
 	 */
 	public static function confirm_url( int $user_id ): string {
-		return self::url(
-			array(
-				'action' => 'sign_out',
-				'user'   => $user_id,
-			)
-		);
+		return self::action_url( 'sign_out', (string) $user_id );
+	}
+
+	/**
+	 * Nonce action for the confirmation form, tied to what it will sign out.
+	 *
+	 * @param string[] $targets Handles for a bulk action, or the user ID for one user.
+	 * @return string
+	 */
+	public static function confirm_action( array $targets ): string {
+		$targets = array_map( 'strval', $targets );
+		sort( $targets );
+
+		return 'axle_sessions_confirm_' . md5( implode( ',', $targets ) );
 	}
 
 	/**
@@ -254,7 +262,7 @@ final class SessionsPage implements Service {
 	 */
 	private function render_policies(): void {
 		?>
-		<div class="wrap axle-ui usm-page">
+		<div class="wrap axle-ui axle-sessions-page">
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Sessions', 'axle-sessions' ); ?></h1>
 			<hr class="wp-header-end">
 			<?php $this->render_tabs( 'policies' ); ?>
@@ -312,8 +320,8 @@ final class SessionsPage implements Service {
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification -- The nonce is checked below, before anything changes.
-		$confirmed = ! empty( $_POST['usm_confirmed'] );
-		$keep      = ! isset( $_POST['usm_scope'] ) || 'all' !== sanitize_key( wp_unslash( $_POST['usm_scope'] ) );
+		$confirmed = ! empty( $_POST['axle_sessions_confirmed'] );
+		$keep      = ! isset( $_POST['axle_sessions_scope'] ) || 'all' !== sanitize_key( wp_unslash( $_POST['axle_sessions_scope'] ) );
 		// phpcs:enable WordPress.Security.NonceVerification
 
 		$count   = 0;
@@ -326,7 +334,7 @@ final class SessionsPage implements Service {
 				$this->ask( self::users_of( $handles ), $handles );
 				return;
 			}
-			check_admin_referer( 'sign_out' === $action ? 'axle_sessions_confirm' : 'bulk-sessions' );
+			check_admin_referer( 'sign_out' === $action ? self::confirm_action( $handles ) : 'bulk-sessions' );
 			$count = $this->bulk( $action, $handles, $keep );
 			if ( 'sign_out' === $action && ! $keep && in_array( get_current_user_id(), self::users_of( $handles ), true ) ) {
 				$this->signed_out_here();
@@ -341,10 +349,11 @@ final class SessionsPage implements Service {
 			$user_id = absint( $_REQUEST['user'] );
 			$this->require_manage( $user_id );
 			if ( ! $confirmed ) {
+				check_admin_referer( 'axle_sessions_sign_out_' . $user_id );
 				$this->ask( array( $user_id ), array() );
 				return;
 			}
-			check_admin_referer( 'axle_sessions_confirm' );
+			check_admin_referer( self::confirm_action( array( (string) $user_id ) ) );
 			if ( get_current_user_id() === $user_id && $keep ) {
 				$count   = $this->sessions->revoke_others( $user_id, $this->sessions->current_verifier(), 'admin' );
 				$message = 'signed_out_others';
@@ -369,10 +378,10 @@ final class SessionsPage implements Service {
 				$args[ $key ] = sanitize_text_field( wp_unslash( $_REQUEST[ $key ] ) );
 			}
 		}
-		$args['usm_message'] = $message;
-		$args['usm_count']   = $count;
+		$args['axle_sessions_message'] = $message;
+		$args['axle_sessions_count']   = $count;
 		if ( $signed ) {
-			$args['usm_user'] = $signed;
+			$args['axle_sessions_user'] = $signed;
 		}
 
 		wp_safe_redirect( self::url( $args ) );
@@ -389,26 +398,26 @@ final class SessionsPage implements Service {
 
 		check_admin_referer( 'axle_sessions_incident' );
 
-		$typed = isset( $_POST['usm_typed'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['usm_typed'] ) ) ) : '';
+		$typed = isset( $_POST['axle_sessions_typed'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['axle_sessions_typed'] ) ) ) : '';
 		if ( ! hash_equals( Incident::confirm_word(), $typed ) ) {
 			wp_safe_redirect(
 				self::url(
 					array(
-						'usm_incident' => 1,
-						'usm_error'    => 'typed',
+						'axle_sessions_incident' => 1,
+						'axle_sessions_error'    => 'typed',
 					)
 				)
 			);
 			exit;
 		}
 
-		$roles = isset( $_POST['usm_roles'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['usm_roles'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Each role is run through sanitize_key().
+		$roles = isset( $_POST['axle_sessions_roles'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['axle_sessions_roles'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Each role is run through sanitize_key().
 		$job   = $this->incident->start(
 			array(
-				'keep_current'  => ! empty( $_POST['usm_keep'] ),
+				'keep_current'  => ! empty( $_POST['axle_sessions_keep'] ),
 				'exclude_roles' => $roles,
-				'passwords'     => ! empty( $_POST['usm_passwords'] ),
-				'app_passwords' => ! empty( $_POST['usm_app_passwords'] ),
+				'passwords'     => ! empty( $_POST['axle_sessions_passwords'] ),
+				'app_passwords' => ! empty( $_POST['axle_sessions_app_passwords'] ),
 				'via'           => 'screen',
 			)
 		);
@@ -428,7 +437,7 @@ final class SessionsPage implements Service {
 		$id = isset( $_GET['job'] ) ? preg_replace( '/[^0-9a-f]/', '', sanitize_text_field( wp_unslash( $_GET['job'] ) ) ) : '';
 		check_admin_referer( 'axle_sessions_incident_' . $id );
 
-		$job = '' === $id ? false : get_site_transient( 'usm_incident_' . $id );
+		$job = '' === $id ? false : get_site_transient( 'axle_sessions_incident_' . $id );
 		if ( ! is_array( $job ) || get_current_user_id() !== (int) $job['by'] ) {
 			$this->progress = array(
 				'id'  => '',
@@ -451,15 +460,15 @@ final class SessionsPage implements Service {
 	private function hand_on( array $job, string $id, bool $redirect ): void {
 		if ( ! empty( $job['done'] ) ) {
 			if ( '' !== $id ) {
-				delete_site_transient( 'usm_incident_' . $id );
+				delete_site_transient( 'axle_sessions_incident_' . $id );
 			}
 			wp_safe_redirect(
 				self::url(
 					array(
-						'usm_message' => 'incident',
-						'usm_count'   => (int) $job['sessions'],
-						'usm_extra'   => (int) $job['passwords_set'],
-						'usm_apps'    => (int) $job['app_revoked'],
+						'axle_sessions_message' => 'incident',
+						'axle_sessions_count'   => (int) $job['sessions'],
+						'axle_sessions_extra'   => (int) $job['passwords_set'],
+						'axle_sessions_apps'    => (int) $job['app_revoked'],
 					)
 				)
 			);
@@ -467,7 +476,7 @@ final class SessionsPage implements Service {
 		}
 
 		$id = '' !== $id ? $id : bin2hex( random_bytes( 8 ) );
-		set_site_transient( 'usm_incident_' . $id, $job, HOUR_IN_SECONDS );
+		set_site_transient( 'axle_sessions_incident_' . $id, $job, HOUR_IN_SECONDS );
 
 		if ( $redirect ) {
 			wp_safe_redirect(
@@ -657,7 +666,7 @@ final class SessionsPage implements Service {
 			return;
 		}
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only shows the form; the action checks a nonce and the typed words.
-		if ( isset( $_GET['usm_incident'] ) && Access::can_sign_out_everyone() ) {
+		if ( isset( $_GET['axle_sessions_incident'] ) && Access::can_sign_out_everyone() ) {
 			$this->render_incident_form();
 			return;
 		}
@@ -681,7 +690,7 @@ final class SessionsPage implements Service {
 		$flag          = $filtered_user && Access::can_manage( $filtered_user->ID ) ? $this->shared->get( $filtered_user->ID ) : null;
 		$total         = (int) $table->get_pagination_arg( 'total_items' );
 		?>
-		<div class="wrap axle-ui usm-page">
+		<div class="wrap axle-ui axle-sessions-page">
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Sessions', 'axle-sessions' ); ?></h1>
 			<hr class="wp-header-end">
 			<?php $this->render_tabs( 'sessions' ); ?>
@@ -694,7 +703,7 @@ final class SessionsPage implements Service {
 			<?php $this->render_steps(); ?>
 			<?php $this->render_reports(); ?>
 
-			<p class="usm-summary axle-muted">
+			<p class="axle-sessions-summary axle-muted">
 				<?php
 				echo esc_html(
 					sprintf(
@@ -717,7 +726,7 @@ final class SessionsPage implements Service {
 			<?php if ( $flag ) : ?>
 				<?php echo wp_kses( Display::shared_evidence( $flag ), Display::ALLOWED ); ?>
 			<?php elseif ( $table->shared_view ) : ?>
-				<p class="usm-shared-intro"><?php esc_html_e( 'Accounts whose sessions look like more than one person. Choose "Only this user" on a row to see why.', 'axle-sessions' ); ?></p>
+				<p class="axle-sessions-shared-intro"><?php esc_html_e( 'Accounts whose sessions look like more than one person. Choose "Only this user" on a row to see why.', 'axle-sessions' ); ?></p>
 			<?php endif; ?>
 			<?php if ( $table->truncated ) : ?>
 				<div class="notice notice-info inline"><p><?php esc_html_e( 'This site has more signed-in users than one listing reads. Filter by role or search to see the rest.', 'axle-sessions' ); ?></p></div>
@@ -735,7 +744,7 @@ final class SessionsPage implements Service {
 				$table->views();
 				?>
 				<div class="axle-toolbar">
-					<?php $table->search_box( __( 'Search sessions', 'axle-sessions' ), 'usm-search' ); ?>
+					<?php $table->search_box( __( 'Search sessions', 'axle-sessions' ), 'axle-sessions-search' ); ?>
 				</div>
 				<div class="axle-scroll" tabindex="0" role="region" aria-label="<?php esc_attr_e( 'Sessions', 'axle-sessions' ); ?>">
 					<?php $table->display(); ?>
@@ -782,9 +791,9 @@ final class SessionsPage implements Service {
 
 		$can_settings = current_user_can( Access::settings_capability() );
 		?>
-		<section class="axle-card usm-steps" aria-labelledby="usm-steps-title">
+		<section class="axle-card axle-sessions-steps" aria-labelledby="axle-sessions-steps-title">
 			<div class="axle-card__head">
-				<h2 class="axle-card__title" id="usm-steps-title"><?php esc_html_e( 'Get started', 'axle-sessions' ); ?></h2>
+				<h2 class="axle-card__title" id="axle-sessions-steps-title"><?php esc_html_e( 'Get started', 'axle-sessions' ); ?></h2>
 				<a class="button-link" href="<?php echo esc_url( wp_nonce_url( self::url( array( 'action' => 'dismiss_steps' ) ), 'axle_sessions_dismiss_steps' ) ); ?>"><?php esc_html_e( 'Dismiss', 'axle-sessions' ); ?></a>
 			</div>
 			<ol class="axle-steps">
@@ -822,11 +831,11 @@ final class SessionsPage implements Service {
 			return;
 		}
 		?>
-		<section class="axle-card usm-reports" aria-labelledby="usm-reports-title">
-			<h2 class="axle-card__title" id="usm-reports-title"><?php esc_html_e( 'Reported as "This wasn\'t me"', 'axle-sessions' ); ?></h2>
+		<section class="axle-card axle-sessions-reports" aria-labelledby="axle-sessions-reports-title">
+			<h2 class="axle-card__title" id="axle-sessions-reports-title"><?php esc_html_e( 'Reported as "This wasn\'t me"', 'axle-sessions' ); ?></h2>
 			<p class="description"><?php esc_html_e( 'People who answered a new sign-in email by saying it was not them, in the last 30 days. Their sessions were signed out, their password was reset and their application passwords were revoked.', 'axle-sessions' ); ?></p>
 			<div class="axle-scroll" tabindex="0" role="region" aria-label="<?php esc_attr_e( 'Reports', 'axle-sessions' ); ?>">
-				<table class="widefat striped usm-report-table">
+				<table class="widefat striped axle-sessions-report-table">
 					<thead>
 						<tr>
 							<th scope="col"><?php esc_html_e( 'User', 'axle-sessions' ); ?></th>
@@ -850,7 +859,7 @@ final class SessionsPage implements Service {
 									<?php endif; ?>
 								</td>
 								<td data-colname="<?php esc_attr_e( 'Device', 'axle-sessions' ); ?>"><?php echo esc_html( (string) $event['device'] ); ?></td>
-								<td class="usm-ip" data-colname="<?php esc_attr_e( 'IP address', 'axle-sessions' ); ?>"><?php echo esc_html( '' !== $event['ip'] ? (string) $event['ip'] : __( 'Unknown', 'axle-sessions' ) ); ?></td>
+								<td class="axle-sessions-ip" data-colname="<?php esc_attr_e( 'IP address', 'axle-sessions' ); ?>"><?php echo esc_html( '' !== $event['ip'] ? (string) $event['ip'] : __( 'Unknown', 'axle-sessions' ) ); ?></td>
 								<td data-colname="<?php esc_attr_e( 'Reported', 'axle-sessions' ); ?>"><?php echo wp_kses( AxleUi::relative_time( (int) $event['time'] ), Display::ALLOWED ); ?></td>
 								<td data-colname="<?php esc_attr_e( 'Sessions signed out', 'axle-sessions' ); ?>"><?php echo esc_html( number_format_i18n( (int) $event['ended'] ) ); ?></td>
 								<td data-colname="<?php esc_attr_e( 'Application passwords revoked', 'axle-sessions' ); ?>"><?php echo '' !== NotMe::app_password_names( $event ) ? esc_html( NotMe::app_password_names( $event ) ) : '<span class="axle-muted">' . esc_html__( 'None', 'axle-sessions' ) . '</span>'; ?></td>
@@ -871,14 +880,14 @@ final class SessionsPage implements Service {
 			return;
 		}
 		?>
-		<section class="axle-card axle-card--danger usm-danger" aria-labelledby="usm-danger-title">
-			<h2 class="axle-card__title" id="usm-danger-title"><?php esc_html_e( 'Sign everyone out', 'axle-sessions' ); ?></h2>
+		<section class="axle-card axle-card--danger axle-sessions-danger" aria-labelledby="axle-sessions-danger-title">
+			<h2 class="axle-card__title" id="axle-sessions-danger-title"><?php esc_html_e( 'Sign everyone out', 'axle-sessions' ); ?></h2>
 			<p><?php esc_html_e( 'For an incident, such as a leaked password list or a stolen laptop. Every person is signed out and every application password is revoked. You can keep yourself signed in, leave out some roles, and make every password stop working.', 'axle-sessions' ); ?></p>
-			<p class="axle-actions"><a class="button axle-button--danger" href="<?php echo esc_url( self::url( array( 'usm_incident' => 1 ) ) ); ?>"><?php esc_html_e( 'Sign everyone out', 'axle-sessions' ); ?></a></p>
+			<p class="axle-actions"><a class="button axle-button--danger" href="<?php echo esc_url( self::url( array( 'axle_sessions_incident' => 1 ) ) ); ?>"><?php esc_html_e( 'Sign everyone out', 'axle-sessions' ); ?></a></p>
 			<?php $log = array_slice( $this->incident->log(), 0, 3 ); ?>
 			<?php if ( $log ) : ?>
 				<h3><?php esc_html_e( 'Recent use', 'axle-sessions' ); ?></h3>
-				<ul class="usm-incident-log">
+				<ul class="axle-sessions-incident-log">
 					<?php foreach ( $log as $entry ) : ?>
 						<?php $by = get_userdata( (int) $entry['by'] ); ?>
 						<li>
@@ -912,17 +921,17 @@ final class SessionsPage implements Service {
 		$apps   = AppPasswords::totals( array( get_current_user_id() ) );
 		$word   = Incident::confirm_word();
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only error code from our own redirect.
-		$error = isset( $_GET['usm_error'] ) && 'typed' === sanitize_key( wp_unslash( $_GET['usm_error'] ) );
+		$error = isset( $_GET['axle_sessions_error'] ) && 'typed' === sanitize_key( wp_unslash( $_GET['axle_sessions_error'] ) );
 		?>
-		<div class="wrap axle-ui usm-page">
+		<div class="wrap axle-ui axle-sessions-page">
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Sessions', 'axle-sessions' ); ?></h1>
 			<hr class="wp-header-end">
 			<p class="axle-intro"><?php esc_html_e( 'Check what will happen before you confirm. Nothing ends until you do.', 'axle-sessions' ); ?></p>
 			<?php if ( $error ) : ?>
 				<div class="notice notice-error inline"><p><?php esc_html_e( 'The confirmation words did not match, so nobody was signed out. Type them exactly as shown and try again.', 'axle-sessions' ); ?></p></div>
 			<?php endif; ?>
-			<form method="post" action="<?php echo esc_url( self::url() ); ?>" class="axle-confirm axle-confirm--danger usm-incident-form" role="group" aria-labelledby="usm-incident-title">
-				<h2 class="axle-card__title" id="usm-incident-title"><?php esc_html_e( 'Sign everyone out?', 'axle-sessions' ); ?></h2>
+			<form method="post" action="<?php echo esc_url( self::url() ); ?>" class="axle-confirm axle-confirm--danger axle-sessions-incident-form" role="group" aria-labelledby="axle-sessions-incident-title">
+				<h2 class="axle-card__title" id="axle-sessions-incident-title"><?php esc_html_e( 'Sign everyone out?', 'axle-sessions' ); ?></h2>
 				<p>
 					<?php
 					echo esc_html(
@@ -939,19 +948,19 @@ final class SessionsPage implements Service {
 				<input type="hidden" name="action" value="incident">
 				<fieldset>
 					<legend class="screen-reader-text"><?php esc_html_e( 'Choices', 'axle-sessions' ); ?></legend>
-					<p><label><input type="checkbox" name="usm_keep" value="1" checked> <?php esc_html_e( 'Keep me signed in, on every device', 'axle-sessions' ); ?></label></p>
+					<p><label><input type="checkbox" name="axle_sessions_keep" value="1" checked> <?php esc_html_e( 'Keep me signed in, on every device', 'axle-sessions' ); ?></label></p>
 					<?php if ( ! is_multisite() ) : ?>
 						<p><strong><?php esc_html_e( 'Leave out these roles', 'axle-sessions' ); ?></strong></p>
-						<ul class="usm-incident-roles">
+						<ul class="axle-sessions-incident-roles">
 							<?php foreach ( wp_roles()->get_names() as $role => $name ) : ?>
-								<li><label><input type="checkbox" name="usm_roles[]" value="<?php echo esc_attr( (string) $role ); ?>"> <?php echo esc_html( translate_user_role( $name ) ); ?></label></li>
+								<li><label><input type="checkbox" name="axle_sessions_roles[]" value="<?php echo esc_attr( (string) $role ); ?>"> <?php echo esc_html( translate_user_role( $name ) ); ?></label></li>
 							<?php endforeach; ?>
 						</ul>
 					<?php endif; ?>
 					<?php if ( AppPasswords::is_supported() ) : ?>
 						<p>
-							<label><input type="checkbox" name="usm_app_passwords" value="1" checked> <?php esc_html_e( 'Also revoke application passwords', 'axle-sessions' ); ?></label><br>
-							<span class="description usm-app-preview">
+							<label><input type="checkbox" name="axle_sessions_app_passwords" value="1" checked> <?php esc_html_e( 'Also revoke application passwords', 'axle-sessions' ); ?></label><br>
+							<span class="description axle-sessions-app-preview">
 								<?php
 								echo esc_html(
 									sprintf(
@@ -969,12 +978,12 @@ final class SessionsPage implements Service {
 						</p>
 					<?php endif; ?>
 					<p>
-						<label><input type="checkbox" name="usm_passwords" value="1"> <?php esc_html_e( 'Also require new passwords', 'axle-sessions' ); ?></label><br>
+						<label><input type="checkbox" name="axle_sessions_passwords" value="1"> <?php esc_html_e( 'Also require new passwords', 'axle-sessions' ); ?></label><br>
 						<span class="description"><?php esc_html_e( 'Every current password stops working, including for people who are not signed in now. Each person has to use "Lost your password?" to choose a new one. No emails are sent. Your own password is left alone so you can still sign in.', 'axle-sessions' ); ?></span>
 					</p>
 				</fieldset>
 				<p>
-					<label for="usm-typed">
+					<label for="axle-sessions-typed">
 						<?php
 						printf(
 							/* translators: %s: the words to type, such as SIGN OUT. */
@@ -983,10 +992,10 @@ final class SessionsPage implements Service {
 						);
 						?>
 					</label><br>
-					<input type="text" id="usm-typed" name="usm_typed" class="regular-text" autocomplete="off" spellcheck="false" data-usm-typed="<?php echo esc_attr( $word ); ?>">
+					<input type="text" id="axle-sessions-typed" name="axle_sessions_typed" class="regular-text" autocomplete="off" spellcheck="false" data-axle-sessions-typed="<?php echo esc_attr( $word ); ?>">
 				</p>
 				<p class="axle-actions">
-					<button type="submit" class="button axle-button--danger" data-usm-typed-button><?php esc_html_e( 'Sign everyone out', 'axle-sessions' ); ?></button>
+					<button type="submit" class="button axle-button--danger" data-axle-sessions-typed-button><?php esc_html_e( 'Sign everyone out', 'axle-sessions' ); ?></button>
 					<a class="button-link" href="<?php echo esc_url( self::url() ); ?>"><?php esc_html_e( 'Cancel', 'axle-sessions' ); ?></a>
 				</p>
 			</form>
@@ -1003,7 +1012,7 @@ final class SessionsPage implements Service {
 	private function render_progress( array $progress ): void {
 		$job = $progress['job'];
 		?>
-		<div class="wrap axle-ui usm-page">
+		<div class="wrap axle-ui axle-sessions-page">
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Sessions', 'axle-sessions' ); ?></h1>
 			<hr class="wp-header-end">
 			<?php if ( ! is_array( $job ) ) : ?>
@@ -1027,11 +1036,11 @@ final class SessionsPage implements Service {
 					number_format_i18n( (int) $job['sessions'] )
 				);
 				?>
-				<section class="axle-card" aria-busy="true" data-usm-progress="<?php echo esc_attr( $text ); ?>">
+				<section class="axle-card" aria-busy="true" data-axle-sessions-progress="<?php echo esc_attr( $text ); ?>">
 					<h2 class="axle-card__title"><?php esc_html_e( 'Signing everyone out', 'axle-sessions' ); ?></h2>
-					<p><span class="spinner is-active usm-spinner"></span> <?php echo esc_html( $text ); ?></p>
+					<p><span class="spinner is-active axle-sessions-spinner"></span> <?php echo esc_html( $text ); ?></p>
 					<p class="description"><?php esc_html_e( 'This page carries on by itself. Keep it open until it says it is done. If it stops, press Continue.', 'axle-sessions' ); ?></p>
-					<p class="axle-actions"><a class="button" href="<?php echo esc_url( $next ); ?>" data-usm-continue><?php esc_html_e( 'Continue', 'axle-sessions' ); ?></a></p>
+					<p class="axle-actions"><a class="button" href="<?php echo esc_url( $next ); ?>" data-axle-sessions-continue><?php esc_html_e( 'Continue', 'axle-sessions' ); ?></a></p>
 				</section>
 			<?php endif; ?>
 			<?php AxleUi::footer(); ?>
@@ -1072,7 +1081,7 @@ final class SessionsPage implements Service {
 			$title = sprintf( _n( 'Sign out %s user everywhere?', 'Sign out %s users everywhere?', count( $users ), 'axle-sessions' ), number_format_i18n( count( $users ) ) );
 		}
 		?>
-		<div class="wrap axle-ui usm-page">
+		<div class="wrap axle-ui axle-sessions-page">
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Sessions', 'axle-sessions' ); ?></h1>
 			<hr class="wp-header-end">
 			<p class="axle-intro"><?php esc_html_e( 'Check who will be signed out before you confirm. Nothing ends until you do.', 'axle-sessions' ); ?></p>
@@ -1080,12 +1089,12 @@ final class SessionsPage implements Service {
 				<div class="notice notice-warning inline"><p><?php esc_html_e( 'None of the chosen users can be signed out from here.', 'axle-sessions' ); ?></p></div>
 				<p><a class="button" href="<?php echo esc_url( $cancel ); ?>"><?php esc_html_e( 'Back to sessions', 'axle-sessions' ); ?></a></p>
 			<?php else : ?>
-				<form method="post" action="<?php echo esc_url( self::url() ); ?>" class="axle-confirm axle-confirm--danger usm-confirm">
-					<h2 class="axle-card__title" id="usm-confirm-title"><?php echo esc_html( $title ); ?></h2>
+				<form method="post" action="<?php echo esc_url( self::url() ); ?>" class="axle-confirm axle-confirm--danger axle-sessions-confirm">
+					<h2 class="axle-card__title" id="axle-sessions-confirm-title"><?php echo esc_html( $title ); ?></h2>
 					<p><?php echo wp_kses_post( self::confirm_message( $users, $sessions, $self ) ); ?></p>
 					<p><?php esc_html_e( 'Signing out cannot be undone. Each person can sign in again with their password.', 'axle-sessions' ); ?></p>
 					<?php if ( ! $single ) : ?>
-						<ul class="usm-confirm-users">
+						<ul class="axle-sessions-confirm-users">
 							<?php foreach ( array_slice( $users, 0, 20 ) as $user_id ) : ?>
 								<?php $user = get_userdata( $user_id ); ?>
 								<li><?php echo esc_html( $user ? $user->user_login : (string) $user_id ); ?><?php echo get_current_user_id() === $user_id ? ' ' . esc_html__( '(you)', 'axle-sessions' ) : ''; ?></li>
@@ -1100,9 +1109,9 @@ final class SessionsPage implements Service {
 							<?php endif; ?>
 						</ul>
 					<?php endif; ?>
-					<?php wp_nonce_field( 'axle_sessions_confirm' ); ?>
+					<?php wp_nonce_field( self::confirm_action( $handles ? $handles : array( (string) $users[0] ) ) ); ?>
 					<input type="hidden" name="action" value="sign_out">
-					<input type="hidden" name="usm_confirmed" value="1">
+					<input type="hidden" name="axle_sessions_confirmed" value="1">
 					<?php if ( $handles ) : ?>
 						<?php foreach ( $handles as $handle ) : ?>
 							<input type="hidden" name="handles[]" value="<?php echo esc_attr( $handle ); ?>">
@@ -1113,12 +1122,12 @@ final class SessionsPage implements Service {
 					<?php foreach ( $keep as $key => $value ) : ?>
 						<input type="hidden" name="<?php echo esc_attr( $key ); ?>" value="<?php echo esc_attr( $value ); ?>">
 					<?php endforeach; ?>
-					<p class="usm-confirm-actions">
+					<p class="axle-sessions-confirm-actions">
 						<?php if ( $self ) : ?>
-							<button type="submit" name="usm_scope" value="others" class="button button-primary"><?php echo $single ? esc_html__( 'Sign out everywhere else', 'axle-sessions' ) : esc_html__( 'Sign out, but keep this browser', 'axle-sessions' ); ?></button>
-							<button type="submit" name="usm_scope" value="all" class="button axle-button--danger"><?php esc_html_e( 'Sign out everywhere, this browser too', 'axle-sessions' ); ?></button>
+							<button type="submit" name="axle_sessions_scope" value="others" class="button button-primary"><?php echo $single ? esc_html__( 'Sign out everywhere else', 'axle-sessions' ) : esc_html__( 'Sign out, but keep this browser', 'axle-sessions' ); ?></button>
+							<button type="submit" name="axle_sessions_scope" value="all" class="button axle-button--danger"><?php esc_html_e( 'Sign out everywhere, this browser too', 'axle-sessions' ); ?></button>
 						<?php else : ?>
-							<button type="submit" name="usm_scope" value="all" class="button axle-button--danger"><?php esc_html_e( 'Sign out everywhere', 'axle-sessions' ); ?></button>
+							<button type="submit" name="axle_sessions_scope" value="all" class="button axle-button--danger"><?php esc_html_e( 'Sign out everywhere', 'axle-sessions' ); ?></button>
 						<?php endif; ?>
 						<a class="button-link" href="<?php echo esc_url( $cancel ); ?>"><?php esc_html_e( 'Cancel', 'axle-sessions' ); ?></a>
 					</p>

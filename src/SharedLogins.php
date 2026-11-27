@@ -474,7 +474,7 @@ If this was all you, there is nothing to do. If you shared your password, or you
 					$user->display_name,
 					$site,
 					$lines,
-					get_dashboard_url( $user->ID, 'profile.php' ) . '#usm-sessions'
+					get_dashboard_url( $user->ID, 'profile.php' ) . '#axle-sessions-sessions'
 				),
 				'headers' => array(),
 			),

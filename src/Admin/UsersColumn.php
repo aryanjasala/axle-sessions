@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class UsersColumn implements Service {
 
-	public const COLUMN = 'usm_sessions';
+	public const COLUMN = 'axle_sessions_sessions';
 
 	/**
 	 * Session store.

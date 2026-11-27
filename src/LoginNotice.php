@@ -70,7 +70,7 @@ final class LoginNotice implements Service {
 	 * @return string
 	 */
 	public static function cookie_name(): string {
-		return 'usm_ended_' . ( defined( 'COOKIEHASH' ) ? COOKIEHASH : md5( (string) get_option( 'siteurl' ) ) );
+		return 'axle_sessions_ended_' . ( defined( 'COOKIEHASH' ) ? COOKIEHASH : md5( (string) get_option( 'siteurl' ) ) );
 	}
 
 	/**

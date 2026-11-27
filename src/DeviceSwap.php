@@ -93,7 +93,7 @@ final class DeviceSwap implements Service {
 	 * @return string
 	 */
 	public static function cookie_name(): string {
-		return 'usm_swap_' . ( defined( 'COOKIEHASH' ) ? COOKIEHASH : md5( (string) get_option( 'siteurl' ) ) );
+		return 'axle_sessions_swap_' . ( defined( 'COOKIEHASH' ) ? COOKIEHASH : md5( (string) get_option( 'siteurl' ) ) );
 	}
 
 	/**
@@ -343,10 +343,10 @@ final class DeviceSwap implements Service {
 
 		// phpcs:disable WordPress.Security.NonceVerification -- The cookie token and the form token derived from it are the credential: a random, single-use secret bound to this browser.
 		$post   = isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'];
-		$form   = isset( $_POST['usm_form'] ) ? sanitize_text_field( wp_unslash( $_POST['usm_form'] ) ) : '';
-		$handle = isset( $_POST['usm_handle'] ) ? sanitize_text_field( wp_unslash( $_POST['usm_handle'] ) ) : '';
-		$cancel = $post && ! empty( $_POST['usm_cancel'] );
-		$nonce  = isset( $_POST['usm_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['usm_nonce'] ) ) : '';
+		$form   = isset( $_POST['axle_sessions_form'] ) ? sanitize_text_field( wp_unslash( $_POST['axle_sessions_form'] ) ) : '';
+		$handle = isset( $_POST['axle_sessions_handle'] ) ? sanitize_text_field( wp_unslash( $_POST['axle_sessions_handle'] ) ) : '';
+		$cancel = $post && ! empty( $_POST['axle_sessions_cancel'] );
+		$nonce  = isset( $_POST['axle_sessions_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['axle_sessions_nonce'] ) ) : '';
 		// phpcs:enable WordPress.Security.NonceVerification
 
 		if ( $this->is_limited() ) {
@@ -396,8 +396,8 @@ final class DeviceSwap implements Service {
 			$this->go(
 				add_query_arg(
 					array(
-						'action'   => self::ACTION,
-						'usm_gone' => 1,
+						'action'             => self::ACTION,
+						'axle_sessions_gone' => 1,
 					),
 					network_site_url( 'wp-login.php', 'login' ) 
 				) 
@@ -413,8 +413,8 @@ final class DeviceSwap implements Service {
 			$this->go(
 				add_query_arg(
 					array(
-						'action'   => self::ACTION,
-						'usm_more' => 1,
+						'action'             => self::ACTION,
+						'axle_sessions_more' => 1,
 					),
 					network_site_url( 'wp-login.php', 'login' ) 
 				) 
@@ -486,8 +486,8 @@ final class DeviceSwap implements Service {
 		$nonce   = wp_create_nonce( self::nonce_action( $user->ID ) );
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Display-only flags from our own redirect.
-		$gone = isset( $_GET['usm_gone'] );
-		$more = isset( $_GET['usm_more'] );
+		$gone = isset( $_GET['axle_sessions_gone'] );
+		$more = isset( $_GET['axle_sessions_more'] );
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		$intro = sprintf(
@@ -501,7 +501,7 @@ final class DeviceSwap implements Service {
 		?>
 		<p><?php esc_html_e( 'Choose a device to sign out. You will be signed in here at once, without typing your password again.', 'axle-sessions' ); ?></p>
 		<?php foreach ( $rows as $row ) : ?>
-			<form method="post" action="<?php echo esc_url( $action ); ?>" class="usm-swap-device">
+			<form method="post" action="<?php echo esc_url( $action ); ?>" class="axle-sessions-swap-device">
 				<p>
 					<strong><?php echo esc_html( '' !== $row['device'] ? $row['device'] : __( 'Unknown device', 'axle-sessions' ) ); ?></strong><br>
 					<?php
@@ -515,16 +515,16 @@ final class DeviceSwap implements Service {
 					);
 					?>
 				</p>
-				<input type="hidden" name="usm_form" value="<?php echo esc_attr( $form ); ?>">
-				<input type="hidden" name="usm_nonce" value="<?php echo esc_attr( $nonce ); ?>">
-				<input type="hidden" name="usm_handle" value="<?php echo esc_attr( $row['handle'] ); ?>">
+				<input type="hidden" name="axle_sessions_form" value="<?php echo esc_attr( $form ); ?>">
+				<input type="hidden" name="axle_sessions_nonce" value="<?php echo esc_attr( $nonce ); ?>">
+				<input type="hidden" name="axle_sessions_handle" value="<?php echo esc_attr( $row['handle'] ); ?>">
 				<p class="submit"><button type="submit" class="button button-primary"><?php esc_html_e( 'Sign out this device and sign in here', 'axle-sessions' ); ?></button></p>
 			</form>
 		<?php endforeach; ?>
-		<form method="post" action="<?php echo esc_url( $action ); ?>" class="usm-swap-cancel">
-			<input type="hidden" name="usm_form" value="<?php echo esc_attr( $form ); ?>">
-			<input type="hidden" name="usm_nonce" value="<?php echo esc_attr( $nonce ); ?>">
-			<input type="hidden" name="usm_cancel" value="1">
+		<form method="post" action="<?php echo esc_url( $action ); ?>" class="axle-sessions-swap-cancel">
+			<input type="hidden" name="axle_sessions_form" value="<?php echo esc_attr( $form ); ?>">
+			<input type="hidden" name="axle_sessions_nonce" value="<?php echo esc_attr( $nonce ); ?>">
+			<input type="hidden" name="axle_sessions_cancel" value="1">
 			<p class="submit"><button type="submit" class="button"><?php esc_html_e( 'Cancel, I will sign in later', 'axle-sessions' ); ?></button></p>
 		</form>
 		<?php
@@ -627,7 +627,7 @@ final class DeviceSwap implements Service {
 	private function limit_key(): string {
 		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : ''; // phpcs:ignore WordPressVIPMinimum.Variables.ServerVariables.UserControlledHeaders, WordPressVIPMinimum.Variables.RestrictedVariables.cache_constraints___SERVER__REMOTE_ADDR__
 
-		return 'usm_sw_' . substr( hash_hmac( 'sha256', $ip, wp_salt( 'auth' ) ), 0, 32 );
+		return 'axle_sessions_sw_' . substr( hash_hmac( 'sha256', $ip, wp_salt( 'auth' ) ), 0, 32 );
 	}
 
 	/**

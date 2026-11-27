@@ -38,8 +38,8 @@ test.describe( 'Screenshots', () => {
 
 	test( '1: Profile > Your sessions', async () => {
 		await page.goto( '/wp-admin/profile.php' );
-		const section = page.locator( '.usm-profile' );
-		await expect( section.locator( '.usm-session' ) ).toHaveCount( 3 );
+		const section = page.locator( '.axle-sessions-profile' );
+		await expect( section.locator( '.axle-sessions-session' ) ).toHaveCount( 3 );
 		await section.scrollIntoViewIfNeeded();
 		const box = await section.boundingBox();
 		await shot( page, 1, { clip: { x: 150, y: box.y - 16, width: 1130, height: box.height + 32 } } );
@@ -47,7 +47,7 @@ test.describe( 'Screenshots', () => {
 
 	test( '2: Users > Sessions with every signed-in device', async () => {
 		await page.goto( '/wp-admin/users.php?page=user-sessions' );
-		await expect( page.locator( 'tbody .usm-session' ) ).toHaveCount( 7 );
+		await expect( page.locator( 'tbody .axle-sessions-session' ) ).toHaveCount( 7 );
 		await shot( page, 2 );
 	} );
 
@@ -57,7 +57,7 @@ test.describe( 'Screenshots', () => {
 		wp( 'axle-sessions', 'set-policy', 'subscriber', '--max-sessions=1', '--remember-hours=720' );
 		wp( 'axle-sessions', 'settings', '--new-device-email=on' );
 		await page.goto( '/wp-admin/users.php?page=user-sessions&tab=policies' );
-		await expect( page.locator( '#usm-administrator-idle_minutes' ) ).toHaveValue( '60' );
+		await expect( page.locator( '#axle-sessions-administrator-idle_minutes' ) ).toHaveValue( '60' );
 		await shot( page, 3, { fullPage: true } );
 	} );
 
@@ -67,7 +67,7 @@ test.describe( 'Screenshots', () => {
 		const other = await browser.newContext( { storageState: { cookies: [], origins: [] }, userAgent: UA.ipad, viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 } );
 		const login = await other.newPage();
 		await logIn( login, 'maria', 'demo-password-123' );
-		await expect( login.locator( '.usm-swap-device' ).first() ).toBeVisible();
+		await expect( login.locator( '.axle-sessions-swap-device' ).first() ).toBeVisible();
 		await expect( login.locator( '#login' ) ).toContainText( 'This account can be signed in on 2 devices at a time' );
 		await shot( login, 4, { clip: { x: 390, y: 0, width: 500, height: 640 } } );
 		await other.close();
@@ -87,8 +87,8 @@ test.describe( 'Screenshots', () => {
 
 	test( '6: Sign everyone out, with the application passwords to revoke', async () => {
 		wp( 'user', 'application-password', 'create', 'priya', 'Backup job', '--porcelain' );
-		await page.goto( '/wp-admin/users.php?page=user-sessions&usm_incident=1' );
-		await expect( page.locator( '.usm-app-preview' ) ).toContainText( 'This revokes 3 application passwords of 2 users.' );
+		await page.goto( '/wp-admin/users.php?page=user-sessions&axle_sessions_incident=1' );
+		await expect( page.locator( '.axle-sessions-app-preview' ) ).toContainText( 'This revokes 3 application passwords of 2 users.' );
 		await shot( page, 6, { fullPage: true } );
 		for ( const login of [ 'maria', 'priya' ] ) {
 			for ( const uuid of wp( 'user', 'application-password', 'list', login, '--field=uuid' ).split( '\n' ).filter( Boolean ) ) {

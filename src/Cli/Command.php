@@ -7,7 +7,6 @@
 
 namespace AryanX\Axle\Sessions\Cli;
 
-use AryanX\Axle\Sessions\Abilities;
 use AryanX\Axle\Sessions\History;
 use AryanX\Axle\Sessions\Incident;
 use AryanX\Axle\Sessions\NotMe;
@@ -608,7 +607,14 @@ final class Command {
 	 * @return int
 	 */
 	private function user_id( string $user ): int {
-		$user_id = Abilities::user_id( $user );
+		$found = false;
+		if ( ctype_digit( $user ) ) {
+			$found = get_userdata( (int) $user );
+		} elseif ( '' !== $user ) {
+			$found = get_user_by( is_email( $user ) ? 'email' : 'login', $user );
+		}
+
+		$user_id = $found ? (int) $found->ID : 0;
 		if ( $user_id < 1 ) {
 			\WP_CLI::error( "There is no user {$user}." );
 		}

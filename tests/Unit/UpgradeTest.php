@@ -135,4 +135,37 @@ final class UpgradeTest extends SessionTestCase {
 		$this->assertSame( array( 'a' ), $this->options['axle_sessions_incidents'] );
 		$this->assertArrayNotHasKey( 'user_session_manager_incidents', $this->options );
 	}
+
+	public function test_the_short_prefix_transients_are_dropped(): void {
+		$db = new class() {
+			public $options  = 'wp_options';
+			public $sitemeta = 'wp_sitemeta';
+			public $queries  = array();
+
+			public function esc_like( $text ) {
+				return addcslashes( $text, '_%\\' );
+			}
+
+			public function prepare( $query, ...$args ) {
+				
+				return vsprintf( str_replace( '%s', "'%s'", $query ), $args );
+			}
+
+			public function query( $query ) {
+				$this->queries[] = $query;
+				return 1;
+			}
+		};
+		$GLOBALS['wpdb'] = $db;
+		Functions\when( 'is_multisite' )->justReturn( true );
+
+		( new Upgrade() )->maybe_run();
+		unset( $GLOBALS['wpdb'] );
+
+		$this->assertCount( 2, $db->queries );
+		$this->assertStringContainsString( 'wp_options', $db->queries[0] );
+		$this->assertStringContainsString( '_transient_usm_', str_replace( '\\', '', $db->queries[0] ) );
+		$this->assertStringContainsString( 'wp_sitemeta', $db->queries[1] );
+		$this->assertStringContainsString( '_site_transient_usm_', str_replace( '\\', '', $db->queries[1] ) );
+	}
 }

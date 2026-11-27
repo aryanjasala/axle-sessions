@@ -200,7 +200,7 @@ If this was you, there is nothing to do. If it was not, change your password and
 				$this->label( $session ),
 				$ip,
 				wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) ( $session['login'] ?? time() ) ),
-				get_dashboard_url( $user->ID, 'profile.php' ) . '#usm-sessions'
+				get_dashboard_url( $user->ID, 'profile.php' ) . '#axle-sessions-sessions'
 			) . $note,
 			'headers' => array(),
 		);
